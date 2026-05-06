@@ -20,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -363,12 +364,72 @@ public class PostController {
             PostDto postdto = postService.getPostById(postCom.getId());
             System.out.println("Post ID: " + postCom.getId());
 
-            commentRepo.deleteById(commentId);
+            deleteCommentWithReplies(com);
             System.out.println("Deleted comment with ID: " + commentId);
             model.addAttribute("post", postdto);
         }
 
         return "viewPostByID";
+    }
+
+    private void deleteCommentWithReplies(Comment comment) {
+        if (comment.getReplies() != null && !comment.getReplies().isEmpty()) {
+            List<Comment> replies = new ArrayList<>(comment.getReplies());
+            for (Comment reply : replies) {
+                deleteCommentWithReplies(reply);
+            }
+        }
+        commentRepo.delete(comment);
+    }
+
+    @GetMapping("/posts/comments/edit")
+    public String editCommentPage(@RequestParam("id") int commentId, Model model, Authentication authentication) {
+        Comment comment = commentRepo.findById(commentId);
+        if (comment == null || comment.getPost() == null) {
+            return "redirect:/posts";
+        }
+
+        if (!isAuthorizedForCommentEdit(authentication, comment)) {
+            return "redirect:/post/viewPost?id=" + comment.getPost().getId();
+        }
+
+        model.addAttribute("comment", comment);
+        model.addAttribute("postId", comment.getPost().getId());
+        return "editComment";
+    }
+
+    @PostMapping("/posts/comments/edit")
+    public String editComment(@RequestParam("id") int commentId,
+                              @RequestParam("content") String content,
+                              Authentication authentication) {
+        Comment comment = commentRepo.findById(commentId);
+        if (comment == null || comment.getPost() == null) {
+            return "redirect:/posts";
+        }
+
+        if (!isAuthorizedForCommentEdit(authentication, comment)) {
+            return "redirect:/post/viewPost?id=" + comment.getPost().getId();
+        }
+
+        comment.setContent(content);
+        commentRepo.save(comment);
+        return "redirect:/post/viewPost?id=" + comment.getPost().getId();
+    }
+
+    private boolean isAuthorizedForCommentEdit(Authentication authentication, Comment comment) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch("ROLE_ADMIN"::equals);
+
+        String postOwnerEmail = comment.getPost() != null && comment.getPost().getUser() != null
+                ? comment.getPost().getUser().getEmail()
+                : null;
+
+        return isAdmin || (postOwnerEmail != null && postOwnerEmail.equals(authentication.getName()));
     }
 
     @PostMapping("/posts/comments/{commentId}/reply")

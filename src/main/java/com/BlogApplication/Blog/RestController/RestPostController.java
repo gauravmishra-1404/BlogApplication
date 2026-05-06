@@ -4,6 +4,8 @@ import com.BlogApplication.Blog.models.Comment;
 import com.BlogApplication.Blog.models.Post;
 import com.BlogApplication.Blog.models.User;
 import com.BlogApplication.Blog.payloads.PostDto;
+import com.BlogApplication.Blog.repositories.CommentRepo;
+import com.BlogApplication.Blog.repositories.PostRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.CommentService;
 import com.BlogApplication.Blog.services.PostService;
@@ -34,6 +36,12 @@ public class RestPostController {
 
     @Autowired
     private TagService tagService;
+
+    @Autowired
+    private PostRepo postRepo;
+
+    @Autowired
+    private CommentRepo commentRepo;
 
     private List<Post> filteredPostByAuthor = new ArrayList<>();
     private List<Post> filteredPostByTag = new ArrayList<>();
@@ -95,7 +103,14 @@ public class RestPostController {
     public ResponseEntity<List<Post>> sortingOrder(@RequestParam(defaultValue = "0") int page,
                                                    @RequestParam(defaultValue = "10") int size,
                                                    @RequestParam String order) {
-        List<Post> sortedPosts = postService.getSortedPosts(order);
+        List<Post> sortedPosts;
+        if (order == null || order.isBlank()) {
+            sortedPosts = postService.getAllPost();
+        } else if ("increase".equals(order)) {
+            sortedPosts = postRepo.findAllByOrderByUpdatedAtAsc();
+        } else {
+            sortedPosts = postRepo.findAllByOrderByUpdatedAtDesc();
+        }
         return new ResponseEntity<>(sortedPosts, HttpStatus.OK);
     }
 
@@ -103,7 +118,13 @@ public class RestPostController {
     public ResponseEntity<List<Post>> searchPosts(@RequestParam(defaultValue = "0") int page,
                                                   @RequestParam(defaultValue = "10") int size,
                                                   @RequestParam String query) {
-        List<Post> searchResults = postService.searchPosts(query);
+        List<Post> searchResults = new ArrayList<>();
+        if (query != null && !query.isBlank()) {
+            searchResults.addAll(postService.searchByAuthor(query));
+            searchResults.addAll(postService.searchByTitle(query));
+            searchResults.addAll(postService.searchByContent(query));
+            searchResults.addAll(tagService.searchByTag(query));
+        }
         return new ResponseEntity<>(searchResults, HttpStatus.OK);
     }
 
@@ -111,7 +132,11 @@ public class RestPostController {
     public ResponseEntity<List<Post>> filterPostsByAuthor(@RequestParam(defaultValue = "0") int page,
                                                           @RequestParam(defaultValue = "10") int size,
                                                           @RequestParam String[] author) {
-        filteredPostByAuthor = postService.filterPostsByAuthor(author);
+        if (filteredPostByTag.isEmpty()) {
+            filteredPostByAuthor = postService.searchByMultipleAuthor(author);
+        } else {
+            filteredPostByAuthor = postService.searchByAuthorInFilteredPostByTag(filteredPostByTag, author);
+        }
         return new ResponseEntity<>(filteredPostByAuthor, HttpStatus.OK);
     }
 
@@ -119,27 +144,42 @@ public class RestPostController {
     public ResponseEntity<List<Post>> filterPostsByTag(@RequestParam(defaultValue = "0") int page,
                                                        @RequestParam(defaultValue = "10") int size,
                                                        @RequestParam String[] tag) {
-        filteredPostByTag = tagService.filterPostsByTag(tag);
+        if (filteredPostByAuthor.isEmpty()) {
+            filteredPostByTag = tagService.searchByMultipleTag(tag);
+        } else {
+            filteredPostByTag = tagService.searchByTagInFilteredPostByAuthor(filteredPostByAuthor, tag);
+        }
         return new ResponseEntity<>(filteredPostByTag, HttpStatus.OK);
     }
 
     @PostMapping("/posts/{id}/comments/add")
-    public ResponseEntity<Comment> addComment(@PathVariable int id,
-                                              @RequestBody Comment comment) {
-        Comment savedComment = commentService.save(id, comment);
-        return new ResponseEntity<>(savedComment, HttpStatus.CREATED);
+    public ResponseEntity<Void> addComment(@PathVariable int id,
+                                           @RequestBody Comment comment) {
+        commentService.save(id, comment.getContent(), comment.getName());
+        return new ResponseEntity<>(HttpStatus.CREATED);
     }
 
     @DeleteMapping("/posts/comments/{id}/delete")
     public ResponseEntity<Void> deleteComment(@PathVariable int id) {
-        commentService.deleteComment(id);
+        commentRepo.deleteById(id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
     @PostMapping("/posts/comments/{commentId}/reply")
-    public ResponseEntity<Comment> saveReply(@PathVariable int commentId,
-                                             @RequestBody Comment reply) {
-        Comment savedReply = commentService.saveReply(commentId, reply);
-        return new ResponseEntity<>(savedReply, HttpStatus.CREATED);
+    public ResponseEntity<Void> saveReply(@PathVariable int commentId,
+                                          @RequestBody Comment reply) {
+        Comment parentComment = commentRepo.findById(commentId);
+        if (parentComment == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+        Post post = parentComment.getPost();
+        Comment replyComment = new Comment();
+        replyComment.setName(reply.getName() == null || reply.getName().isBlank() ? "Anonymous" : reply.getName());
+        replyComment.setContent(reply.getContent());
+        replyComment.setPost(post);
+        replyComment.setParent(parentComment);
+        parentComment.getReplies().add(commentRepo.save(replyComment));
+        commentRepo.save(parentComment);
+        return new ResponseEntity<>(HttpStatus.CREATED);
     }
 }

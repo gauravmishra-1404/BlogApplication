@@ -1,0 +1,10 @@
+services:
+  app:
+    build: .
+    container_name: blog-app
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_SECURITY_USER_NAME: admin
+      SPRING_SECURITY_USER_PASSWORD: admin123
+    ports:
+      - "8080:8080"
