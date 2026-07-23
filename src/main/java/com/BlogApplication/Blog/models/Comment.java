@@ -19,8 +19,12 @@ public class Comment {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    // Nullable Boolean, not a primitive: existing production rows predate this column and were
+    // never backfilled (ddl-auto=update just adds the column, it doesn't set a value for old
+    // rows), so the DB can hand back NULL here. A primitive boolean can't hold that and throws
+    // on every load; Boolean absorbs it safely, and isEdited() below treats null as "not edited".
     @Column(name = "edited")
-    private boolean edited;
+    private Boolean edited;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id")
@@ -87,7 +91,7 @@ public class Comment {
     }
 
     public boolean isEdited() {
-        return edited;
+        return Boolean.TRUE.equals(edited);
     }
 
     public void setEdited(boolean edited) {
