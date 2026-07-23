@@ -3,18 +3,12 @@ package com.BlogApplication.Blog.services;
 import com.BlogApplication.Blog.models.Comment;
 import com.BlogApplication.Blog.models.Post;
 import com.BlogApplication.Blog.payloads.PostDto;
-import com.BlogApplication.Blog.repositories.PostRepo;
 import org.springframework.data.domain.Page;
 
 import java.security.Principal;
 import java.util.List;
 
 public interface PostService {
-//    Post createPost(PostDto postDto);
-//    Post updatePost(PostDto postDto, Integer id);
-//    void deletePost(Integer id);
-
-       List<Post> getAllPost();
 
        void save(PostDto postDto, Principal principal);
 
@@ -24,21 +18,9 @@ public interface PostService {
 
        void updatePostByID(PostDto postDto, int id);
 
-       List<Post> searchByAuthor(String query);
-
-       List<Post> searchByTitle(String query);
-
-       List<Post> searchByContent(String query);
-
        List<String> getAllUniqueAuthor();
 
-       List<Post> getAllPostFilteredByAuthor(String author);
-
-       List<Post> searchByAuthorInFilteredPostByTag(List<Post> filteredPostByTag, String [] author);
-
-       Page<Post> getPaginatedPosts(int page, int size);
-
-       List<Post> searchByMultipleAuthor(String[] query);
+       Page<Post> searchPosts(String query, List<String> authors, List<String> tags, String order, int page, int size);
 
        List<Comment> getComment(int postId);
 }

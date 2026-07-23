@@ -3,313 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Blog Application</title>
+    <title>Bodh Sea</title>
+    <link rel="stylesheet" href="/CSS/common.css">
     <link rel="stylesheet" href="/CSS/dashboardStyle.css">
-    <style>
-        /* Blog Container */
-    .blog-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 20px;
-        padding: 20px;
-    }
-
-    /* Blog Card */
-    .blog-card {
-        border: 1px solid #ddd;
-        padding: 20px;
-        border-radius: 12px;
-        background-color: #fff;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s, box-shadow 0.3s;
-    }
-
-    .blog-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-    }
-
-    .blog-card a { /* Style the link inside the card */
-        text-decoration: none; /* Remove underline */
-        color: inherit; /* Inherit color from parent */
-        display: block; /* Make the entire card clickable */
-    }
-
-    .blog-card h2 {
-        font-size: 1.8rem;
-        color: #333;
-        margin-bottom: 10px;
-    }
-
-    .blog-card p {
-        color: #555;
-        font-size: 0.95rem;
-        margin-bottom: 10px;
-    }
-
-    /* Tags */
-    .tags-container {
-        margin-top: 10px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-
-    .tag {
-        background-color: #007bff;
-        color: #fff;
-        padding: 4px 8px;
-        font-size: 0.8rem;
-        border-radius: 20px;
-        transition: background-color 0.3s;
-    }
-
-    .tag:hover {
-        background-color: #0056b3;
-    }
-
-    /* Pagination */
-    .pagination-controls {
-        display: flex;
-        justify-content: center; /* Center the pagination buttons */
-        padding: 20px;
-    }
-
-    .pagination-button {
-        padding: 8px 16px;
-        background-color: #007bff; /* Use primary color */
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-        margin: 0 5px; /* Add some space between buttons */
-    }
-
-    .pagination-button:hover {
-        background-color: #0056b3;
-    }
-
-    /* Header and Navigation */
-    .header-container {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 20px;
-        background-color: #f8f9fa;
-        border-radius: 8px;
-    }
-
-    nav {
-        display: flex;
-        gap: 10px;
-    }
-
-    .search-input {
-        padding: 8px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-    }
-
-    .login-button {
-        padding: 8px 12px;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-    }
-
-    .login-button:hover {
-        background-color: #0056b3;
-    }
-
-    .logout-button {
-        padding: 8px 12px;
-        background-color: #dc3545;  /* Red color for Logout */
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-        margin-left: 10px; /* Add some space between Login and Logout */
-    }
-
-    .logout-button:hover {
-        background-color: #c12a36; /* Darker red on hover */
-    }
-
-    /* Filter and Sorting */
-    .filter-sort-container {
-        display: flex;
-        flex-wrap: wrap; /* Allow items to wrap */
-        justify-content: space-between;
-        align-items: center;
-        padding: 20px;
-        background-color: #f1f1f1;
-        border-radius: 8px;
-        gap: 10px; /* Add some gap between items */
-    }
-
-    .filter-form {
-        display: flex;
-        flex-wrap: wrap; /* Allow filters to wrap */
-        gap: 10px; /* Add gap between filter elements */
-        align-items: center;
-    }
-
-    .filter-dropdown,
-    .sort-dropdown {
-        padding: 8px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-    }
-
-    .filter-button, .clear-filters-button, .create-post-button {
-        padding: 8px 16px; /* Consistent button padding */
-        background-color: #007bff; /* Primary color for buttons */
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-    }
-
-    .filter-button:hover, .clear-filters-button:hover, .create-post-button:hover {
-        background-color: #0056b3;
-    }
-
-    .clear-filters-button {
-        background-color: #dc3545; /* Red for clear button */
-    }
-
-    .clear-filters-button:hover {
-        background-color: #c12a36;
-    }
-
-
-    .create-post-button {
-        background-color: #28a745; /* Green for create button */
-    }
-
-    .create-post-button:hover {
-        background-color: #218838;
-    }
-
-    /* Responsive adjustments (example) */
-    @media (max-width: 768px) {
-        .filter-sort-container {
-            flex-direction: column; /* Stack filter and sort on smaller screens */
-            align-items: flex-start;
-        }
-
-        .filter-form {
-            flex-direction: column; /* Stack filter elements */
-            align-items: stretch; /* Make selects full width */
-        }
-
-        .filter-dropdown, .sort-dropdown {
-            width: 100%; /* Full width selects */
-            margin-bottom: 10px;
-        }
-
-        .blog-container {
-            grid-template-columns: 1fr; /* Single column on smaller screens */
-        }
-    }
-    </style>
+    <script src="/js/filterDropdown.js" defer></script>
 </head>
 <body>
-<header>
-    <div class="header-container">
-        <h1>My Blog Application</h1>
-        <nav>
-            <form th:action="@{/posts/search}" th:method="get">
-                <input type="text" name="query" placeholder="Search by Author and Title..." class="search-input">
-
-                <div sec:authorize="isAnonymous()">
-                    <button class="login-button">Login</button>
-                </div>
-
-            </form>
-
-            <div sec:authorize="isAuthenticated()">
-                <form th:action="@{/logout}" th:method="post" class="logout-form">
-                    <button th:type="submit" class="logout-button">Logout</button>
-                </form>
-            </div>
-
-        </nav>
-    </div>
-</header>
+<div th:replace="~{fragments/nav :: nav}"></div>
 <main>
     <div class="filter-sort-container">
-        <div sec:authorize="isAuthenticated()">
-            <form th:action="@{/posts/createForm}" th:method="get">
-                <button type="submit" class="create-post-button">Create Post</button>
-            </form>
-        </div>
-<!--        <form th:action="@{/posts/createForm}" th:method="get">-->
-<!--            <button type="submit" class="create-post-button">Create Post</button>-->
-<!--        </form>-->
         <div class="filter-sort-controls">
+            <span class="filter-sort-label">Filter by</span>
+
             <!-- Author Filter with Multiple Selection -->
-            <form th:action="@{/posts/filter-author}" th:method="get" class="filter-form" th:onsubmit="return submitMultiSelect(this, 'author[]')">
-                <select name="author[]" class="filter-dropdown" multiple>
-                    <option value="">Filter by Author</option>
-                    <option th:each="author : ${authors}"
-                            th:value="${author}"
-                            th:text="${author}">Author</option>
-                </select>
-                <button type="submit" class="filter-button">Apply Author Filters</button>
+            <form th:action="@{/posts/filter-author}" th:method="get" class="filter-form">
+                <div th:replace="~{fragments/filterDropdown :: filterDropdown('Author', 'author', ${authors}, ${activeAuthors})}"></div>
+                <input type="hidden" name="query" th:value="${activeQuery}"/>
+                <input type="hidden" th:each="t : ${activeTags}" name="tag" th:value="${t}"/>
+                <input type="hidden" name="order" th:value="${activeOrder}"/>
             </form>
 
-            <form th:action="@{/posts/filter-tag}" th:method="get" class="filter-form" th:onsubmit="return submitMultiSelect(this, 'tag[]')">
-                <select th:name="tag[]" class="filter-dropdown" multiple>
-                    <option value="">Filter by Tag</option>
-                    <option th:each="tag : ${tags}"
-                            th:value="${tag}"
-                            th:text="${tag}">Tag</option>
-                </select>
-                <button type="submit" class="filter-button">Apply Tag Filters</button>
+            <form th:action="@{/posts/filter-tag}" th:method="get" class="filter-form">
+                <div th:replace="~{fragments/filterDropdown :: filterDropdown('Tag', 'tag', ${tags}, ${activeTags})}"></div>
+                <input type="hidden" name="query" th:value="${activeQuery}"/>
+                <input type="hidden" th:each="a : ${activeAuthors}" name="author" th:value="${a}"/>
+                <input type="hidden" name="order" th:value="${activeOrder}"/>
             </form>
-            <form th:action="@{/posts/sort}" th:method="get">
+
+            <span class="filter-sort-label">Sort by</span>
+            <form th:action="@{/posts/sort}" th:method="get" class="filter-form">
                 <select name="order" class="sort-dropdown" onchange="this.form.submit()">
-                    <option value="">Sort</option>
-                    <option th:value="decrease">Newer To Older</option>
-                    <option th:value="increase">Older To Newer</option>
+                    <option value="">Newest first</option>
+                    <option value="decrease" th:selected="${activeOrder == 'decrease'}">Newer To Older</option>
+                    <option value="increase" th:selected="${activeOrder == 'increase'}">Older To Newer</option>
                 </select>
+                <input type="hidden" name="query" th:value="${activeQuery}"/>
+                <input type="hidden" th:each="a : ${activeAuthors}" name="author" th:value="${a}"/>
+                <input type="hidden" th:each="t : ${activeTags}" name="tag" th:value="${t}"/>
             </form>
         </div>
     </div>
-    <div class="blog-container">
-        <div class="blog-card" th:each="post : ${posts}">
-            <a th:href="@{/post/viewPost(id=${post.id})}">
-                <h2 th:text="${post.title}">Post Title</h2>
-                <p>
-                    <span th:text="${post.author}">Author</span>,
-                    <span th:text="${post.updatedAt}"></span>
-                </p>
-                <div class="tags-container">
-                    <span class="tag" th:each="tag : ${post.tagList}" th:text="${tag.name}">Tag</span>
-                </div>
-                <p th:text="${post.excerpt}">Post content excerpt...</p>
-            </a>
-        </div>
+    <div class="post-list">
+        <a class="post-row" th:each="post : ${posts}" th:href="@{/post/viewPost(id=${post.id})}">
+            <h2 class="post-title" th:text="${post.title}">Post Title</h2>
+            <div class="post-meta">
+                <span class="avatar"
+                      th:text="${post.author != null and !#strings.isEmpty(post.author)} ? ${#strings.toUpperCase(#strings.substring(post.author, 0, 1))} : '?'">A</span>
+                <span th:text="${post.author}">Author</span>
+                <span class="dot"></span>
+                <span th:if="${post.updatedAt != null}"
+                      th:text="${T(com.BlogApplication.Blog.util.TimeFormatter).relative(post.updatedAt)}"
+                      th:title="${T(com.BlogApplication.Blog.util.TimeFormatter).absolute(post.updatedAt)}"></span>
+            </div>
+            <p class="post-excerpt" th:text="${post.excerpt}">Post content excerpt...</p>
+            <div class="post-tags">
+                <span th:each="tag : ${post.tagList}" th:text="${tag.name}">Tag</span>
+            </div>
+        </a>
     </div>
     <div class="pagination-controls">
-        <button class="pagination-button"
-                th:if="${currentPage > 0}"
-                th:onclick="'window.location.href=\'/posts?page=' + (${currentPage} - 1) + '&size=' + ${pageSize} + '\''">
-            &lt; Previous
-        </button>
+        <a class="pagination-button"
+           th:if="${currentPage > 0}"
+           th:href="@{/posts(page=${currentPage - 1}, size=${pageSize}, query=${activeQuery}, author=${activeAuthors}, tag=${activeTags}, order=${activeOrder})}">
+            <svg class="icon" aria-hidden="true"><use href="#i-chevron-left"/></svg>Previous
+        </a>
         <span th:text="'Page ' + (${currentPage} + 1) + ' of ' + ${totalPages}">Page 1 of 10</span>
-        <button class="pagination-button"
-                th:if="${currentPage + 1 < totalPages}"
-                th:onclick="'window.location.href=\'/posts?page=' + (${currentPage} + 1) + '&size=' + ${pageSize} + '\''">
-            Next &gt;
-        </button>
+        <a class="pagination-button"
+           th:if="${currentPage + 1 < totalPages}"
+           th:href="@{/posts(page=${currentPage + 1}, size=${pageSize}, query=${activeQuery}, author=${activeAuthors}, tag=${activeTags}, order=${activeOrder})}">
+            Next<svg class="icon" aria-hidden="true"><use href="#i-chevron-right"/></svg>
+        </a>
     </div>
 </main>
 

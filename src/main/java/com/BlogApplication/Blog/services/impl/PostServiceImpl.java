@@ -10,16 +10,19 @@ import com.BlogApplication.Blog.repositories.TagRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.PostService;
 import com.BlogApplication.Blog.services.TagService;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import javax.swing.text.html.HTML;
 import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -41,49 +44,9 @@ public class PostServiceImpl implements PostService {
 
     @Autowired
     private ModelMapper modelMapper;
+
     private Post dtoToPost(PostDto postDto){
-        Post post = this.modelMapper.map(postDto,Post.class);
-
-//        post.setId(postDto.getId());
-//        post.setTitle(postDto.getTitle());
-//        post.setExcerpt(postDto.getExcerpt());
-//        post.setContent(postDto.getContent());
-//        post.setAuthor(postDto.getAuthor());
-//        post.setPublishedAt(postDto.getPublishedAt());
-//        post.setPublished(postDto.getPublished());
-//        post.setCreatedAt(postDto.getCreatedAt());
-//        post.setUpdatedAt(postDto.getUpdatedAt());
-
-        return post;
-    }
-
-    private PostDto postToDto(Post post){
-        PostDto postDto = this.modelMapper.map(post,PostDto.class);
-
-//        postDto.setId(post.getId());
-//        postDto.setTitle(post.getTitle());
-//        postDto.setExcerpt(post.getExcerpt());
-//        postDto.setContent(post.getContent());
-//        postDto.setAuthor(post.getAuthor());
-//        postDto.setPublishedAt(post.getPublishedAt());
-//        postDto.setPublished(post.getPublished());
-//        postDto.setCreatedAt(post.getCreatedAt());
-//        postDto.setUpdatedAt(post.getUpdatedAt());
-
-        return postDto;
-    }
-
-//    @Override
-//    public PostDto createPost(PostDto postDto){
-//        Post post = this.dtoToPost((postDto));
-//        Post savedUser = this.postRepo.save(post);
-//        return this.postToDto(savedUser);
-//    }
-
-
-    @Override
-    public List<Post> getAllPost() {
-        return this.postRepo.findAllByOrderByUpdatedAtDesc();
+        return this.modelMapper.map(postDto,Post.class);
     }
 
     @Override
@@ -111,36 +74,7 @@ public class PostServiceImpl implements PostService {
         excerptString.append(".....");
         post.setExcerpt(excerptString.toString());
 
-        // Tags Handling
-        String tagsInput = postDto.getTags();
-        if (tagsInput != null && !tagsInput.isEmpty()) {
-            List<Tags> tagList = Arrays.stream(tagsInput.split(","))
-                    .map(tagName -> {
-                        String upperTagName = tagName.trim().toUpperCase();
-                        Optional<Tags> isTagPresent = tagService.findByName(upperTagName);
-                        Tags tag;
-                        if (isTagPresent.isEmpty()) {
-                            tag = new Tags();
-                            tag.setName(upperTagName);
-                            tag.setCreated_at(LocalDateTime.now());
-                            tag.setUpdated_at(LocalDateTime.now());
-                            try {
-                                synchronized (this) {
-                                    tagService.savePost(tag);
-                                }
-                            } catch (DataIntegrityViolationException e) {
-                                tag = tagService.findByName(upperTagName)
-                                        .orElseThrow(() -> new RuntimeException("Tag creation failed for: " + upperTagName));
-                            }
-                        } else {
-                            tag = isTagPresent.get();
-                        }
-                        return tag;
-                    })
-                    .collect(Collectors.toList());
-
-            post.setTagList(tagList);
-        }
+        post.setTagList(resolveTags(postDto.getTags()));
         currentUser.getPosts().add(post);
         postRepo.save(post);
     }
@@ -162,43 +96,41 @@ public class PostServiceImpl implements PostService {
             excerptString.append(" ");
         }
         excerptString.append(".....");
-        post.setExcerpt(excerptString.toString());
-        postByID.setExcerpt(post.getExcerpt());
+        postByID.setExcerpt(excerptString.toString());
 
-        // Tags Handling
-        String tagsInput = postDto.getTags();
-        if (tagsInput != null && !tagsInput.isEmpty()) {
-            List<Tags> tagList = Arrays.stream(tagsInput.split(","))
-                    .map(tagName -> {
-                        String upperTagName = tagName.trim().toUpperCase();
-                        Optional<Tags> isTagPresent = tagService.findByName(upperTagName);
-                        Tags tag;
-                        if (isTagPresent.isEmpty()) {
-                            tag = new Tags();
-                            tag.setName(upperTagName);
-                            tag.setCreated_at(LocalDateTime.now());
-                            tag.setUpdated_at(LocalDateTime.now());
-                            try {
-                                synchronized (this) {
-                                    tagService.savePost(tag);
-                                }
-                            } catch (DataIntegrityViolationException e) {
-                                tag = tagService.findByName(upperTagName)
-                                        .orElseThrow(() -> new RuntimeException("Tag creation failed for: " + upperTagName));
-                            }
-                        } else {
-                            tag = isTagPresent.get();
-                        }
-                        return tag;
-                    })
-                    .collect(Collectors.toList());
-
-            postByID.setTagList(tagList);
-        }
-
+        postByID.setTagList(resolveTags(postDto.getTags()));
         postRepo.save(postByID);
     }
 
+    private List<Tags> resolveTags(String tagsInput) {
+        if (tagsInput == null || tagsInput.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return Arrays.stream(tagsInput.split(","))
+                .map(tagName -> {
+                    String upperTagName = tagName.trim().toUpperCase();
+                    Optional<Tags> isTagPresent = tagService.findByName(upperTagName);
+                    Tags tag;
+                    if (isTagPresent.isEmpty()) {
+                        tag = new Tags();
+                        tag.setName(upperTagName);
+                        tag.setCreated_at(LocalDateTime.now());
+                        tag.setUpdated_at(LocalDateTime.now());
+                        try {
+                            synchronized (this) {
+                                tagService.savePost(tag);
+                            }
+                        } catch (DataIntegrityViolationException e) {
+                            tag = tagService.findByName(upperTagName)
+                                    .orElseThrow(() -> new RuntimeException("Tag creation failed for: " + upperTagName));
+                        }
+                    } else {
+                        tag = isTagPresent.get();
+                    }
+                    return tag;
+                })
+                .collect(Collectors.toList());
+    }
 
     @Override
     public PostDto getPostById(int id) {
@@ -239,78 +171,65 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public List<Post> searchByAuthor(String query) {
-        List<Post> searchByAuthor = postRepo.searchByAuthor(query);
-        System.out.println(searchByAuthor);
-        return searchByAuthor;
-    }
-
-    @Override
-    public List<Post> searchByTitle(String query){
-        List<Post> searchByTitle = postRepo.searchByTitle(query);
-        System.out.println(searchByTitle);
-        return searchByTitle;
-    }
-
-    @Override
-    public List<Post> searchByContent(String query) {
-        List<Post> searchByContent = postRepo.searchByContent(query);
-        System.out.println(searchByContent);
-        return searchByContent;
-    }
-
-    @Override
     public List<String> getAllUniqueAuthor() {
-        List<String> allPost = this.postRepo.distinctAuthor();
-        return allPost;
+        return this.postRepo.distinctAuthor();
     }
 
     @Override
-    public List<Post> getAllPostFilteredByAuthor(String author) {
-        List<Post> allFilteredPostByAuthor = postRepo.searchByAuthor(author);
-        return allFilteredPostByAuthor;
-    }
+    public Page<Post> searchPosts(String query, List<String> authors, List<String> tags, String order, int page, int size) {
+        Specification<Post> spec = Specification.where(null);
 
-    @Override
-    public List<Post> searchByAuthorInFilteredPostByTag(List<Post> filteredPostByTag, String []author) {
-        List<Post> filteredTagByAuthor = new ArrayList<>();
-        for(String authorName  : author){
-            authorName = authorName.toLowerCase();
-            for(Post filteredByTag : filteredPostByTag){
-
-                if(filteredByTag.getAuthor().toLowerCase().equals(authorName)){
-                    filteredTagByAuthor.add(filteredByTag);
-                    break;
-                }
-            }
-        }
-        System.out.print(filteredTagByAuthor);
-        return filteredTagByAuthor;
-    }
-
-    public Page<Post> getPaginatedPosts(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return postRepo.findAll(pageable);
-    }
-
-    @Override
-    public List<Post> searchByMultipleAuthor(String[] query) {
-        List<Post> allFilteredPostByAuthor = new ArrayList<>();
-
-        for(String author : query){
-            List<Post> authorListByName = postRepo.searchByAuthor(author);
-            allFilteredPostByAuthor.addAll(authorListByName);
+        if (query != null && !query.isBlank()) {
+            String likePattern = "%" + query.trim().toLowerCase() + "%";
+            spec = spec.and((root, cq, cb) -> {
+                cq.distinct(true);
+                Join<Post, Tags> tagJoin = root.join("tagList", JoinType.LEFT);
+                return cb.or(
+                        cb.like(cb.lower(root.get("title")), likePattern),
+                        cb.like(cb.lower(root.get("author")), likePattern),
+                        cb.like(cb.lower(root.get("content")), likePattern),
+                        cb.like(cb.lower(tagJoin.get("name")), likePattern)
+                );
+            });
         }
 
-        return allFilteredPostByAuthor;
+        List<String> cleanAuthors = cleanValues(authors, String::toUpperCase);
+        if (!cleanAuthors.isEmpty()) {
+            spec = spec.and((root, cq, cb) -> cb.upper(root.get("author")).in(cleanAuthors));
+        }
+
+        List<String> cleanTags = cleanValues(tags, String::toUpperCase);
+        if (!cleanTags.isEmpty()) {
+            spec = spec.and((root, cq, cb) -> {
+                cq.distinct(true);
+                Join<Post, Tags> tagJoin = root.join("tagList", JoinType.INNER);
+                return tagJoin.get("name").in(cleanTags);
+            });
+        }
+
+        Sort sort = "increase".equals(order)
+                ? Sort.by(Sort.Direction.ASC, "updatedAt")
+                : Sort.by(Sort.Direction.DESC, "updatedAt");
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+        return postRepo.findAll(spec, pageable);
+    }
+
+    private List<String> cleanValues(List<String> values, java.util.function.Function<String, String> transform) {
+        if (values == null) {
+            return List.of();
+        }
+        return values.stream()
+                .filter(v -> v != null && !v.isBlank())
+                .map(transform)
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<Comment> getComment(int postId) {
         Optional<Post> commentsPost = postRepo.findById(postId);
-        if(!commentsPost.isEmpty()){
-            Post comments = commentsPost.get();
-            return comments.getComments();
+        if(commentsPost.isPresent()){
+            return commentsPost.get().getComments();
         }
         return new ArrayList<>();
     }

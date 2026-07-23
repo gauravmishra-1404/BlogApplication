@@ -1,5 +1,6 @@
 package com.BlogApplication.Blog.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.util.List;
@@ -20,9 +21,11 @@ public class User {
     @Column(name="role")
     private String role;
 
+    @JsonIgnore
     @Column(name="password")
     private String password;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST,CascadeType.MERGE}, fetch = FetchType.LAZY)
     private List<Post> posts;
 

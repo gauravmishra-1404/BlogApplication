@@ -1,5 +1,6 @@
 package com.BlogApplication.Blog.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ public class Tags {
     @Column(name="updated_at")
     private LocalDateTime updated_at;
 
+    @JsonIgnore
     @ManyToMany(mappedBy = "tagList", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     List<Post> postList;
 

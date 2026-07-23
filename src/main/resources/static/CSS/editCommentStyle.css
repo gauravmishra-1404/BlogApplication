@@ -1,0 +1,54 @@
+.container {
+    max-width: 700px;
+    margin: 40px auto;
+    background: var(--color-surface);
+    color: var(--color-text);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm);
+}
+
+h2 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-size: var(--text-2xl);
+}
+
+textarea {
+    width: 100%;
+    min-height: 150px;
+    padding: 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    box-sizing: border-box;
+    resize: vertical;
+    font-size: var(--text-base);
+    color: var(--color-text);
+    font-family: inherit;
+}
+
+.actions {
+    margin-top: 14px;
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    border: none;
+    border-radius: 5px;
+    padding: 10px 14px;
+    cursor: pointer;
+    color: #fff;
+    text-decoration: none;
+    display: inline-block;
+    font-size: var(--text-sm);
+    font-family: inherit;
+}
+
+.btn-save {
+    background: var(--color-primary);
+}
+
+.btn-cancel {
+    background: #6c757d;
+}

@@ -1,5 +1,6 @@
 package com.BlogApplication.Blog.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -46,6 +47,7 @@ public class Post {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @JsonIgnore
     public User getUser() {
         return user;
     }

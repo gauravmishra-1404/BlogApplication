@@ -2,80 +2,12 @@
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
-    <title>New/Edit Post</title>
-<!--    //<link rel="stylesheet" th:href="@{/CSS/newPostStyle.css}">-->
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-        }
-
-        body {
-            background-color: #f9f9f9;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .navbar {
-            background-color: #333;
-            color: #ffffff;
-            padding: 10px;
-            text-align: left;
-        }
-
-        h1 {
-            text-align: center;
-            margin: 20px 0;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-
-        input[type="text"],
-        textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        textarea {
-            resize: none;
-        }
-
-        .btn {
-            background-color: #007BFF;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .btn:hover {
-            background-color: #0056b3;
-        }
-
-    </style>
+    <title>Bodh Sea - New Post</title>
+    <link rel="stylesheet" href="/CSS/common.css">
+    <link rel="stylesheet" th:href="@{/CSS/newPostStyle.css}">
 </head>
 <body>
+<div th:replace="~{fragments/nav :: nav}"></div>
 <div class="container">
     <h1>Create a New Post</h1>
     <form th:action="@{/post/publish}" th:method="post" th:object="${postDto}">

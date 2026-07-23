@@ -5,12 +5,12 @@ import com.BlogApplication.Blog.models.Post;
 import com.BlogApplication.Blog.models.User;
 import com.BlogApplication.Blog.payloads.PostDto;
 import com.BlogApplication.Blog.repositories.CommentRepo;
-import com.BlogApplication.Blog.repositories.PostRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.CommentService;
 import com.BlogApplication.Blog.services.PostService;
 import com.BlogApplication.Blog.services.TagService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -18,7 +18,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,22 +34,16 @@ public class RestPostController {
     private CommentService commentService;
 
     @Autowired
-    private TagService tagService;
-
-    @Autowired
-    private PostRepo postRepo;
-
-    @Autowired
     private CommentRepo commentRepo;
 
-    private List<Post> filteredPostByAuthor = new ArrayList<>();
-    private List<Post> filteredPostByTag = new ArrayList<>();
-
     @GetMapping("/posts")
-    public ResponseEntity<List<Post>> getAllPosts(@RequestParam(defaultValue = "0") int page,
-                                                  @RequestParam(defaultValue = "10") int size) {
-        List<Post> posts = postService.getPaginatedPosts(page, size).getContent();
-        return new ResponseEntity<>(posts, HttpStatus.OK);
+    public ResponseEntity<Page<Post>> getAllPosts(@RequestParam(defaultValue = "0") int page,
+                                                  @RequestParam(defaultValue = "10") int size,
+                                                  @RequestParam(required = false) String query,
+                                                  @RequestParam(required = false) List<String> author,
+                                                  @RequestParam(required = false) List<String> tag,
+                                                  @RequestParam(required = false) String order) {
+        return new ResponseEntity<>(postService.searchPosts(query, author, tag, order, page, size), HttpStatus.OK);
     }
 
     @GetMapping("/posts/createForm")
@@ -71,10 +64,6 @@ public class RestPostController {
     public ResponseEntity<Post> publishPost(@RequestBody PostDto postDto, Authentication authentication) {
         postDto.setCreatedAt(LocalDateTime.now());
         postService.save(postDto, authentication);
-
-        filteredPostByAuthor.clear();
-        filteredPostByTag.clear();
-
         return new ResponseEntity<>(HttpStatus.CREATED);
     }
 
@@ -100,86 +89,79 @@ public class RestPostController {
     }
 
     @GetMapping("/posts/sort")
-    public ResponseEntity<List<Post>> sortingOrder(@RequestParam(defaultValue = "0") int page,
+    public ResponseEntity<Page<Post>> sortingOrder(@RequestParam(defaultValue = "0") int page,
                                                    @RequestParam(defaultValue = "10") int size,
                                                    @RequestParam String order) {
-        List<Post> sortedPosts;
-        if (order == null || order.isBlank()) {
-            sortedPosts = postService.getAllPost();
-        } else if ("increase".equals(order)) {
-            sortedPosts = postRepo.findAllByOrderByUpdatedAtAsc();
-        } else {
-            sortedPosts = postRepo.findAllByOrderByUpdatedAtDesc();
-        }
-        return new ResponseEntity<>(sortedPosts, HttpStatus.OK);
+        return new ResponseEntity<>(postService.searchPosts(null, null, null, order, page, size), HttpStatus.OK);
     }
 
     @GetMapping("/posts/search")
-    public ResponseEntity<List<Post>> searchPosts(@RequestParam(defaultValue = "0") int page,
+    public ResponseEntity<Page<Post>> searchPosts(@RequestParam(defaultValue = "0") int page,
                                                   @RequestParam(defaultValue = "10") int size,
                                                   @RequestParam String query) {
-        List<Post> searchResults = new ArrayList<>();
-        if (query != null && !query.isBlank()) {
-            searchResults.addAll(postService.searchByAuthor(query));
-            searchResults.addAll(postService.searchByTitle(query));
-            searchResults.addAll(postService.searchByContent(query));
-            searchResults.addAll(tagService.searchByTag(query));
-        }
-        return new ResponseEntity<>(searchResults, HttpStatus.OK);
+        return new ResponseEntity<>(postService.searchPosts(query, null, null, null, page, size), HttpStatus.OK);
     }
 
     @GetMapping("/posts/filter-author")
-    public ResponseEntity<List<Post>> filterPostsByAuthor(@RequestParam(defaultValue = "0") int page,
+    public ResponseEntity<Page<Post>> filterPostsByAuthor(@RequestParam(defaultValue = "0") int page,
                                                           @RequestParam(defaultValue = "10") int size,
-                                                          @RequestParam String[] author) {
-        if (filteredPostByTag.isEmpty()) {
-            filteredPostByAuthor = postService.searchByMultipleAuthor(author);
-        } else {
-            filteredPostByAuthor = postService.searchByAuthorInFilteredPostByTag(filteredPostByTag, author);
-        }
-        return new ResponseEntity<>(filteredPostByAuthor, HttpStatus.OK);
+                                                          @RequestParam List<String> author) {
+        return new ResponseEntity<>(postService.searchPosts(null, author, null, null, page, size), HttpStatus.OK);
     }
 
     @GetMapping("/posts/filter-tag")
-    public ResponseEntity<List<Post>> filterPostsByTag(@RequestParam(defaultValue = "0") int page,
+    public ResponseEntity<Page<Post>> filterPostsByTag(@RequestParam(defaultValue = "0") int page,
                                                        @RequestParam(defaultValue = "10") int size,
-                                                       @RequestParam String[] tag) {
-        if (filteredPostByAuthor.isEmpty()) {
-            filteredPostByTag = tagService.searchByMultipleTag(tag);
-        } else {
-            filteredPostByTag = tagService.searchByTagInFilteredPostByAuthor(filteredPostByAuthor, tag);
-        }
-        return new ResponseEntity<>(filteredPostByTag, HttpStatus.OK);
+                                                       @RequestParam List<String> tag) {
+        return new ResponseEntity<>(postService.searchPosts(null, null, tag, null, page, size), HttpStatus.OK);
     }
 
     @PostMapping("/posts/{id}/comments/add")
     public ResponseEntity<Void> addComment(@PathVariable int id,
-                                           @RequestBody Comment comment) {
-        commentService.save(id, comment.getContent(), comment.getName());
+                                           @RequestBody Comment comment,
+                                           Authentication authentication) {
+        commentService.save(id, comment.getContent(), authentication.getName());
         return new ResponseEntity<>(HttpStatus.CREATED);
     }
 
     @DeleteMapping("/posts/comments/{id}/delete")
-    public ResponseEntity<Void> deleteComment(@PathVariable int id) {
+    public ResponseEntity<Void> deleteComment(@PathVariable int id, Authentication authentication) {
+        Comment comment = commentRepo.findById(id);
+        if (comment == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+        if (!isAuthorizedForComment(authentication, comment)) {
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
         commentRepo.deleteById(id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
     @PostMapping("/posts/comments/{commentId}/reply")
     public ResponseEntity<Void> saveReply(@PathVariable int commentId,
-                                          @RequestBody Comment reply) {
+                                          @RequestBody Comment reply,
+                                          Authentication authentication) {
         Comment parentComment = commentRepo.findById(commentId);
         if (parentComment == null) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
-        Post post = parentComment.getPost();
-        Comment replyComment = new Comment();
-        replyComment.setName(reply.getName() == null || reply.getName().isBlank() ? "Anonymous" : reply.getName());
-        replyComment.setContent(reply.getContent());
-        replyComment.setPost(post);
-        replyComment.setParent(parentComment);
-        parentComment.getReplies().add(commentRepo.save(replyComment));
-        commentRepo.save(parentComment);
+        commentService.saveReply(commentId, reply.getContent(), authentication.getName());
         return new ResponseEntity<>(HttpStatus.CREATED);
+    }
+
+    private boolean isAuthorizedForComment(Authentication authentication, Comment comment) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                .anyMatch("ROLE_ADMIN"::equals);
+        String commentAuthorEmail = comment.getUser() != null ? comment.getUser().getEmail() : null;
+        String postOwnerEmail = comment.getPost() != null && comment.getPost().getUser() != null
+                ? comment.getPost().getUser().getEmail()
+                : null;
+        return isAdmin
+                || (commentAuthorEmail != null && commentAuthorEmail.equals(authentication.getName()))
+                || (postOwnerEmail != null && postOwnerEmail.equals(authentication.getName()));
     }
 }

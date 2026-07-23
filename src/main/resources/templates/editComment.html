@@ -2,65 +2,12 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Edit Comment</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            margin: 0;
-            padding: 0;
-        }
-
-        .container {
-            max-width: 700px;
-            margin: 40px auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-        }
-
-        h2 {
-            margin-top: 0;
-            margin-bottom: 16px;
-        }
-
-        textarea {
-            width: 100%;
-            min-height: 150px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            box-sizing: border-box;
-            resize: vertical;
-        }
-
-        .actions {
-            margin-top: 14px;
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn {
-            border: none;
-            border-radius: 5px;
-            padding: 10px 14px;
-            cursor: pointer;
-            color: #fff;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn-save {
-            background: #007bff;
-        }
-
-        .btn-cancel {
-            background: #6c757d;
-        }
-    </style>
+    <title>Bodh Sea - Edit Comment</title>
+    <link rel="stylesheet" th:href="@{/CSS/common.css}">
+    <link rel="stylesheet" th:href="@{/CSS/editCommentStyle.css}">
 </head>
 <body>
+<div th:replace="~{fragments/nav :: nav}"></div>
 <div class="container">
     <h2>Edit Comment</h2>
     <form th:action="@{/posts/comments/edit}" method="post">

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Reusable checkbox-dropdown filter (replaces native <select multiple>, which needs Ctrl+click).
+     Built on <details>/<summary> so open/close needs no JavaScript. Used for both the Author
+     and Tag filters on the dashboard; each caller supplies its own label, form field name,
+     option list, and currently-active values. -->
+<div th:fragment="filterDropdown(label, paramName, options, activeValues)" class="filter-multiselect">
+    <details>
+        <summary>
+            <span th:text="${label}">Label</span>
+            <span class="filter-badge" th:if="${activeValues != null and !activeValues.isEmpty()}" th:text="${activeValues.size()}">2</span>
+            <svg class="icon filter-chevron" aria-hidden="true"><use href="#i-chevron-down"/></svg>
+        </summary>
+        <div class="filter-panel">
+            <label class="filter-option" th:each="option : ${options}">
+                <input type="checkbox" th:name="${paramName}" th:value="${option}"
+                       th:checked="${activeValues != null and activeValues.contains(option)}">
+                <span th:text="${option}">Option</span>
+            </label>
+            <p class="filter-empty" th:if="${options == null or options.isEmpty()}">No options available</p>
+            <div class="filter-panel-actions">
+                <button type="submit" class="filter-apply-button">Apply</button>
+            </div>
+        </div>
+    </details>
+</div>
+</body>
+</html>

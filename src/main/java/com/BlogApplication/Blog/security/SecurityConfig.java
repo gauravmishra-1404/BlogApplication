@@ -1,16 +1,11 @@
 package com.BlogApplication.Blog.security;
 
-import com.BlogApplication.Blog.security.UserDetailsServiceImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
@@ -37,31 +32,46 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login").anonymous()
+                        .requestMatchers("/login", "/api/login").permitAll()
+                        // Restrictive rules MUST come before the broader permitAll patterns below —
+                        // authorizeHttpRequests matches in declaration order and stops at the first hit,
+                        // so a broad "/posts/**" listed earlier would silently shadow these.
+                        // Exact paths (no trailing "/**") are used wherever the controller mapping has
+                        // no further path segments — a trailing "/**" does not reliably match the bare path.
+                        .requestMatchers(
+                                "/posts/edit",
+                                "/post/publish",
+                                "/posts/createForm",
+                                "/post/republish",
+                                "/posts/delete",
+                                "/posts/comments/delete/{id}",
+                                "/api/posts/createForm",
+                                "/api/post/publish",
+                                "/api/posts/{id}/edit",
+                                "/api/posts/{id}/delete",
+                                "/api/posts/comments/{id}/delete"
+                        ).hasAnyRole("ADMIN", "AUTHOR")
                         .requestMatchers(
                                 "/CSS/**",
-                                "/post/viewPost/**",
-                                "/posts/**",
-                                "/posts/filter-author/**",
-                                "/posts/filter-tag/**",
-                                "/posts/search/**",
-                                "/posts/sort/**",
-                                "/posts/{id}/comments/add/**",
-                                "/posts/comments/{commentId}/reply/**",
+                                "/js/**",
+                                "/post/viewPost",
+                                "/posts",
+                                "/posts/filter-author",
+                                "/posts/filter-tag",
+                                "/posts/search",
+                                "/posts/sort",
                                 "/registerUser",
-                                "/comment/reply/**"
+                                "/api/posts",
+                                "/api/posts/search",
+                                "/api/posts/sort",
+                                "/api/posts/filter-author",
+                                "/api/posts/filter-tag",
+                                "/api/post/{id}/view",
+                                "/api/users/register"
                         ).permitAll()
-                        .requestMatchers(
-                                "/posts/edit/**",
-                                "/post/publish/**",
-                                "/posts/createForm/**",
-                                "/post/republish/**",
-                                "/posts/delete/**",
-                                "/posts/comments/delete/{id}/**",
-                                "/logout/"
-                        ).hasAnyRole("ADMIN","AUTHOR")
-                        .requestMatchers("/comment/reply/**").authenticated()
+                        .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
@@ -79,30 +89,5 @@ public class SecurityConfig {
         ;
 
         return http.build();
-    }
-
-
-    @Bean
-    public InMemoryUserDetailsManager userDetailsManager() {
-
-        UserDetails john = User.builder()
-                .username("john")
-                .password("{noop}test123")
-                .roles("ADMIN")
-                .build();
-
-        UserDetails mary = User.builder()
-                .username("mary")
-                .password("{noop}test123")
-                .roles("EMPLOYEE", "MANAGER")
-                .build();
-
-        UserDetails susan = User.builder()
-                .username("susan")
-                .password("{noop}test123")
-                .roles("EMPLOYEE", "MANAGER", "ADMIN")
-                .build();
-
-        return new InMemoryUserDetailsManager(john, mary, susan);
     }
 }

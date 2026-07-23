@@ -2,287 +2,40 @@
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
-    <title>View Post</title>
+    <title>Bodh Sea - View Post</title>
+    <link rel="stylesheet" href="/CSS/common.css">
     <link rel="stylesheet" href="/CSS/viewPostByID.css">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f9f9f9;
-            margin: 0;
-            padding: 0;
-        }
-        .nav-container {
-            background-color: #333;
-            padding: 15px;
-            display: flex;
-            justify-content: flex-end;
-        }
-        .nav-container a {
-            color: white;
-            text-decoration: none;
-            margin-left: 15px;
-            padding: 10px 15px;
-            border-radius: 5px;
-        }
-        .edit-button {
-            background: #ffc107;
-        }
-        .edit-button:hover {
-            background: #e0a800;
-        }
-        .delete-button {
-            background: #dc3545;
-        }
-        .delete-button:hover {
-            background: #c82333;
-        }
-        .container {
-            width: 80%;
-            margin: 20px auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-        .blog-title {
-            font-size: 28px;
-            margin-bottom: 10px;
-        }
-        .blog-meta {
-            font-size: 14px;
-            color: #777;
-            margin-bottom: 20px;
-        }
-        .blog-content {
-            line-height: 1.6;
-            text-align: justify;
-        }
-
-        .blog-tags {
-            margin-top: 20px;
-            font-weight: bold;
-        }
-
-        .blog-tags ul {
-            list-style-type: none;
-            padding: 0;
-        }
-
-        .blog-tags li {
-            display: inline;
-            margin-right: 10px;
-            background-color: #f1f1f1;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 14px;
-            color: #555;
-        }
-
-        .blog-tags li:hover {
-            background-color: #ddd;
-            cursor: pointer;
-        }
-        /* Comment Section */
-        .comment-section {
-        margin-top: 40px;
-        padding: 20px;
-        background-color: #fefefe;
-        border-radius: 10px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .comment-section h3 {
-        margin-bottom: 15px;
-        font-size: 1.6rem;
-        color: #333;
-        border-left: 4px solid #007bff;
-        padding-left: 10px;
-        }
-
-        .comment-section form input[type="text"],
-        .comment-section form textarea {
-        width: 100%;
-        padding: 12px;
-        font-size: 1rem;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        margin-bottom: 15px;
-        box-sizing: border-box;
-        transition: border-color 0.3s;
-        }
-
-        .comment-section form input[type="text"]:focus,
-        .comment-section form textarea:focus {
-        border-color: #007bff;
-        outline: none;
-        box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
-        }
-
-        .comment-section form button {
-        padding: 10px 25px;
-        font-size: 1rem;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background-color 0.3s, box-shadow 0.3s;
-        }
-
-        .comment-section form button:hover {
-        background-color: #0056b3;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-
-        /* Comment List */
-        .comments-list {
-        margin-top: 30px;
-        }
-
-        .comments-list h3 {
-        font-size: 1.6rem;
-        margin-bottom: 20px;
-        color: #444;
-        border-left: 4px solid #28a745;
-        padding-left: 10px;
-        }
-
-        .comments-list ul {
-        list-style-type: none;
-        padding: 0;
-        }
-
-        .comment {
-        padding: 15px;
-        background-color: #f8f9fa;
-        margin-bottom: 15px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        position: relative;
-        }
-
-        .comment p {
-        margin: 5px 0;
-        color: #555;
-        line-height: 1.6;
-        }
-
-        .comment .comment-author {
-        font-weight: bold;
-        color: #007bff;
-        margin-bottom: 5px;
-        }
-
-        .comment .comment-date {
-        font-size: 0.8rem;
-        color: #888;
-        margin-bottom: 10px;
-        }
-
-        .comment .edit-comment-button,
-        .comment .delete-comment-button {
-        font-size: 0.9rem;
-        text-decoration: none;
-        color: #007bff;
-        margin-right: 10px;
-        transition: color 0.3s;
-        }
-
-        .comment .edit-comment-button:hover {
-        color: #0056b3;
-        }
-
-        .comment .delete-comment-button {
-        color: red;
-        }
-
-        .comment .delete-comment-button:hover {
-        color: darkred;
-        }
-
-        /* Nested Comments */
-        .nested-comments {
-        margin-top: 20px;
-        padding-left: 20px;
-        border-left: 3px solid #ddd;
-        }
-
-        .nested-comments .reply {
-        margin-bottom: 10px;
-        background-color: #f1f1f1;
-        padding: 10px;
-        border-radius: 5px;
-        }
-
-        .nested-comments .reply p {
-        margin: 5px 0;
-        color: #444;
-        }
-
-        .nested-comments .reply .comment-author {
-        font-weight: bold;
-        color: #28a745;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .container {
-            width: 95%;
-            }
-
-            .nav-container {
-            flex-direction: column;
-            align-items: center;
-            }
-
-            .nav-container a {
-            margin-bottom: 10px;
-            }
-
-            .comment-section form textarea,
-            .comment-section form input[type="text"] {
-            font-size: 0.9rem;
-            }
-
-            .comment-section form button {
-            font-size: 0.9rem;
-            }
-
-            .comments-list h3,
-            .comment-section h3 {
-            font-size: 1.4rem;
-            }
-
-            .comment {
-            padding: 10px;
-            }
-        }
-
-    </style>
+    <script src="/js/commentThread.js" defer></script>
+    <script src="/js/commentComposer.js" defer></script>
 </head>
 <body>
-<div class="nav-container">
-
-    <div sec:authorize="isAuthenticated()">
-        <a th:if="${#authorization.expression('hasRole(''ADMIN'')') or post.user.email==#authentication.name}" th:href="@{/posts/edit(id=${post.id})}" class="edit-button">Edit</a>
-    </div>
-
-    <div sec:authorize="isAuthenticated()">
-        <a th:if="${#authorization.expression('hasRole(''ADMIN'')') or post.user.email==#authentication.name}" th:href="@{/posts/delete(id=${post.id})}" class="delete-button">Delete Post</a>
-    </div>
-</div>
+<div th:replace="~{fragments/nav :: nav}"></div>
 
 <div class="container">
+    <div class="post-actions" sec:authorize="isAuthenticated()"
+         th:if="${#authorization.expression('hasRole(''ADMIN'')') or post.user.email==#authentication.name}">
+        <a th:href="@{/posts/edit(id=${post.id})}" class="edit-button">
+            <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>Edit</a>
+        <form th:action="@{/posts/delete(id=${post.id})}" th:method="post">
+            <button type="submit" class="delete-button">
+                <svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>Delete Post</button>
+        </form>
+    </div>
+
     <h1 class="blog-title" th:text="${post.title != null ? post.title : 'No Title'}">Blog Post Title</h1>
     <p class="blog-meta">
         Written by <span th:text="${post.author != null ? post.author : 'Unknown'}">Author Name</span> on
-        <span th:text="${post.updatedAt != null ? post.updatedAt : 'Date not available'}">Date</span>
+        <span th:if="${post.updatedAt != null}"
+              th:text="${T(com.BlogApplication.Blog.util.TimeFormatter).relative(post.updatedAt)}"
+              th:title="${T(com.BlogApplication.Blog.util.TimeFormatter).absolute(post.updatedAt)}">Date</span>
+        <span th:if="${post.updatedAt == null}">Date not available</span>
     </p>
-    <div class="blog-tags">
+    <div class="blog-tags" th:if="${post.tags != null and !#strings.isEmpty(post.tags)}">
         <p><strong>Tags:</strong></p>
         <ul>
-            <li th:each="tag : ${post.tags}" th:text="${tag}">Tag Name</li>
+            <li th:each="tag : ${#strings.arraySplit(post.tags, ',')}"
+                th:if="${!#strings.isEmpty(tag)}"
+                th:text="${tag}">Tag Name</li>
         </ul>
     </div>
     <div class="blog-content" th:text="${post.content != null ? post.content : 'No content available.'}">
@@ -293,53 +46,29 @@
 <!-- Add Comment Section -->
 <div class="comment-section">
     <h3>Add a Comment</h3>
-    <form th:action="@{/posts/{id}/comments/add(id=${post.id})}" th:method="POST">
-        <input type="text" th:name="name" placeholder="Your Name" required>
-        <textarea th:name="content" placeholder="Write your comment here..." required></textarea>
-        <button th:type="submit">Add Comment</button>
-    </form>
+    <div class="comment-composer" sec:authorize="isAuthenticated()">
+        <div class="avatar" th:text="${currentUserName != null ? #strings.toUpperCase(#strings.substring(currentUserName, 0, 1)) : '?'}">T</div>
+        <div class="composer-body">
+            <form th:action="@{/posts/{id}/comments/add(id=${post.id})}" th:method="POST">
+                <textarea name="content" class="composer-textarea" placeholder="Write your comment here..." required rows="1"></textarea>
+                <div class="composer-actions">
+                    <button type="submit" class="composer-submit" disabled>
+                        <svg class="icon" aria-hidden="true"><use href="#i-send"/></svg>Add Comment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <p sec:authorize="isAnonymous()">
+        <a th:href="@{/login}">Log in</a> to leave a comment.
+    </p>
 </div>
 
-Display Existing Comments
+<!-- Display Existing Comments -->
 <div class="comments-list">
     <h3>Comments</h3>
     <ul>
-        <li th:each="comment : ${post.comments}">
-            <div class="comment">
-                <p><strong th:text="${comment.name}">Comment Author</strong> said:</p>
-                <p th:text="${comment.content}">Comment Content</p>
-
-                <!-- Edit Comment Button -->
-                <div sec:authorize="isAuthenticated()">
-                    <a th:if="${#authorization.expression('hasRole(''ADMIN'')') or post.user.email==#authentication.name}" th:href="@{/posts/comments/edit(id=${comment.id})}" class="edit-comment-button">Edit</a>
-                </div>
-
-
-                <!-- Delete Comment Button -->
-                <div sec:authorize="isAuthenticated()">
-                    <a th:if="${#authorization.expression('hasRole(''ADMIN'')') or post.user.email==#authentication.name}" th:href="@{/posts/comments/delete/{id}(id=${comment.id})}"
-                       th:onclick="return confirm('Are you sure you want to delete this comment?');"
-                       class="delete-comment-button">Delete Comment</a>
-                </div>
-
-                <!-- Nested Comments (Replies) -->
-                <div class="nested-comments">
-                    <ul>
-                        <li th:each="reply : ${comment.replies}">
-                            <div class="reply">
-                                <p><strong th:text="${reply.name}">Reply Author</strong> replied:</p>
-                                <p th:text="${reply.content}">Reply Content</p>
-                            </div>
-                        </li>
-                    </ul>
-
-                    <!-- Add Reply Form -->
-                    <form th:if="${comment != null}" th:action="@{'/posts/comments/' + ${comment.id} + '/reply'}" method="POST">
-                        <textarea th:name="content" placeholder="Write your reply..." required></textarea>
-                        <button th:type="submit">Add Reply</button>
-                    </form>
-                </div>
-            </div>
+        <li th:each="comment : ${post.comments}" th:if="${comment.parent == null}">
+            <div th:replace="~{fragments/commentNode :: commentNode(${comment})}"></div>
         </li>
     </ul>
 </div>

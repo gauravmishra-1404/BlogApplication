@@ -1,0 +1,259 @@
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.ocean {
+    position: relative;
+    min-height: 100vh;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    background: linear-gradient(180deg, #0f2a5c 0%, #14428c 38%, #2f66d1 72%, #5b8def 100%);
+}
+
+/* Rising bubbles */
+.bubble {
+    position: absolute;
+    bottom: -40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.16);
+    animation: rise linear infinite;
+}
+
+@keyframes rise {
+    0%   { transform: translateY(0) translateX(0); opacity: 0; }
+    10%  { opacity: 0.9; }
+    100% { transform: translateY(-115vh) translateX(var(--drift, 20px)); opacity: 0; }
+}
+
+/* Layered waves */
+.waves {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -2px;
+    line-height: 0;
+    z-index: 1;
+}
+
+.waves svg {
+    width: 100%;
+    height: 140px;
+    display: block;
+}
+
+.wave-back  { animation: drift 22s ease-in-out infinite; opacity: 0.35; }
+.wave-mid   { animation: drift 16s ease-in-out infinite reverse; opacity: 0.55; bottom: 10px; }
+.wave-front { animation: drift 11s ease-in-out infinite; opacity: 0.9; bottom: -6px; }
+
+@keyframes drift {
+    0%, 100% { transform: translateX(0); }
+    50%      { transform: translateX(-3%); }
+}
+
+/* Brand moment */
+.brand-hero {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 22px;
+}
+
+.icon-float {
+    animation: drift-in 1.15s cubic-bezier(.34, 1.56, .64, 1) both,
+               bob 5s ease-in-out 1.15s infinite;
+}
+
+.icon-wrap {
+    position: relative;
+    animation: vibrate-loop 0.5s ease-in-out 1.15s infinite;
+}
+
+@keyframes drift-in {
+    0%   { transform: translateX(-220px) rotate(-14deg); opacity: 0; }
+    55%  { transform: translateX(14px) rotate(5deg); opacity: 1; }
+    75%  { transform: translateX(-6px) rotate(-2deg); }
+    90%  { transform: translateX(2px) rotate(1deg); }
+    100% { transform: translateX(0) rotate(0deg); }
+}
+
+@keyframes vibrate-loop {
+    0%, 100% { transform: translate(0, 0); }
+    20%      { transform: translate(-2px, 1px); }
+    40%      { transform: translate(2px, -1px); }
+    60%      { transform: translate(-2px, -1px); }
+    80%      { transform: translate(2px, 1px); }
+}
+
+@keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-6px); }
+}
+
+/* Echo rings: continuous shockwaves radiating outward from the mark across the whole scene */
+.echo-ring {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 92px;
+    height: 92px;
+    margin: -46px 0 0 -46px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.55);
+    animation: echo 3.6s ease-out infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.echo-ring:nth-child(2) { animation-delay: 1.2s; }
+.echo-ring:nth-child(3) { animation-delay: 2.4s; }
+
+@keyframes echo {
+    0%   { transform: scale(0.4); opacity: 0.7; }
+    100% { transform: scale(16); opacity: 0; }
+}
+
+.brand-hero svg {
+    width: 92px;
+    height: 92px;
+    color: #fff;
+    filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.28));
+    display: block;
+    position: relative;
+    z-index: 1;
+}
+
+.brand-hero .word {
+    margin-top: 14px;
+    color: #fff;
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    animation: fade-up 0.6s ease-out 0.95s both,
+               vibrate-loop 0.5s ease-in-out 1.55s infinite;
+}
+
+.brand-hero .tag {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: var(--text-sm);
+    margin-top: 4px;
+    letter-spacing: 0.04em;
+    animation: fade-up 0.6s ease-out 1.2s both;
+}
+
+@keyframes fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Glass card */
+.auth-card {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 380px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-radius: 20px;
+    padding: 30px 28px;
+    box-shadow: 0 20px 60px rgba(6, 20, 50, 0.35);
+    animation: rise-in 0.6s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+@keyframes rise-in {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.auth-card h2 {
+    color: #fff;
+    margin: 0 0 4px;
+    font-size: var(--text-xl);
+    text-align: center;
+}
+
+.auth-card .sub {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: var(--text-sm);
+    text-align: center;
+    margin: 0 0 22px;
+}
+
+.auth-field {
+    margin-bottom: 16px;
+}
+
+.auth-field label {
+    display: block;
+    font-size: var(--text-xs);
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 6px;
+    letter-spacing: 0.02em;
+}
+
+.auth-field input {
+    width: 100%;
+    padding: 11px 13px;
+    border-radius: 10px;
+    font-size: var(--text-base);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.92);
+    color: #1c1f26;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.auth-field input:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.4);
+    transform: translateY(-1px);
+}
+
+.auth-submit {
+    width: 100%;
+    padding: 12px;
+    margin-top: 6px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #ffffff 0%, #dce8ff 100%);
+    color: #14428c;
+    font-weight: 700;
+    font-size: var(--text-base);
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.auth-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.25);
+}
+
+.auth-switch {
+    text-align: center;
+    margin-top: 16px;
+    font-size: var(--text-sm);
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.auth-switch a {
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+}

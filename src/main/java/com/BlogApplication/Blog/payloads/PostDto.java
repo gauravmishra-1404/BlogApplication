@@ -2,6 +2,7 @@ package com.BlogApplication.Blog.payloads;
 
 import com.BlogApplication.Blog.models.Comment;
 import com.BlogApplication.Blog.models.User;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,6 +30,7 @@ public class PostDto {
         this.role = role;
     }
 
+    @JsonIgnore
     public User getUser() {
         return user;
     }

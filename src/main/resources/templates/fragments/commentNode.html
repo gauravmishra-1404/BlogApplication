@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<!-- Recursive comment/reply fragment: renders a comment, its author/edit/delete controls,
+     a reply form, and then re-invokes itself for each nested reply so threads of any depth render. -->
+<div th:fragment="commentNode(comment)" class="comment-node">
+    <div class="avatar" th:classappend="${comment.user == null} ? 'deleted' : ''"
+         th:text="${comment.user != null ? #strings.toUpperCase(#strings.substring(comment.user.name, 0, 1)) : '?'}">A</div>
+
+    <div class="comment-body">
+        <div class="comment-bubble">
+            <div class="comment-head">
+                <span class="comment-author" th:text="${comment.user != null ? comment.user.name : 'Deleted user'}">Comment Author</span>
+                <span class="comment-meta" th:if="${comment.createdAt != null}"
+                      th:text="${T(com.BlogApplication.Blog.util.TimeFormatter).relative(comment.createdAt)}"
+                      th:title="${T(com.BlogApplication.Blog.util.TimeFormatter).absolute(comment.createdAt)}">date</span>
+                <span class="comment-edited" th:if="${comment.edited}">(edited)</span>
+            </div>
+            <p th:text="${comment.content}">Comment Content</p>
+        </div>
+
+        <div class="comment-actions">
+            <button type="button" class="action-reply" sec:authorize="isAuthenticated()"
+                    th:attr="data-toggle-reply=${'reply-box-' + comment.id}">
+                <svg class="icon" aria-hidden="true"><use href="#i-reply"/></svg>Reply</button>
+            <a th:href="@{/posts/comments/edit(id=${comment.id})}" class="action-edit"
+               sec:authorize="isAuthenticated()"
+               th:if="${#authorization.expression('hasRole(''ADMIN'')')
+                       or (comment.user != null and comment.user.email == #authentication.name)
+                       or (comment.post != null and comment.post.user != null and comment.post.user.email == #authentication.name)}">
+                <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>Edit</a>
+            <form th:action="@{/posts/comments/delete/{id}(id=${comment.id})}" th:method="post"
+                  onsubmit="return confirm('Are you sure you want to delete this comment?');"
+                  sec:authorize="isAuthenticated()"
+                  th:if="${#authorization.expression('hasRole(''ADMIN'')')
+                          or (comment.user != null and comment.user.email == #authentication.name)
+                          or (comment.post != null and comment.post.user != null and comment.post.user.email == #authentication.name)}">
+                <button type="submit" class="action-delete">
+                    <svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>Delete</button>
+            </form>
+        </div>
+
+        <div class="reply-box" th:id="${'reply-box-' + comment.id}" sec:authorize="isAuthenticated()">
+            <form th:action="@{/posts/comments/{id}/reply(id=${comment.id})}" th:method="POST">
+                <textarea name="content" class="composer-textarea" placeholder="Write your reply..." required rows="1"></textarea>
+                <div class="composer-actions">
+                    <button type="submit" class="composer-submit" disabled>
+                        <svg class="icon" aria-hidden="true"><use href="#i-send"/></svg>Add Reply</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="nested-comments" th:if="${comment.replies != null and !comment.replies.isEmpty()}">
+            <div class="replies">
+                <div th:each="reply : ${comment.replies}">
+                    <div th:replace="~{fragments/commentNode :: commentNode(${reply})}"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
