@@ -53,10 +53,30 @@ public class CustomUserDetails implements UserDetails {
         return true;
     }
 
+    // Spring Security's DaoAuthenticationProvider checks isEnabled() as part of every login
+    // attempt and rejects with DisabledException if false - so an unverified account simply
+    // can't authenticate until it clicks the emailed verification link.
     @Override
     public boolean isEnabled() {
 
-        return true;
+        return user.isEmailVerified();
+    }
+
+    // Spring Security's concurrent-session registry (SessionRegistryImpl) keys sessions by
+    // principal.equals()/hashCode(). Without this override each login builds a fresh
+    // CustomUserDetails instance and falls back to Object identity, so the registry can never
+    // tell that two logins belong to the same account - maximumSessions() would silently do
+    // nothing. Keying on the user's email (their login id) fixes that.
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) return true;
+        if (!(other instanceof CustomUserDetails)) return false;
+        return user.getEmail().equals(((CustomUserDetails) other).user.getEmail());
+    }
+
+    @Override
+    public int hashCode() {
+        return user.getEmail().hashCode();
     }
 
 }

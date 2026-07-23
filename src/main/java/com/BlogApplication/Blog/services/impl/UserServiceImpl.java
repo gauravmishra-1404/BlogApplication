@@ -1,10 +1,14 @@
 package com.BlogApplication.Blog.services.impl;
 
+import com.BlogApplication.Blog.exceptions.DuplicateEmailException;
 import com.BlogApplication.Blog.exceptions.ResourceNotFoundException;
+import com.BlogApplication.Blog.models.TokenPurpose;
 import com.BlogApplication.Blog.models.User;
 import com.BlogApplication.Blog.payloads.UserDto;
 import com.BlogApplication.Blog.repositories.UserRepo;
+import com.BlogApplication.Blog.services.EmailService;
 import com.BlogApplication.Blog.services.UserService;
+import com.BlogApplication.Blog.services.VerificationTokenService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -20,6 +24,12 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private ModelMapper modelMapper;
+
+    @Autowired
+    private VerificationTokenService verificationTokenService;
+
+    @Autowired
+    private EmailService emailService;
 
     private User dtoToUser(UserDto userDto){
         User user = this.modelMapper.map(userDto , User.class);
@@ -69,24 +79,28 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void createUser(UserDto userDto) {
-//            UserDto userDto = new UserDto();
-//            userDto.setRole("author");
-//
+        // Normalize so "Test@x.com" and "test@x.com" are treated as the same login id -
+        // both at the uniqueness check here and in UserDetailsServiceImpl's lookup.
+        String normalizedEmail = userDto.getEmail().trim().toLowerCase();
+
+        if (userRepo.findByEmail(normalizedEmail).isPresent()) {
+            throw new DuplicateEmailException(normalizedEmail);
+        }
+
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         String encryptedPassword = encoder.encode(userDto.getPassword());
-//            userDto.setPassword(encryptedPassword);
-//
-//            userDto.setEmail(email);
-//            userDto.setName(name);
-//           User user = this.modelMapper.map(userDto, User.class);
+
         User user = new User();
         user.setName(userDto.getName());
-        user.setEmail(userDto.getEmail());
+        user.setEmail(normalizedEmail);
         user.setPassword(encryptedPassword);
         user.setRole("ROLE_AUTHOR");
+        user.setEmailVerified(false);
 
         userRepo.save(user);
 
+        String token = verificationTokenService.createToken(user, TokenPurpose.VERIFY_EMAIL);
+        emailService.sendVerificationEmail(user, token);
     }
 
 }

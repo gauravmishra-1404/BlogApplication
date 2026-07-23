@@ -1,5 +1,6 @@
 package com.BlogApplication.Blog.controllers;
 
+import com.BlogApplication.Blog.exceptions.DuplicateEmailException;
 import com.BlogApplication.Blog.payloads.UserDto;
 import com.BlogApplication.Blog.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,9 +22,15 @@ public class UserController {
     }
 
     @PostMapping("/registerUser")
-    public String createUser(@ModelAttribute UserDto userDto){
-        System.out.println("asdfkjhkasjdfl   "+userDto.getPassword());
-        userService.createUser(userDto);
-        return "redirect:/login";
+    public String createUser(@ModelAttribute UserDto userDto, Model model){
+        try {
+            userService.createUser(userDto);
+        } catch (DuplicateEmailException ex) {
+            userDto.setPassword("");
+            model.addAttribute("userDto", userDto);
+            model.addAttribute("error", ex.getMessage());
+            return "register";
+        }
+        return "redirect:/login?registered";
     }
 }

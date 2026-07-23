@@ -4,9 +4,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
 
 @Configuration
 public class SecurityConfig {
@@ -27,6 +30,21 @@ public class SecurityConfig {
         daoAuthenticationProvider.setPasswordEncoder(passwordEncoder());
         return daoAuthenticationProvider;
 
+    }
+
+    // Tracks who's logged in where, so maximumSessions() below can enforce one active
+    // session per account instead of letting the same login work unlimited times at once.
+    @Bean
+    public SessionRegistry sessionRegistry() {
+        return new SessionRegistryImpl();
+    }
+
+    // Without this listener, Spring Security's session registry never finds out when a
+    // session actually ends (browser close, timeout) - it would keep counting "ghost"
+    // sessions as active forever, and maximumSessions(1) would eventually lock everyone out.
+    @Bean
+    public HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new HttpSessionEventPublisher();
     }
 
     @Bean
@@ -63,6 +81,10 @@ public class SecurityConfig {
                                 "/posts/search",
                                 "/posts/sort",
                                 "/registerUser",
+                                "/forgot-password",
+                                "/reset-password",
+                                "/verify-email",
+                                "/resend-verification",
                                 "/api/posts",
                                 "/api/posts/search",
                                 "/api/posts/sort",
@@ -85,6 +107,14 @@ public class SecurityConfig {
                         .clearAuthentication(true)
                         .deleteCookies("JSESSIONID")
                         .permitAll()
+                )
+                // Up to 2 active sessions per account (e.g. phone + laptop). A 3rd concurrent
+                // login invalidates the oldest of the two, rather than letting the same login
+                // work an unlimited number of times simultaneously.
+                .sessionManagement(session -> session
+                        .maximumSessions(2)
+                        .maxSessionsPreventsLogin(false)
+                        .sessionRegistry(sessionRegistry())
                 )
         ;
 

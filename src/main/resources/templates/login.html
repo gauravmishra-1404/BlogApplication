@@ -24,10 +24,10 @@
                 <div class="echo-ring"></div>
                 <div class="echo-ring"></div>
                 <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M24 4C15 14 10 22 10 28a14 14 0 0 0 28 0c0-5-3-9-7-13"/>
-                    <path d="M24 9v18"/><path d="M24 16l-5 4"/><path d="M24 20l5 4"/><path d="M24 24l-4 3"/>
-                    <path d="M14.5 29.5a6 6 0 0 1 9.5-4.5 4 4 0 0 1-1.5 7.3"/>
-                    <path d="M6 37c3-2 6-2 9 0s6 2 9 0 6-2 9 0 6 2 9 0"/>
+                    <path d="M24 6c-5 4-8 8-8 12 0 3.5 2.5 6 6 6h1v11"/>
+                    <path d="M24 12c4 3 6.5 6 6.5 9 0 3-2 5-5 5"/>
+                    <path d="M24 10c-3.5 2.5-6 5-6 7.5 0 2 1.5 3.5 3.5 3.5"/>
+                    <path d="M5 36c3.5-2.5 7-2.5 10.5 0s7 2.5 10.5 0 7-2.5 10.5 0 7 2.5 10.5 0"/>
                 </svg>
             </div>
         </div>
@@ -38,6 +38,10 @@
     <div class="auth-card">
         <h2>Welcome back</h2>
         <p class="sub">Log in to keep writing</p>
+        <div class="auth-error" th:if="${param.error}">Invalid email or password, or your account isn't verified yet.</div>
+        <div class="auth-success" th:if="${param.resetSuccess}">Password updated. Please log in.</div>
+        <div class="auth-success" th:if="${param.verified}">Email verified. You can log in now.</div>
+        <div class="auth-success" th:if="${param.registered}">Account created. Check your email for a verification link before logging in.</div>
         <form th:action="@{/authenticateTheUser}" th:method="post">
             <div class="auth-field">
                 <label for="username">Email</label>
@@ -49,6 +53,7 @@
             </div>
             <button type="submit" class="auth-submit">Log In</button>
         </form>
+        <div class="auth-switch"><a th:href="@{/forgot-password}">Forgot password?</a></div>
         <div class="auth-switch">New here? <a th:href="@{/registerUser}">Create an account</a></div>
     </div>
 

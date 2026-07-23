@@ -15,7 +15,7 @@ public class User {
     @Column(name="user_name")
     private String name;
 
-    @Column(name="email")
+    @Column(name="email", unique = true, nullable = false)
     private String email;
 
     @Column(name="role")
@@ -24,6 +24,13 @@ public class User {
     @JsonIgnore
     @Column(name="password")
     private String password;
+
+    // Nullable Boolean, not a primitive - accounts created before this feature existed have
+    // no value for this column (ddl-auto=update adds it without backfilling existing rows,
+    // same issue we hit with Comment.edited). isEmailVerified() below treats null as "verified"
+    // so pre-existing accounts aren't locked out; only new registrations start out false.
+    @Column(name = "email_verified")
+    private Boolean emailVerified;
 
     @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST,CascadeType.MERGE}, fetch = FetchType.LAZY)
@@ -75,5 +82,13 @@ public class User {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerified == null || emailVerified;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
     }
 }

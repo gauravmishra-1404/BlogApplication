@@ -193,6 +193,28 @@ body {
     margin: 0 0 22px;
 }
 
+.auth-error {
+    background: rgba(220, 38, 38, 0.15);
+    border: 1px solid rgba(248, 113, 113, 0.5);
+    color: #fff;
+    font-size: var(--text-sm);
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 0 0 16px;
+    text-align: center;
+}
+
+.auth-success {
+    background: rgba(22, 163, 74, 0.15);
+    border: 1px solid rgba(74, 222, 128, 0.5);
+    color: #fff;
+    font-size: var(--text-sm);
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 0 0 16px;
+    text-align: center;
+}
+
 .auth-field {
     margin-bottom: 16px;
 }
