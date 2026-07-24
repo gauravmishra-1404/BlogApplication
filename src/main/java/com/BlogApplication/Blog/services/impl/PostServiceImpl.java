@@ -6,7 +6,6 @@ import com.BlogApplication.Blog.models.Tags;
 import com.BlogApplication.Blog.models.User;
 import com.BlogApplication.Blog.payloads.PostDto;
 import com.BlogApplication.Blog.repositories.PostRepo;
-import com.BlogApplication.Blog.repositories.TagRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.PostService;
 import com.BlogApplication.Blog.services.TagService;
@@ -35,9 +34,6 @@ public class PostServiceImpl implements PostService {
 
     @Autowired
     private UserRepo userRepo;
-
-    @Autowired
-    private TagRepo tagRepo;
 
     @Autowired
     private TagService tagService;
@@ -132,9 +128,16 @@ public class PostServiceImpl implements PostService {
                 .collect(Collectors.toList());
     }
 
+    // Returns null (not a thrown exception) for both a genuinely missing id and a soft-deleted
+    // one - PostController.viewPostByID checks for null and redirects to /posts, so a deleted
+    // or nonexistent post lands there cleanly instead of a 500.
     @Override
     public PostDto getPostById(int id) {
-        Post postByID = postRepo.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
+        Optional<Post> postOptional = postRepo.findById(id);
+        if (postOptional.isEmpty() || postOptional.get().isDeleted()) {
+            return null;
+        }
+        Post postByID = postOptional.get();
         PostDto postDtoByID = new PostDto();
         postDtoByID.setAuthor(postByID.getAuthor());
         postDtoByID.setContent(postByID.getContent());
@@ -153,21 +156,16 @@ public class PostServiceImpl implements PostService {
         return postDtoByID;
     }
 
+    // "Delete" is a soft delete: the row (and its comments/tags) stay in the database, just
+    // hidden from listing/search/direct view. A hard delete here used to crash - Post/Tags had
+    // a bidirectional CascadeType.ALL that reached into every other post sharing a tag - and
+    // even fixed, this table's FK graph (shared with another app's comment threads) makes
+    // physical deletion risky enough that soft delete is the safer permanent choice.
     @Override
     public void isDeleted(int id) {
-        if (this.postRepo.existsById(id)) {
-            Post post = postRepo.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
-            post.getTagList().size();
-
-            List<Tags> tags = post.getTagList();
-            this.postRepo.deleteById(id);
-
-            for(Tags tag : tags){
-                if(tag.getPostList().isEmpty()){
-                    tagRepo.delete(tag);
-                }
-            }
-        }
+        Post post = postRepo.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
+        post.setDeleted(true);
+        postRepo.save(post);
     }
 
     @Override
@@ -177,7 +175,8 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public Page<Post> searchPosts(String query, List<String> authors, List<String> tags, String order, int page, int size) {
-        Specification<Post> spec = Specification.where(null);
+        Specification<Post> spec = Specification.where((root, cq, cb) ->
+                cb.or(cb.isNull(root.get("deleted")), cb.isFalse(root.get("deleted"))));
 
         if (query != null && !query.isBlank()) {
             String likePattern = "%" + query.trim().toLowerCase() + "%";

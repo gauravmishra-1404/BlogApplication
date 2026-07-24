@@ -37,7 +37,18 @@ public class Post {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    // Soft delete: nullable Boolean so rows predating this feature default to "not deleted"
+    // when null, same pattern as Comment.edited / User.emailVerified. "Deleting" a post just
+    // hides it (excluded from listing/search/direct view) rather than removing the row -
+    // avoids ever touching the comments/tags FK graph on delete.
+    @Column(name = "deleted")
+    private Boolean deleted;
+
+    // No cascade: tags are looked up/created manually in PostServiceImpl.resolveTags(), and
+    // CascadeType.ALL here (specifically REMOVE) was the cause of a serious bug - deleting a
+    // post cascaded a remove onto its tags, and since Tags.postList cascades ALL right back,
+    // it reached into every *other* post sharing that tag too, corrupting unrelated posts.
+    @ManyToMany(fetch = FetchType.EAGER)
     List<Tags> tagList;
 
     @OneToMany(mappedBy = "post", fetch = FetchType.EAGER)
@@ -146,5 +157,13 @@ public class Post {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public boolean isDeleted() {
+        return Boolean.TRUE.equals(deleted);
+    }
+
+    public void setDeleted(boolean deleted) {
+        this.deleted = deleted;
     }
 }

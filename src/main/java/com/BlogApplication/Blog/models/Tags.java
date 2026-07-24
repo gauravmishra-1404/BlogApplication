@@ -23,7 +23,7 @@ public class Tags {
     private LocalDateTime updated_at;
 
     @JsonIgnore
-    @ManyToMany(mappedBy = "tagList", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @ManyToMany(mappedBy = "tagList", fetch = FetchType.EAGER)
     List<Post> postList;
 
     public List<Post> getPostList() {

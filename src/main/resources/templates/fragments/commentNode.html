@@ -50,9 +50,9 @@
             </form>
         </div>
 
-        <div class="nested-comments" th:if="${comment.replies != null and !comment.replies.isEmpty()}">
+        <div class="nested-comments" th:if="${!comment.visibleReplies.isEmpty()}">
             <div class="replies">
-                <div th:each="reply : ${comment.replies}">
+                <div th:each="reply : ${comment.visibleReplies}">
                     <div th:replace="~{fragments/commentNode :: commentNode(${reply})}"></div>
                 </div>
             </div>

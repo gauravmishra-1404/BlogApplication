@@ -21,7 +21,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -187,6 +186,11 @@ public class PostController {
     public String addComment(@PathVariable("id") int postId,
                              @RequestParam String content,
                              Authentication authentication) {
+        // getPostById returns null for a missing OR soft-deleted post - reusing that contract
+        // here blocks commenting on a "deleted" post the same way viewing it is already blocked.
+        if (postService.getPostById(postId) == null) {
+            return "redirect:/posts";
+        }
         commentService.save(postId, content, authentication.getName());
         return "redirect:/post/viewPost?id=" + postId;
     }
@@ -199,7 +203,7 @@ public class PostController {
         }
 
         Post postCom = com.getPost();
-        if (postCom == null) {
+        if (postCom == null || postCom.isDeleted()) {
             return "redirect:/posts";
         }
 
@@ -207,25 +211,29 @@ public class PostController {
             return "redirect:/post/viewPost?id=" + postCom.getId();
         }
 
-        deleteCommentWithReplies(com);
+        softDeleteCommentWithReplies(com);
 
         return "redirect:/post/viewPost?id=" + postCom.getId();
     }
 
-    private void deleteCommentWithReplies(Comment comment) {
-        if (comment.getReplies() != null && !comment.getReplies().isEmpty()) {
-            List<Comment> replies = new ArrayList<>(comment.getReplies());
-            for (Comment reply : replies) {
-                deleteCommentWithReplies(reply);
+    // Soft delete, same reasoning as Post: this table is shared with another app, so physically
+    // removing rows is risky. Recursively marks the whole subtree deleted rather than just this
+    // comment, matching the previous hard-delete behavior of removing the entire reply chain
+    // from view together.
+    private void softDeleteCommentWithReplies(Comment comment) {
+        if (comment.getReplies() != null) {
+            for (Comment reply : comment.getReplies()) {
+                softDeleteCommentWithReplies(reply);
             }
         }
-        commentRepo.delete(comment);
+        comment.setDeleted(true);
+        commentRepo.save(comment);
     }
 
     @GetMapping("/posts/comments/edit")
     public String editCommentPage(@RequestParam("id") int commentId, Model model, Authentication authentication) {
         Comment comment = commentRepo.findById(commentId);
-        if (comment == null || comment.getPost() == null) {
+        if (comment == null || comment.getPost() == null || comment.getPost().isDeleted() || comment.isDeleted()) {
             return "redirect:/posts";
         }
 
@@ -243,7 +251,7 @@ public class PostController {
                               @RequestParam("content") String content,
                               Authentication authentication) {
         Comment comment = commentRepo.findById(commentId);
-        if (comment == null || comment.getPost() == null) {
+        if (comment == null || comment.getPost() == null || comment.getPost().isDeleted() || comment.isDeleted()) {
             return "redirect:/posts";
         }
 
@@ -282,7 +290,10 @@ public class PostController {
                             Authentication authentication) {
         Comment parentComment = commentRepo.findById(commentId);
 
-        if (parentComment == null || parentComment.getPost() == null) {
+        // Blocks replying through a deleted post, and through an already-deleted comment
+        // directly (same reasoning either way: the thing being replied to is supposed to be gone).
+        if (parentComment == null || parentComment.getPost() == null
+                || parentComment.getPost().isDeleted() || parentComment.isDeleted()) {
             return "redirect:/posts";
         }
 

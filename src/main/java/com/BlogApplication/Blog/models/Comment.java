@@ -33,6 +33,13 @@ public class Comment {
     @Column(name = "edited")
     private Boolean edited;
 
+    // Soft delete, same reasoning as Post.deleted: this table is shared with a separate app,
+    // and physically removing rows a reply might still reference is fragile. "Deleting" a
+    // comment hides it (and its replies, recursively - see PostController.deleteComment)
+    // rather than removing the row.
+    @Column(name = "deleted")
+    private Boolean deleted;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id")
     private User user;
@@ -119,5 +126,20 @@ public class Comment {
 
     public void setReplies(List<Comment> replies) {
         this.replies = replies;
+    }
+
+    public boolean isDeleted() {
+        return Boolean.TRUE.equals(deleted);
+    }
+
+    public void setDeleted(boolean deleted) {
+        this.deleted = deleted;
+    }
+
+    // Used by commentNode.html to recurse into replies - filters out soft-deleted ones so a
+    // deleted comment (and everything under it, per the recursive delete) disappears from the
+    // rendered thread without needing the service layer to rebuild a filtered tree.
+    public List<Comment> getVisibleReplies() {
+        return replies.stream().filter(reply -> !reply.isDeleted()).toList();
     }
 }

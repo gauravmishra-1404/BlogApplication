@@ -120,6 +120,11 @@ public class RestPostController {
     public ResponseEntity<Void> addComment(@PathVariable int id,
                                            @RequestBody Comment comment,
                                            Authentication authentication) {
+        // getPostById returns null for a missing OR soft-deleted post - blocks commenting on a
+        // "deleted" post the same way viewing it is already blocked.
+        if (postService.getPostById(id) == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
         commentService.save(id, comment.getContent(), authentication.getName());
         return new ResponseEntity<>(HttpStatus.CREATED);
     }
@@ -127,13 +132,16 @@ public class RestPostController {
     @DeleteMapping("/posts/comments/{id}/delete")
     public ResponseEntity<Void> deleteComment(@PathVariable int id, Authentication authentication) {
         Comment comment = commentRepo.findById(id);
-        if (comment == null) {
+        if (comment == null || comment.getPost() == null || comment.getPost().isDeleted()) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
         if (!isAuthorizedForComment(authentication, comment)) {
             return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         }
-        commentRepo.deleteById(id);
+        // Soft delete - see PostController.deleteComment for why (shared table, physical
+        // removal is risky). Kept consistent across both the form-based and REST delete paths.
+        comment.setDeleted(true);
+        commentRepo.save(comment);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
@@ -142,7 +150,10 @@ public class RestPostController {
                                           @RequestBody Comment reply,
                                           Authentication authentication) {
         Comment parentComment = commentRepo.findById(commentId);
-        if (parentComment == null) {
+        // Blocks replying through a deleted post, and through an already-deleted comment
+        // directly (same reasoning either way: the thing being replied to is supposed to be gone).
+        if (parentComment == null || parentComment.getPost() == null
+                || parentComment.getPost().isDeleted() || parentComment.isDeleted()) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
         commentService.saveReply(commentId, reply.getContent(), authentication.getName());

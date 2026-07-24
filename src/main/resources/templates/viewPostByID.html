@@ -67,7 +67,7 @@
 <div class="comments-list">
     <h3>Comments</h3>
     <ul>
-        <li th:each="comment : ${post.comments}" th:if="${comment.parent == null}">
+        <li th:each="comment : ${post.comments}" th:if="${comment.parent == null and !comment.deleted}">
             <div th:replace="~{fragments/commentNode :: commentNode(${comment})}"></div>
         </li>
     </ul>

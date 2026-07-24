@@ -50,9 +50,14 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
+                // /h2-console is only ever registered when spring.h2.console.enabled=true (the
+                // docker/test profiles) - in production (Postgres, console disabled) this rule
+                // is inert since the endpoint doesn't exist. CSRF is ignored here because the H2
+                // console's own login form doesn't carry Spring's CSRF token.
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**", "/h2-console/**"))
+                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login", "/api/login").permitAll()
+                        .requestMatchers("/login", "/api/login", "/h2-console/**").permitAll()
                         // Restrictive rules MUST come before the broader permitAll patterns below —
                         // authorizeHttpRequests matches in declaration order and stops at the first hit,
                         // so a broad "/posts/**" listed earlier would silently shadow these.
