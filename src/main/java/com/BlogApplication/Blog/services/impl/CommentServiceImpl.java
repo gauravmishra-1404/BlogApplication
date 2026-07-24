@@ -31,6 +31,7 @@ public class CommentServiceImpl implements CommentService {
 
         Comment comment = new Comment();
         comment.setContent(content);
+        comment.setName(user.getName());
         comment.setUser(user);
         comment.setPost(post);
         comment.setCreatedAt(LocalDateTime.now());
@@ -50,6 +51,7 @@ public class CommentServiceImpl implements CommentService {
 
         Comment reply = new Comment();
         reply.setContent(content);
+        reply.setName(user.getName());
         reply.setUser(user);
         reply.setPost(parentComment.getPost());
         reply.setParent(parentComment);

@@ -16,6 +16,13 @@ public class Comment {
     @Column(name = "content", nullable = false)
     private String content;
 
+    // The comments table is shared with a separate Q&A app on this same database (its own
+    // comment threads on answers/questions use it too) - that app's rows require a NOT NULL
+    // "name" column that this entity otherwise never touches. Every insert from this blog must
+    // populate it (with the commenting user's display name) or Postgres rejects the row.
+    @Column(name = "name", nullable = false)
+    private String name;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -56,6 +63,14 @@ public class Comment {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public Post getPost() {
