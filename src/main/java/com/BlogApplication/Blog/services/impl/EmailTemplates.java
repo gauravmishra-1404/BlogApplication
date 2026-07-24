@@ -10,7 +10,7 @@ final class EmailTemplates {
     private EmailTemplates() {
     }
 
-    static String render(String eyebrow, String headline, String bodyHtml, String ctaText, String ctaUrl, String expiryNote) {
+    static String render(String eyebrow, String headline, String bodyHtml, String ctaText, String ctaUrl, String expiryNote, String logoUrl) {
         return SHELL
                 .replace("{{SUBJECT}}", eyebrow)
                 .replace("{{EYEBROW}}", eyebrow)
@@ -18,7 +18,8 @@ final class EmailTemplates {
                 .replace("{{BODY}}", bodyHtml)
                 .replace("{{CTA_TEXT}}", ctaText)
                 .replace("{{CTA_URL}}", ctaUrl)
-                .replace("{{EXPIRY_NOTE}}", expiryNote);
+                .replace("{{EXPIRY_NOTE}}", expiryNote)
+                .replace("{{LOGO_URL}}", logoUrl);
     }
 
     private static final String SHELL = """
@@ -48,7 +49,7 @@ final class EmailTemplates {
                   <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="width:100%;max-width:520px;border-collapse:collapse;">
                     <tr><td bgcolor="#14428c" style="background:#14428c;background-image:linear-gradient(160deg,#0f2a5c 0%,#14428c 42%,#2f66d1 78%,#5b8def 100%);padding:38px 24px 30px;text-align:center;border-radius:16px 16px 0 0;">
                       <span class="brand-mark" style="display:inline-block;">
-                        <img src="cid:brandMark" width="52" height="52" alt="Bodh Sea" style="display:block;border:0;outline:none;">
+                        <img src="{{LOGO_URL}}" width="52" height="52" alt="Bodh Sea" style="display:block;border:0;outline:none;">
                       </span>
                       <span style="display:block;margin-top:12px;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.02em;">Bodh Sea</span>
                       <span style="display:block;margin-top:3px;color:rgba(255,255,255,0.72);font-size:12.5px;letter-spacing:0.03em;">Set your thoughts adrift</span>

@@ -74,6 +74,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/CSS/**",
                                 "/js/**",
+                                "/images/**",
                                 "/post/viewPost",
                                 "/posts",
                                 "/posts/filter-author",
