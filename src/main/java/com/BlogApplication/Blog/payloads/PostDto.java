@@ -21,6 +21,7 @@ public class PostDto {
     private List<Comment> comments;
     private User user;
     private String role;
+    private long viewCount;
 
     public String getRole() {
         return role;
@@ -125,5 +126,13 @@ public class PostDto {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public long getViewCount() {
+        return viewCount;
+    }
+
+    public void setViewCount(long viewCount) {
+        this.viewCount = viewCount;
     }
 }

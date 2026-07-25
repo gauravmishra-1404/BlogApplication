@@ -161,9 +161,26 @@ body {
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
+    text-decoration: none;
     background: var(--gradient-primary);
     box-shadow: var(--shadow-primary);
     transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+/* "Log in to comment" prompt shown to logged-out visitors - reuses .composer-submit's gradient
+   pill styling rather than a bare hyperlink, so it doesn't look out of place next to the
+   composer's own submit button. */
+.comment-login-prompt {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.comment-login-prompt p {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
 }
 
 .composer-submit:hover:not(:disabled) {
@@ -308,6 +325,74 @@ body {
 
 .action-delete {
     color: var(--color-danger);
+}
+
+/* Like/dislike - standalone version (post page), and a compact version nested inside
+   .comment-actions alongside Reply/Edit/Delete. Both driven by js/reactions.js. */
+.reaction-bar {
+    display: flex;
+    gap: 10px;
+    margin: 14px 0 0;
+}
+
+.reaction-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    font-family: inherit;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.reaction-btn:hover {
+    background: var(--color-surface-tint);
+}
+
+.reaction-btn .icon {
+    width: 15px;
+    height: 15px;
+}
+
+.reaction-btn[data-reaction="LIKE"].active {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+    background: rgba(61, 111, 242, 0.08);
+}
+
+.reaction-btn[data-reaction="DISLIKE"].active {
+    color: var(--color-danger);
+    border-color: var(--color-danger);
+    background: rgba(220, 38, 38, 0.08);
+}
+
+.comment-actions .reaction-bar {
+    gap: 12px;
+    margin: 0;
+}
+
+.comment-actions .reaction-btn {
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    background: none;
+    font-size: var(--text-xs);
+}
+
+.comment-actions .reaction-btn:hover {
+    background: none;
+    text-decoration: underline;
+}
+
+.comment-actions .reaction-btn .icon {
+    width: 13px;
+    height: 13px;
 }
 
 /* Reply box: hidden until the "Reply" action opens it (see js/commentThread.js) */

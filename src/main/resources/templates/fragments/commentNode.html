@@ -3,7 +3,7 @@
 <body>
 <!-- Recursive comment/reply fragment: renders a comment, its author/edit/delete controls,
      a reply form, and then re-invokes itself for each nested reply so threads of any depth render. -->
-<div th:fragment="commentNode(comment)" class="comment-node">
+<div th:fragment="commentNode(comment, reactions)" class="comment-node" th:with="reaction=${reactions.get(comment.id)}">
     <div class="avatar" th:classappend="${comment.user == null} ? 'deleted' : ''"
          th:text="${comment.user != null ? #strings.toUpperCase(#strings.substring(comment.user.name, 0, 1)) : '?'}">A</div>
 
@@ -38,6 +38,20 @@
                 <button type="submit" class="action-delete">
                     <svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>Delete</button>
             </form>
+
+            <div class="reaction-bar" data-target-type="comment" th:data-target-id="${comment.id}"
+                 th:data-logged-in="${#authorization.expression('isAuthenticated()')}">
+                <button type="button" class="reaction-btn" data-reaction="LIKE"
+                        th:classappend="${reaction != null and reaction.userReaction == 'LIKE'} ? ' active' : ''">
+                    <svg class="icon" aria-hidden="true"><use href="#i-thumbs-up"/></svg>
+                    <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.likeCount : 0)}">0</span>
+                </button>
+                <button type="button" class="reaction-btn" data-reaction="DISLIKE"
+                        th:classappend="${reaction != null and reaction.userReaction == 'DISLIKE'} ? ' active' : ''">
+                    <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg>
+                    <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.dislikeCount : 0)}">0</span>
+                </button>
+            </div>
         </div>
 
         <div class="reply-box" th:id="${'reply-box-' + comment.id}" sec:authorize="isAuthenticated()">
@@ -53,7 +67,7 @@
         <div class="nested-comments" th:if="${!comment.visibleReplies.isEmpty()}">
             <div class="replies">
                 <div th:each="reply : ${comment.visibleReplies}">
-                    <div th:replace="~{fragments/commentNode :: commentNode(${reply})}"></div>
+                    <div th:replace="~{fragments/commentNode :: commentNode(${reply}, ${reactions})}"></div>
                 </div>
             </div>
         </div>

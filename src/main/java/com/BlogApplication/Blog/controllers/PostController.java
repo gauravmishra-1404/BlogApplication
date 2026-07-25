@@ -6,11 +6,18 @@ import com.BlogApplication.Blog.models.User;
 import com.BlogApplication.Blog.payloads.PostDto;
 import com.BlogApplication.Blog.repositories.CommentRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
+import com.BlogApplication.Blog.services.CommentReactionService;
 import com.BlogApplication.Blog.services.CommentService;
+import com.BlogApplication.Blog.services.PostReactionService;
 import com.BlogApplication.Blog.services.PostService;
+import com.BlogApplication.Blog.services.PostViewService;
 import com.BlogApplication.Blog.services.TagService;
+import com.BlogApplication.Blog.services.VisitorIdentityService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -40,6 +47,18 @@ public class PostController {
 
     @Autowired
     private UserRepo userRepo;
+
+    @Autowired
+    private PostViewService postViewService;
+
+    @Autowired
+    private VisitorIdentityService visitorIdentityService;
+
+    @Autowired
+    private PostReactionService postReactionService;
+
+    @Autowired
+    private CommentReactionService commentReactionService;
 
     @GetMapping("/posts")
     public String getAllPosts(@RequestParam(defaultValue = "0") int page,
@@ -77,15 +96,41 @@ public class PostController {
     }
 
     @GetMapping("/post/viewPost")
-    public String viewPostByID(@RequestParam("id") int id, Model model, Authentication authentication) {
+    public String viewPostByID(@RequestParam("id") int id, Model model, Authentication authentication,
+                               HttpServletRequest request, HttpServletResponse response) {
         PostDto postDtoById = postService.getPostById(id);
 
         if (postDtoById == null) {
             return "redirect:/posts";
         }
+
+        // Anonymous visitors count too (this page is publicly viewable without login), tracked
+        // via a long-lived cookie rather than an account - see VisitorIdentityService.
+        String viewerToken = visitorIdentityService.resolveViewerToken(authentication, request, response);
+        postViewService.recordView(id, viewerToken);
+        postDtoById.setViewCount(postViewService.countViews(id));
+
         model.addAttribute("comment", new Comment());
         model.addAttribute("post", postDtoById);
-        userRepo.findByEmail(authentication.getName()).ifPresent(u -> model.addAttribute("currentUserName", u.getName()));
+        // This page is publicly viewable (permitAll), so authentication can be null here for an
+        // anonymous visitor - guard before looking up "who's logged in" for the template.
+        if (authentication != null) {
+            userRepo.findByEmail(authentication.getName()).ifPresent(u -> model.addAttribute("currentUserName", u.getName()));
+        }
+
+        // Reaction counts are public (shown to everyone, like the view count); only reacting
+        // itself requires login. userEmail is null for a logged-out viewer, which both reaction
+        // services already treat as "no reaction of mine" rather than an error.
+        boolean isLoggedIn = authentication != null && !(authentication instanceof AnonymousAuthenticationToken);
+        String userEmail = isLoggedIn ? authentication.getName() : null;
+
+        model.addAttribute("postReaction", postReactionService.getSummary(id, userEmail));
+
+        List<Integer> commentIds = postDtoById.getComments() == null
+                ? List.of()
+                : postDtoById.getComments().stream().map(Comment::getId).toList();
+        model.addAttribute("commentReactions", commentReactionService.getSummaries(commentIds, userEmail));
+
         return "viewPostByID";
     }
 
@@ -163,8 +208,13 @@ public class PostController {
     private String listPosts(String query, List<String> author, List<String> tag, String order,
                              int page, int size, Model model) {
         Page<Post> postPage = postService.searchPosts(query, author, tag, order, page, size);
+        List<Integer> postIds = postPage.getContent().stream().map(Post::getId).toList();
 
         model.addAttribute("posts", postPage.getContent());
+        model.addAttribute("viewCounts", postViewService.countViewsForPosts(postIds));
+        // Just public counts here (no per-viewer "did I react" state, unlike the post page
+        // itself) - the dashboard is a listing, not somewhere you react from.
+        model.addAttribute("postReactions", postReactionService.getSummaries(postIds, null));
         model.addAttribute("currentPage", page);
         model.addAttribute("totalPages", postPage.getTotalPages());
         model.addAttribute("totalItems", postPage.getTotalElements());

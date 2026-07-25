@@ -6,6 +6,7 @@ import com.BlogApplication.Blog.models.Tags;
 import com.BlogApplication.Blog.models.User;
 import com.BlogApplication.Blog.payloads.PostDto;
 import com.BlogApplication.Blog.repositories.PostRepo;
+import com.BlogApplication.Blog.repositories.PostViewRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.PostService;
 import com.BlogApplication.Blog.services.TagService;
@@ -34,6 +35,9 @@ public class PostServiceImpl implements PostService {
 
     @Autowired
     private UserRepo userRepo;
+
+    @Autowired
+    private PostViewRepo postViewRepo;
 
     @Autowired
     private TagService tagService;
@@ -153,6 +157,7 @@ public class PostServiceImpl implements PostService {
             constructTagList.append(tag.getName()).append(",");
         }
         postDtoByID.setTags(constructTagList.toString());
+        postDtoByID.setViewCount(postViewRepo.countByPostId(id));
         return postDtoByID;
     }
 

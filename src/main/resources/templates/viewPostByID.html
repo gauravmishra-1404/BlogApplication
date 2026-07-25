@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/CSS/viewPostByID.css">
     <script src="/js/commentThread.js" defer></script>
     <script src="/js/commentComposer.js" defer></script>
+    <script src="/js/reactions.js" defer></script>
 </head>
 <body>
 <div th:replace="~{fragments/nav :: nav}"></div>
@@ -29,7 +30,23 @@
               th:text="${T(com.BlogApplication.Blog.util.TimeFormatter).relative(post.updatedAt)}"
               th:title="${T(com.BlogApplication.Blog.util.TimeFormatter).absolute(post.updatedAt)}">Date</span>
         <span th:if="${post.updatedAt == null}">Date not available</span>
+        <span class="blog-views">&middot; <span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(post.viewCount)}">0</span> <span th:text="${post.viewCount == 1 ? 'view' : 'views'}">views</span></span>
     </p>
+
+    <div class="reaction-bar" data-target-type="post" th:data-target-id="${post.id}"
+         th:data-logged-in="${#authorization.expression('isAuthenticated()')}">
+        <button type="button" class="reaction-btn" data-reaction="LIKE"
+                th:classappend="${postReaction.userReaction == 'LIKE'} ? ' active' : ''">
+            <svg class="icon" aria-hidden="true"><use href="#i-thumbs-up"/></svg>
+            <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(postReaction.likeCount)}">0</span>
+        </button>
+        <button type="button" class="reaction-btn" data-reaction="DISLIKE"
+                th:classappend="${postReaction.userReaction == 'DISLIKE'} ? ' active' : ''">
+            <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg>
+            <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(postReaction.dislikeCount)}">0</span>
+        </button>
+    </div>
+
     <div class="blog-tags" th:if="${post.tags != null and !#strings.isEmpty(post.tags)}">
         <p><strong>Tags:</strong></p>
         <ul>
@@ -58,9 +75,11 @@
             </form>
         </div>
     </div>
-    <p sec:authorize="isAnonymous()">
-        <a th:href="@{/login}">Log in</a> to leave a comment.
-    </p>
+    <div class="comment-login-prompt" sec:authorize="isAnonymous()">
+        <p>Join the conversation - sign in to leave a comment.</p>
+        <a th:href="@{/login}" class="composer-submit">
+            <svg class="icon" aria-hidden="true"><use href="#i-login"/></svg>Log in</a>
+    </div>
 </div>
 
 <!-- Display Existing Comments -->
@@ -68,7 +87,7 @@
     <h3>Comments</h3>
     <ul>
         <li th:each="comment : ${post.comments}" th:if="${comment.parent == null and !comment.deleted}">
-            <div th:replace="~{fragments/commentNode :: commentNode(${comment})}"></div>
+            <div th:replace="~{fragments/commentNode :: commentNode(${comment}, ${commentReactions})}"></div>
         </li>
     </ul>
 </div>

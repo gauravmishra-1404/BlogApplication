@@ -8,7 +8,11 @@ import com.BlogApplication.Blog.repositories.CommentRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.CommentService;
 import com.BlogApplication.Blog.services.PostService;
+import com.BlogApplication.Blog.services.PostViewService;
 import com.BlogApplication.Blog.services.TagService;
+import com.BlogApplication.Blog.services.VisitorIdentityService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -35,6 +39,12 @@ public class RestPostController {
 
     @Autowired
     private CommentRepo commentRepo;
+
+    @Autowired
+    private PostViewService postViewService;
+
+    @Autowired
+    private VisitorIdentityService visitorIdentityService;
 
     @GetMapping("/posts")
     public ResponseEntity<Page<Post>> getAllPosts(@RequestParam(defaultValue = "0") int page,
@@ -68,11 +78,17 @@ public class RestPostController {
     }
 
     @GetMapping("/post/{id}/view")
-    public ResponseEntity<PostDto> viewPostByID(@PathVariable int id) {
+    public ResponseEntity<PostDto> viewPostByID(@PathVariable int id, Authentication authentication,
+                                                HttpServletRequest request, HttpServletResponse response) {
         PostDto postDto = postService.getPostById(id);
         if (postDto == null) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
+
+        String viewerToken = visitorIdentityService.resolveViewerToken(authentication, request, response);
+        postViewService.recordView(id, viewerToken);
+        postDto.setViewCount(postViewService.countViews(id));
+
         return new ResponseEntity<>(postDto, HttpStatus.OK);
     }
 

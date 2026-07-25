@@ -46,7 +46,7 @@
     <div class="post-list">
         <a class="post-row" th:each="post : ${posts}" th:href="@{/post/viewPost(id=${post.id})}">
             <h2 class="post-title" th:text="${post.title}">Post Title</h2>
-            <div class="post-meta">
+            <div class="post-meta" th:with="viewCount=${viewCounts.get(post.id)} ?: 0, reaction=${postReactions.get(post.id)}">
                 <span class="avatar"
                       th:text="${post.author != null and !#strings.isEmpty(post.author)} ? ${#strings.toUpperCase(#strings.substring(post.author, 0, 1))} : '?'">A</span>
                 <span th:text="${post.author}">Author</span>
@@ -54,6 +54,13 @@
                 <span th:if="${post.updatedAt != null}"
                       th:text="${T(com.BlogApplication.Blog.util.TimeFormatter).relative(post.updatedAt)}"
                       th:title="${T(com.BlogApplication.Blog.util.TimeFormatter).absolute(post.updatedAt)}"></span>
+                <span class="dot"></span>
+                <span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(viewCount)} + ' ' + (${viewCount} == 1 ? 'view' : 'views')"></span>
+                <span class="dot"></span>
+                <span class="post-reactions">
+                    <svg class="icon" aria-hidden="true"><use href="#i-thumbs-up"/></svg><span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.likeCount : 0)}">0</span>
+                    <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg><span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.dislikeCount : 0)}">0</span>
+                </span>
             </div>
             <p class="post-excerpt" th:text="${post.excerpt}">Post content excerpt...</p>
             <div class="post-tags">

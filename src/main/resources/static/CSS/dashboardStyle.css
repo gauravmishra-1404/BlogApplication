@@ -75,6 +75,21 @@
     background: var(--color-border);
 }
 
+.post-reactions {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.post-reactions .icon {
+    width: 13px;
+    height: 13px;
+}
+
+.post-reactions .icon + span {
+    margin-right: 8px;
+}
+
 .post-excerpt {
     font-size: var(--text-base);
     color: var(--color-text-muted);
