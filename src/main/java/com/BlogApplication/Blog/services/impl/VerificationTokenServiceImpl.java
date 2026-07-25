@@ -15,7 +15,7 @@ import java.util.UUID;
 @Service
 public class VerificationTokenServiceImpl implements VerificationTokenService {
 
-    private static final long VALIDITY_MINUTES = 30;
+    private static final long VALIDITY_MINUTES = 5;
 
     @Autowired
     private VerificationTokenRepo verificationTokenRepo;

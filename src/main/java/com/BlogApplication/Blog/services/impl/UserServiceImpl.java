@@ -83,12 +83,28 @@ public class UserServiceImpl implements UserService {
         // both at the uniqueness check here and in UserDetailsServiceImpl's lookup.
         String normalizedEmail = userDto.getEmail().trim().toLowerCase();
 
-        if (userRepo.findByEmail(normalizedEmail).isPresent()) {
-            throw new DuplicateEmailException(normalizedEmail);
-        }
-
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         String encryptedPassword = encoder.encode(userDto.getPassword());
+
+        var existing = userRepo.findByEmail(normalizedEmail);
+        if (existing.isPresent()) {
+            User existingUser = existing.get();
+            if (existingUser.isEmailVerified()) {
+                // A real duplicate - someone already owns and uses this verified account.
+                throw new DuplicateEmailException(normalizedEmail);
+            }
+            // Never verified (link expired, email lost to a spam filter, network hiccup, etc.) -
+            // treat re-registering as a retry: refresh their details from this submission and
+            // send a fresh token, rather than trapping them behind "already registered" with no
+            // way to recover an email they never got in the first place.
+            existingUser.setName(userDto.getName());
+            existingUser.setPassword(encryptedPassword);
+            userRepo.save(existingUser);
+
+            String token = verificationTokenService.createToken(existingUser, TokenPurpose.VERIFY_EMAIL);
+            emailService.sendVerificationEmail(existingUser, token);
+            return;
+        }
 
         User user = new User();
         user.setName(userDto.getName());

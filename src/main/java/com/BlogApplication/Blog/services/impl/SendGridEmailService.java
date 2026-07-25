@@ -62,13 +62,13 @@ public class SendGridEmailService implements EmailService {
                         + "</strong> belongs to you before you start publishing.",
                 "Verify email address",
                 link,
-                "This link expires in 30 minutes. If you didn't create this account, you can ignore this email.",
+                "This link expires in 5 minutes. If you didn't create this account, you can ignore this email.",
                 baseUrl + "/images/brand-mark.png"
         );
         String plainText = "Hi " + user.getName() + ",\n\n"
                 + "Click the link below to verify your email and activate your account:\n"
                 + link + "\n\n"
-                + "This link expires in 30 minutes. If you didn't create this account, ignore this email.";
+                + "This link expires in 5 minutes. If you didn't create this account, ignore this email.";
 
         send(user.getEmail(), "Confirm your Bodh Sea account", plainText, html);
     }
@@ -85,13 +85,13 @@ public class SendGridEmailService implements EmailService {
                         + "</strong>. Choose a new one below.",
                 "Choose new password",
                 link,
-                "This link expires in 30 minutes. If you didn't request this, you can safely ignore this email - your password won't change.",
+                "This link expires in 5 minutes. If you didn't request this, you can safely ignore this email - your password won't change.",
                 baseUrl + "/images/brand-mark.png"
         );
         String plainText = "Hi " + user.getName() + ",\n\n"
                 + "Click the link below to choose a new password:\n"
                 + link + "\n\n"
-                + "This link expires in 30 minutes. If you didn't request this, you can ignore this email.";
+                + "This link expires in 5 minutes. If you didn't request this, you can ignore this email.";
 
         send(user.getEmail(), "Reset your Bodh Sea password", plainText, html);
     }
