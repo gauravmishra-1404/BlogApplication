@@ -19,6 +19,29 @@ body {
     justify-content: center;
     padding: 40px 20px;
     background: linear-gradient(180deg, #0f2a5c 0%, #14428c 38%, #2f66d1 72%, #5b8def 100%);
+    transition: background 0.4s ease;
+}
+
+/* Dark mode - same hero (bubbles, waves, brand mark all untouched), deepened toward
+   midnight to match the rest of the app rather than left as the bright daytime gradient. */
+:root[data-theme="dark"] .ocean {
+    background: linear-gradient(180deg, #050914 0%, #0b1830 38%, #142544 72%, #1c3358 100%);
+}
+
+:root[data-theme="dark"] .auth-card {
+    background: rgba(10, 16, 28, 0.45);
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
+:root[data-theme="dark"] .auth-field input {
+    background: rgba(20, 27, 43, 0.85);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: #e7ecf7;
+}
+
+:root[data-theme="dark"] .auth-submit {
+    background: linear-gradient(135deg, #4d7ef0 0%, #8a6ef5 100%);
+    color: #ffffff;
 }
 
 /* Rising bubbles */
@@ -278,4 +301,14 @@ body {
     font-weight: 600;
     text-decoration: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* This family of pages (login/register/forgot-password/reset-password/resend-verification/
+   verify-email) doesn't include the shared header, so the toggle floats top-right instead of
+   sitting inline in a nav bar. .theme-toggle's base look comes from common.css. */
+.auth-theme-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 3;
 }

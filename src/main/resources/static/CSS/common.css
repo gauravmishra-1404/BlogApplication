@@ -46,6 +46,62 @@
     --text-xl: 1.375rem;   /* 22px — card/section titles */
     --text-2xl: 1.75rem;   /* 28px — page headings */
     --text-3xl: 2.25rem;   /* 36px — hero/brand text */
+
+    --header-glass: rgba(255, 255, 255, 0.14);
+    --header-glass-border: rgba(255, 255, 255, 0.25);
+    --color-surface-translucent: rgba(255, 255, 255, 0.92);
+    --ocean-leaves-bg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='600'%3E%3Cg fill='white'%3E%3Cpath fill-opacity='0.34' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(30,550) rotate(15) scale(0.9)'/%3E%3Cpath fill-opacity='0.28' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(90,500) rotate(-40) scale(1.15)'/%3E%3Cpath fill-opacity='0.32' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(200,470) rotate(60) scale(0.7)'/%3E%3Cpath fill-opacity='0.24' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(150,400) rotate(10) scale(1.0)'/%3E%3Cpath fill-opacity='0.32' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(260,350) rotate(-25) scale(0.85)'/%3E%3Cpath fill-opacity='0.3' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(50,300) rotate(45) scale(0.95)'/%3E%3Cpath fill-opacity='0.26' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(120,230) rotate(-15) scale(1.2)'/%3E%3Cpath fill-opacity='0.32' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(230,180) rotate(30) scale(0.75)'/%3E%3Cpath fill-opacity='0.28' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(40,110) rotate(-50) scale(1.05)'/%3E%3Cpath fill-opacity='0.24' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(180,50) rotate(20) scale(0.9)'/%3E%3Cpath fill-opacity='0.32' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(270,10) rotate(-10) scale(0.95)'/%3E%3C/g%3E%3C/svg%3E");
+    --ocean-gradient: linear-gradient(180deg, #1a4d8f 0%, #2f66d1 45%, #5b8def 85%, #7ba8ef 100%);
+}
+
+/* Dark mode - same token names, redefined values, so every stylesheet that already reads
+   var(--color-*) picks this up automatically with no other changes needed. Toggled by
+   js/theme.js setting/removing data-theme="dark" on <html>, persisted in localStorage.
+   Accents are brightened slightly (not just inverted) so they don't look muddy on dark
+   surfaces - a standard dark-mode adjustment. */
+:root[data-theme="dark"] {
+    --color-primary: #6d93ff;
+    --color-primary-hover: #8aa9ff;
+    --color-danger: #f87171;
+    --color-danger-hover: #fca5a5;
+    --color-success: #34d399;
+    --color-success-hover: #6ee7b7;
+    --color-warning: #fbbf24;
+    --color-warning-hover: #fcd34d;
+
+    --gradient-primary: linear-gradient(135deg, #4d7ef0 0%, #8a6ef5 100%);
+    --gradient-success: linear-gradient(135deg, #2fbf8a 0%, #059669 100%);
+    --gradient-warning: linear-gradient(135deg, #f5b43e 0%, #c2760a 100%);
+    --gradient-danger: linear-gradient(135deg, #f0645f 0%, #b91c1c 100%);
+
+    --shadow-primary: 0 4px 14px rgba(109, 147, 255, 0.35);
+    --shadow-primary-hover: 0 6px 20px rgba(109, 147, 255, 0.45);
+    --shadow-success: 0 4px 14px rgba(52, 211, 153, 0.3);
+    --shadow-success-hover: 0 6px 20px rgba(52, 211, 153, 0.4);
+    --shadow-warning: 0 4px 14px rgba(251, 191, 36, 0.3);
+    --shadow-warning-hover: 0 6px 20px rgba(251, 191, 36, 0.4);
+    --shadow-danger: 0 4px 14px rgba(248, 113, 113, 0.3);
+    --shadow-danger-hover: 0 6px 20px rgba(248, 113, 113, 0.4);
+
+    --color-bg: #0b101b;
+    --color-surface: #161d2c;
+    --color-surface-tint: #1d2740;
+    --color-border: #2a3550;
+    --color-text: #e7ecf7;
+    --color-text-muted: #92a0bd;
+
+    --shadow-sm: 0 4px 10px rgba(0, 0, 0, 0.35);
+
+    --header-glass: rgba(255, 255, 255, 0.05);
+    --header-glass-border: rgba(255, 255, 255, 0.1);
+    --color-surface-translucent: rgba(22, 29, 44, 0.92);
+
+    /* Same leaves-over-ocean motif, deepened to a midnight palette rather than inverted or
+       blacked out - "same scene, nighttime" instead of a different design. Leaf opacity is
+       halved via a dedicated dark SVG (fill-opacity can't be scaled with a CSS variable) so
+       they read as a quiet ambient detail instead of competing with the darker cards. */
+    --ocean-leaves-bg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='600'%3E%3Cg fill='white'%3E%3Cpath fill-opacity='0.17' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(30,550) rotate(15) scale(0.9)'/%3E%3Cpath fill-opacity='0.14' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(90,500) rotate(-40) scale(1.15)'/%3E%3Cpath fill-opacity='0.16' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(200,470) rotate(60) scale(0.7)'/%3E%3Cpath fill-opacity='0.12' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(150,400) rotate(10) scale(1.0)'/%3E%3Cpath fill-opacity='0.16' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(260,350) rotate(-25) scale(0.85)'/%3E%3Cpath fill-opacity='0.15' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(50,300) rotate(45) scale(0.95)'/%3E%3Cpath fill-opacity='0.13' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(120,230) rotate(-15) scale(1.2)'/%3E%3Cpath fill-opacity='0.16' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(230,180) rotate(30) scale(0.75)'/%3E%3Cpath fill-opacity='0.14' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(40,110) rotate(-50) scale(1.05)'/%3E%3Cpath fill-opacity='0.12' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(180,50) rotate(20) scale(0.9)'/%3E%3Cpath fill-opacity='0.16' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(270,10) rotate(-10) scale(0.95)'/%3E%3C/g%3E%3C/svg%3E");
+    --ocean-gradient: linear-gradient(180deg, #050914 0%, #0b1830 45%, #142544 85%, #1c3358 100%);
 }
 
 * {
@@ -61,9 +117,7 @@ body {
     font-family: var(--font-family);
     margin: 0;
     color: #ffffff;
-    background-image:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='600'%3E%3Cg fill='white'%3E%3Cpath fill-opacity='0.34' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(30,550) rotate(15) scale(0.9)'/%3E%3Cpath fill-opacity='0.28' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(90,500) rotate(-40) scale(1.15)'/%3E%3Cpath fill-opacity='0.32' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(200,470) rotate(60) scale(0.7)'/%3E%3Cpath fill-opacity='0.24' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(150,400) rotate(10) scale(1.0)'/%3E%3Cpath fill-opacity='0.32' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(260,350) rotate(-25) scale(0.85)'/%3E%3Cpath fill-opacity='0.3' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(50,300) rotate(45) scale(0.95)'/%3E%3Cpath fill-opacity='0.26' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(120,230) rotate(-15) scale(1.2)'/%3E%3Cpath fill-opacity='0.32' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(230,180) rotate(30) scale(0.75)'/%3E%3Cpath fill-opacity='0.28' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(40,110) rotate(-50) scale(1.05)'/%3E%3Cpath fill-opacity='0.24' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(180,50) rotate(20) scale(0.9)'/%3E%3Cpath fill-opacity='0.32' d='M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z' transform='translate(270,10) rotate(-10) scale(0.95)'/%3E%3C/g%3E%3C/svg%3E"),
-        linear-gradient(180deg, #1a4d8f 0%, #2f66d1 45%, #5b8def 85%, #7ba8ef 100%);
+    background-image: var(--ocean-leaves-bg), var(--ocean-gradient);
     background-repeat: repeat, no-repeat;
     background-position: 0 0, center top;
     background-size: 300px 600px, cover;
@@ -80,14 +134,17 @@ body {
    Frosted glass over the blue background - same padding/layout as before, only the fill changes. */
 .app-header .header-container {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     padding: 20px;
-    background: rgba(255, 255, 255, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: var(--header-glass);
+    border: 1px solid var(--header-glass-border);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-radius: var(--radius-md);
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .app-header .app-title {
@@ -96,6 +153,8 @@ body {
     gap: 10px;
     text-decoration: none;
     color: inherit;
+    flex: 0 0 auto;
+    white-space: nowrap;
 }
 
 .brand-mark {
@@ -119,8 +178,12 @@ body {
 
 .app-header nav {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     align-items: center;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    min-width: 0;
 }
 
 /* Icons: inherit currentColor from whatever button/link/text contains them */
@@ -135,6 +198,9 @@ body {
     position: relative;
     display: inline-flex;
     align-items: center;
+    flex: 1 1 160px;
+    min-width: 0;
+    max-width: 320px;
 }
 
 .search-wrap .search-icon {
@@ -145,10 +211,14 @@ body {
 }
 
 .search-input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     padding: 8px 10px 8px 30px;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     color: var(--color-text);
+    background: var(--color-surface);
 }
 
 /* Buttons: gradient fill + a soft glow in the same hue, small lift on hover.
@@ -209,4 +279,326 @@ body {
 
 .logout-button:hover {
     box-shadow: var(--shadow-danger-hover);
+}
+
+/* Dark mode toggle - lives in the header (fragments/nav.html) so it's on every page that
+   shares that header, for logged-in and logged-out visitors alike. Both icons are always in
+   the DOM; only one is shown at a time based on the current theme, so there's no layout
+   shift or icon swap flicker on click. */
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--header-glass-border);
+    border-radius: 50%;
+    background: var(--header-glass);
+    color: #ffffff;
+    cursor: pointer;
+    flex: 0 0 auto;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.theme-toggle .icon {
+    width: 18px;
+    height: 18px;
+}
+
+.theme-toggle .icon-moon {
+    display: none;
+}
+
+:root[data-theme="dark"] .theme-toggle .icon-sun {
+    display: none;
+}
+
+:root[data-theme="dark"] .theme-toggle .icon-moon {
+    display: block;
+}
+
+/* Share/download kebab menu (fragments/shareMenu.html) - shared by the dashboard post-row
+   and the post page's reaction bar, so it lives here in common.css rather than either
+   page-specific stylesheet. js/share.js drives all the open/close and copy behavior. */
+.options-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.options-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-family: inherit;
+    padding: 0;
+}
+
+.options-trigger:hover,
+.options-trigger[aria-expanded="true"] {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.options-trigger .icon {
+    width: 13px;
+    height: 13px;
+}
+
+.reaction-bar .options-trigger {
+    width: 34px;
+    height: 34px;
+}
+
+.reaction-bar .options-trigger .icon {
+    width: 16px;
+    height: 16px;
+}
+
+.share-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 30;
+    width: 260px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(61, 111, 242, 0.16);
+    padding: 6px;
+    text-align: left;
+}
+
+/* On a dense dashboard row, the excerpt/tags text runs almost the full card width, so a
+   floating panel opened anywhere on the row will sit right beside some of that text - it
+   isn't actually a rendering bug (the panel does correctly paint and receive clicks above
+   everything else), but it reads as messy. Dimming the rest of the card while the menu is
+   open - the same trick YouTube/Gmail use for their card kebab menus - makes the panel read
+   unambiguously as a floating layer instead of "overlapping" the row's own content.
+   Toggled by js/share.js on the closest .post-row when a kebab inside it opens/closes. */
+.post-row.menu-open {
+    z-index: 40;
+}
+
+.post-row.menu-open::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.72);
+    border-radius: inherit;
+    z-index: 25;
+    pointer-events: none;
+}
+
+.share-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 11px;
+    border: none;
+    background: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text);
+    text-align: left;
+    text-decoration: none;
+    box-sizing: border-box;
+}
+
+.share-option:hover {
+    background: var(--color-surface-tint);
+}
+
+/* Scoped to .share-panel (not just .share-option) so this always wins over the dashboard's
+   generic ".post-reactions .icon" rule (same specificity) regardless of stylesheet order -
+   the share menu should render identically on the dashboard row and the post page. */
+.share-panel .share-option .icon {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    color: var(--color-text-muted);
+}
+
+.share-option .chevron {
+    margin-left: auto;
+    width: 13px;
+    height: 13px;
+    transition: transform 0.2s ease;
+}
+
+.share-option[aria-expanded="true"] .chevron {
+    transform: rotate(90deg);
+}
+
+/* The share menu is built from <span>s rather than <div>s (see fragments/shareMenu.html for
+   why), so anything relying on block-level sizing/stacking needs an explicit display here -
+   a bare <span> defaults to inline, where "height" and "width" have no effect. */
+.share-divider {
+    display: block;
+    height: 1px;
+    background: var(--color-border);
+    margin: 4px 6px;
+}
+
+.accordion-body {
+    display: block;
+}
+
+.accordion-body[hidden] {
+    display: none;
+}
+
+.share-expanded {
+    display: block;
+    padding: 4px 8px 10px;
+}
+
+.platform-row {
+    display: flex;
+    gap: 8px;
+    margin: 6px 0 12px;
+}
+
+.platform-btn {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 10px 4px 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-surface);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+
+.platform-btn:hover {
+    border-color: var(--color-primary);
+    background: var(--color-surface-tint);
+    color: var(--color-primary);
+}
+
+.platform-btn .icon-circle {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-surface-tint);
+}
+
+.platform-btn .icon-circle .icon {
+    width: 16px;
+    height: 16px;
+    color: inherit;
+}
+
+.platform-btn.whatsapp .icon-circle {
+    background: #e7f9ee;
+    color: #25d366;
+}
+
+.platform-btn.x .icon-circle {
+    background: #eceef0;
+    color: #14181c;
+}
+
+.platform-btn.linkedin .icon-circle {
+    background: #e7f1fb;
+    color: #0a66c2;
+}
+
+.link-field {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    overflow: hidden;
+    background: var(--color-bg);
+}
+
+.link-field input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    padding: 9px 12px;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    font-family: inherit;
+    outline: none;
+    text-overflow: ellipsis;
+}
+
+.copy-btn {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: none;
+    padding: 0 14px;
+    background: var(--gradient-primary);
+    color: #fff;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.copy-btn.copied {
+    background: var(--gradient-success);
+}
+
+/* Shared responsive rules - the header/nav is used on every page via fragments/nav.html,
+   so fixing it here covers the dashboard, post page, and every other page that includes it. */
+@media (max-width: 600px) {
+    .app-header {
+        padding: 12px;
+    }
+
+    .app-header .header-container {
+        padding: 14px;
+        gap: 10px;
+    }
+
+    .app-header .app-title h1 {
+        font-size: var(--text-lg);
+    }
+
+    .app-header nav {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .search-wrap {
+        flex: 1 1 100%;
+        max-width: none;
+        order: 3;
+    }
+
+    .login-button,
+    .create-post-button,
+    .logout-button {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
 }

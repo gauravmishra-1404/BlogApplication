@@ -11,15 +11,18 @@
     text-decoration: none;
     color: inherit;
     padding: 22px 24px;
-    background: rgba(255, 255, 255, 0.92);
+    background: var(--color-surface-translucent);
     border-radius: 12px;
     margin-bottom: 14px;
     transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
     box-shadow: var(--shadow-sm);
     position: relative;
-    overflow: hidden;
 }
 
+/* No "overflow: hidden" on .post-row itself - the share/download dropdown is an absolutely
+   positioned descendant, and overflow:hidden on an ancestor clips it regardless of z-index.
+   The accent bar below gets its own matching border-radius instead, so it doesn't need the
+   row to clip its corners. */
 .post-row::before {
     content: "";
     position: absolute;
@@ -27,6 +30,7 @@
     top: 0;
     bottom: 0;
     width: 4px;
+    border-radius: 12px 0 0 12px;
     background: var(--gradient-primary);
     transform: scaleY(0);
     transform-origin: top;
@@ -137,11 +141,12 @@
     justify-content: space-between;
     align-items: center;
     padding: 16px 20px;
-    background: rgba(255, 255, 255, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: var(--header-glass);
+    border: 1px solid var(--header-glass-border);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-radius: 8px;
+    transition: background 0.3s ease, border-color 0.3s ease;
     gap: 10px; /* Add some gap between items */
 }
 

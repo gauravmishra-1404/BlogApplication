@@ -4,9 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bodh Sea</title>
+    <script>(function(){try{var t=JSON.parse(localStorage.getItem('theme'));if(t&&t.v==='dark'&&t.exp>Date.now()){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
     <link rel="stylesheet" href="/CSS/common.css">
     <link rel="stylesheet" href="/CSS/dashboardStyle.css">
     <script src="/js/filterDropdown.js" defer></script>
+    <script src="/js/share.js" defer></script>
+    <script src="/js/theme.js" defer></script>
 </head>
 <body>
 <div th:replace="~{fragments/nav :: nav}"></div>
@@ -60,6 +63,7 @@
                 <span class="post-reactions">
                     <svg class="icon" aria-hidden="true"><use href="#i-thumbs-up"/></svg><span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.likeCount : 0)}">0</span>
                     <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg><span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.dislikeCount : 0)}">0</span>
+                    <div th:replace="~{fragments/shareMenu :: shareMenu(${post.id}, @{/post/viewPost(id=${post.id})}, ${post.title})}"></div>
                 </span>
             </div>
             <p class="post-excerpt" th:text="${post.excerpt}">Post content excerpt...</p>

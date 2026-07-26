@@ -8,6 +8,7 @@ import com.BlogApplication.Blog.repositories.CommentRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.CommentReactionService;
 import com.BlogApplication.Blog.services.CommentService;
+import com.BlogApplication.Blog.services.PostPdfService;
 import com.BlogApplication.Blog.services.PostReactionService;
 import com.BlogApplication.Blog.services.PostService;
 import com.BlogApplication.Blog.services.PostViewService;
@@ -17,6 +18,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -59,6 +64,9 @@ public class PostController {
 
     @Autowired
     private CommentReactionService commentReactionService;
+
+    @Autowired
+    private PostPdfService postPdfService;
 
     @GetMapping("/posts")
     public String getAllPosts(@RequestParam(defaultValue = "0") int page,
@@ -132,6 +140,27 @@ public class PostController {
         model.addAttribute("commentReactions", commentReactionService.getSummaries(commentIds, userEmail));
 
         return "viewPostByID";
+    }
+
+    // Same visibility rule as viewing the post (permitAll, missing/soft-deleted -> 404) since
+    // downloading is just another way of reading a post someone can already see on-screen.
+    @GetMapping("/post/download")
+    public ResponseEntity<byte[]> downloadPost(@RequestParam("id") int id) {
+        PostDto postDtoById = postService.getPostById(id);
+        if (postDtoById == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        byte[] pdf = postPdfService.renderToPdf(postDtoById);
+        String filename = (postDtoById.getTitle() != null ? postDtoById.getTitle() : "post")
+                .replaceAll("[^a-zA-Z0-9 _-]", "")
+                .trim()
+                .replace(' ', '-') + ".pdf";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(filename).build().toString())
+                .body(pdf);
     }
 
     //editPostByID(){}

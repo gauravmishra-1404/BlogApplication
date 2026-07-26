@@ -45,6 +45,7 @@ textarea {
     border-radius: 4px;
     font-size: var(--text-base);
     color: var(--color-text);
+    background-color: var(--color-surface);
     font-family: inherit;
 }
 

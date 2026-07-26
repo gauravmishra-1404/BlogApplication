@@ -8,21 +8,31 @@
          th:text="${comment.user != null ? #strings.toUpperCase(#strings.substring(comment.user.name, 0, 1)) : '?'}">A</div>
 
     <div class="comment-body">
-        <div class="comment-bubble">
-            <div class="comment-head">
-                <span class="comment-author" th:text="${comment.user != null ? comment.user.name : 'Deleted user'}">Comment Author</span>
-                <span class="comment-meta" th:if="${comment.createdAt != null}"
-                      th:text="${T(com.BlogApplication.Blog.util.TimeFormatter).relative(comment.createdAt)}"
-                      th:title="${T(com.BlogApplication.Blog.util.TimeFormatter).absolute(comment.createdAt)}">date</span>
-                <span class="comment-edited" th:if="${comment.edited}">(edited)</span>
-            </div>
-            <p th:text="${comment.content}">Comment Content</p>
+        <div class="comment-head">
+            <span class="comment-author" th:text="${comment.user != null ? comment.user.name : 'Deleted user'}">Comment Author</span>
+            <span class="comment-meta" th:if="${comment.createdAt != null}"
+                  th:text="${T(com.BlogApplication.Blog.util.TimeFormatter).relative(comment.createdAt)}"
+                  th:title="${T(com.BlogApplication.Blog.util.TimeFormatter).absolute(comment.createdAt)}">date</span>
+            <span class="comment-edited" th:if="${comment.edited}">(edited)</span>
         </div>
+        <p class="comment-text" th:text="${comment.content}">Comment Content</p>
 
         <div class="comment-actions">
+            <div class="reaction-bar" data-target-type="comment" th:data-target-id="${comment.id}"
+                 th:data-logged-in="${#authorization.expression('isAuthenticated()')}">
+                <button type="button" class="reaction-btn" data-reaction="LIKE"
+                        th:classappend="${reaction != null and reaction.userReaction == 'LIKE'} ? ' active' : ''">
+                    <svg class="icon" aria-hidden="true"><use href="#i-thumbs-up"/></svg>
+                    <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.likeCount : 0)}">0</span>
+                </button>
+                <button type="button" class="reaction-btn" data-reaction="DISLIKE"
+                        th:classappend="${reaction != null and reaction.userReaction == 'DISLIKE'} ? ' active' : ''">
+                    <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg>
+                    <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.dislikeCount : 0)}">0</span>
+                </button>
+            </div>
             <button type="button" class="action-reply" sec:authorize="isAuthenticated()"
-                    th:attr="data-toggle-reply=${'reply-box-' + comment.id}">
-                <svg class="icon" aria-hidden="true"><use href="#i-reply"/></svg>Reply</button>
+                    th:attr="data-toggle-reply=${'reply-box-' + comment.id}">Reply</button>
             <a th:href="@{/posts/comments/edit(id=${comment.id})}" class="action-edit"
                sec:authorize="isAuthenticated()"
                th:if="${#authorization.expression('hasRole(''ADMIN'')')
@@ -38,20 +48,6 @@
                 <button type="submit" class="action-delete">
                     <svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>Delete</button>
             </form>
-
-            <div class="reaction-bar" data-target-type="comment" th:data-target-id="${comment.id}"
-                 th:data-logged-in="${#authorization.expression('isAuthenticated()')}">
-                <button type="button" class="reaction-btn" data-reaction="LIKE"
-                        th:classappend="${reaction != null and reaction.userReaction == 'LIKE'} ? ' active' : ''">
-                    <svg class="icon" aria-hidden="true"><use href="#i-thumbs-up"/></svg>
-                    <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.likeCount : 0)}">0</span>
-                </button>
-                <button type="button" class="reaction-btn" data-reaction="DISLIKE"
-                        th:classappend="${reaction != null and reaction.userReaction == 'DISLIKE'} ? ' active' : ''">
-                    <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg>
-                    <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.dislikeCount : 0)}">0</span>
-                </button>
-            </div>
         </div>
 
         <div class="reply-box" th:id="${'reply-box-' + comment.id}" sec:authorize="isAuthenticated()">
@@ -65,7 +61,12 @@
         </div>
 
         <div class="nested-comments" th:if="${!comment.visibleReplies.isEmpty()}">
-            <div class="replies">
+            <button type="button" class="show-replies-toggle" aria-expanded="false"
+                    th:attr="data-toggle-replies=${'replies-' + comment.id}">
+                <svg class="icon chevron" aria-hidden="true"><use href="#i-chevron-down"/></svg>
+                <span th:text="${comment.visibleReplies.size()} + (${comment.visibleReplies.size()} == 1 ? ' reply' : ' replies')">N replies</span>
+            </button>
+            <div class="replies" th:id="${'replies-' + comment.id}" hidden>
                 <div th:each="reply : ${comment.visibleReplies}">
                     <div th:replace="~{fragments/commentNode :: commentNode(${reply}, ${reactions})}"></div>
                 </div>

@@ -2,9 +2,12 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bodh Sea - Edit Post</title>
+    <script>(function(){try{var t=JSON.parse(localStorage.getItem('theme'));if(t&&t.v==='dark'&&t.exp>Date.now()){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
     <link rel="stylesheet" href="/CSS/common.css">
     <link rel="stylesheet" th:href="@{/CSS/newPostStyle.css}">
+    <script src="/js/theme.js" defer></script>
 </head>
 <body>
 <div th:replace="~{fragments/nav :: nav}"></div>

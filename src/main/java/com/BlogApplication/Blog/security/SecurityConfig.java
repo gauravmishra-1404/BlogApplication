@@ -81,6 +81,7 @@ public class SecurityConfig {
                                 "/js/**",
                                 "/images/**",
                                 "/post/viewPost",
+                                "/post/download",
                                 "/posts",
                                 "/posts/filter-author",
                                 "/posts/filter-tag",
@@ -111,7 +112,7 @@ public class SecurityConfig {
                         .logoutSuccessUrl("/posts")
                         .invalidateHttpSession(true)
                         .clearAuthentication(true)
-                        .deleteCookies("JSESSIONID")
+                        .deleteCookies("JSESSIONID", "remember-me")
                         .permitAll()
                 )
                 // Up to 2 active sessions per account (e.g. phone + laptop). A 3rd concurrent
@@ -121,6 +122,16 @@ public class SecurityConfig {
                         .maximumSessions(2)
                         .maxSessionsPreventsLogin(false)
                         .sessionRegistry(sessionRegistry())
+                )
+                // Every login is remembered for 30 days via a signed cookie (hash-based -
+                // no extra DB table, since this Postgres instance is shared with another app
+                // and new tables there are avoided unless truly needed). alwaysRemember(true)
+                // means this applies automatically - no "remember me" checkbox to opt into.
+                .rememberMe(remember -> remember
+                        .key("bodhSeaRememberMeKey")
+                        .userDetailsService(getUserDetailService())
+                        .tokenValiditySeconds(60 * 60 * 24 * 30)
+                        .alwaysRemember(true)
                 )
         ;
 
