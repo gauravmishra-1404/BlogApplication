@@ -83,6 +83,24 @@ public class User {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    // Bumped automatically on every save via @PreUpdate below - not something a service method
+    // has to remember to set (that's exactly the class of gap the username backfill and IDOR
+    // bugs both were: a manual step nobody remembered for every code path). Nullable so existing
+    // rows in the shared table need no backfill; new rows get it from @PrePersist immediately.
+    // DB-level only for now - no UI surfaces this yet.
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    private void onCreate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    private void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
     @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST,CascadeType.MERGE}, fetch = FetchType.LAZY)
     private List<Post> posts;
@@ -229,5 +247,13 @@ public class User {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

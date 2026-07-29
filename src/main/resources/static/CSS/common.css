@@ -764,7 +764,12 @@ svg.avatar-icon {
 
     .app-header nav {
         width: 100%;
-        justify-content: flex-start;
+        /* space-between, not flex-start: search-wrap drops to its own full-width row (order: 3
+           below), leaving create-post-button and .nav-profile sharing this row. space-between
+           pins .nav-profile to nav's own right edge - which, since nav is full-width, IS the
+           screen's right edge - so nav-profile-dropdown's "right: 0" anchors correctly instead
+           of shifting left with whatever create-post-button's width happens to be. */
+        justify-content: space-between;
     }
 
     .search-wrap {
@@ -778,5 +783,11 @@ svg.avatar-icon {
     .logout-button {
         flex: 1 1 auto;
         justify-content: center;
+    }
+
+    /* Safety net independent of the anchor fix above: never let the dropdown's own width
+       exceed the viewport on very narrow phones, regardless of where the trigger sits. */
+    .nav-profile-dropdown {
+        max-width: calc(100vw - 24px);
     }
 }
