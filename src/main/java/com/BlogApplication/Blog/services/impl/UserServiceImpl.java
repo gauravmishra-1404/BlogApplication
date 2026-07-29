@@ -151,6 +151,15 @@ public class UserServiceImpl implements UserService {
         emailService.sendVerificationEmail(user, token);
     }
 
+    @Override
+    public User ensureUsername(User user) {
+        if (user.getUsername() == null) {
+            user.setUsername(generateUniqueUsername(user.getName(), user.getEmail()));
+            userRepo.save(user);
+        }
+        return user;
+    }
+
     // Derives a URL-safe handle from the display name (falling back to the email's local part
     // if the name is blank), then de-duplicates with a numeric suffix - "alice", "alice2",
     // "alice3"... - since /profile/{username} needs it unique the same way email already is.

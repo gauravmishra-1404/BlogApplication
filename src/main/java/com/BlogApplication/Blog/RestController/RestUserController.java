@@ -22,7 +22,6 @@ public class RestUserController {
 
     @PostMapping("/register")
     public ResponseEntity<String> createUser(@RequestBody UserDto userDto) {
-        System.out.println("User Password: " + userDto.getPassword());
         // This is a JSON endpoint (@RequestBody) - no multipart support here, so no avatar.
         // Upload one later via the profile page once that exists as an API too.
         userService.createUser(userDto, null);

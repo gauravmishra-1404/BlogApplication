@@ -4,6 +4,7 @@ import com.BlogApplication.Blog.models.Comment;
 import com.BlogApplication.Blog.models.Post;
 import com.BlogApplication.Blog.models.User;
 import com.BlogApplication.Blog.payloads.PostDto;
+import com.BlogApplication.Blog.util.PostAuthorization;
 import com.BlogApplication.Blog.repositories.CommentRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.CommentReactionService;
@@ -161,8 +162,17 @@ public class PostController {
 
     //editPostByID(){}
     @GetMapping("/posts/edit")
-    public String editPostByID(@RequestParam("id") int id, Model model){
+    public String editPostByID(@RequestParam("id") int id, Model model, Authentication authentication){
         PostDto postDto = postService.getPostById(id);
+        if (postDto == null) {
+            return "redirect:/posts";
+        }
+        // Only the post's own author (or an ADMIN) may edit it - the UI already hides this link
+        // for everyone else, but that's cosmetic; a direct request to this URL must be rejected
+        // the same way isAuthorizedForComment already rejects a direct request to edit a comment.
+        if (!PostAuthorization.isOwnerOrAdmin(authentication, postDto.getUser())) {
+            return "redirect:/post/viewPost?id=" + id;
+        }
         postDto.setId(id);
         model.addAttribute("post", postDto);
         return  "editByPostID";
@@ -170,14 +180,30 @@ public class PostController {
 
     //rePublishByID(){}
     @PostMapping("/post/republish")
-    public String rePublishPostByID(@ModelAttribute("postDto") PostDto postDto){
+    public String rePublishPostByID(@ModelAttribute("postDto") PostDto postDto, Authentication authentication){
+        // Re-check ownership against the post as it exists in the DB right now - never trust the
+        // submitted form for who owns the post, since that's exactly what an attacker controls.
+        PostDto existing = postService.getPostById(postDto.getId());
+        if (existing == null) {
+            return "redirect:/posts";
+        }
+        if (!PostAuthorization.isOwnerOrAdmin(authentication, existing.getUser())) {
+            return "redirect:/post/viewPost?id=" + postDto.getId();
+        }
         postService.updatePostByID(postDto, postDto.getId());
         return "redirect:/posts";
     }
 
     //deletePostByID
     @PostMapping("/posts/delete")
-    public String deletePost(@RequestParam("id") int id, RedirectAttributes redirectAttributes){
+    public String deletePost(@RequestParam("id") int id, RedirectAttributes redirectAttributes, Authentication authentication){
+        PostDto existing = postService.getPostById(id);
+        if (existing == null) {
+            return "redirect:/posts";
+        }
+        if (!PostAuthorization.isOwnerOrAdmin(authentication, existing.getUser())) {
+            return "redirect:/post/viewPost?id=" + id;
+        }
         postService.isDeleted(id);
         redirectAttributes.addFlashAttribute("message", "Post deleted successfully");
         return  "redirect:/posts";

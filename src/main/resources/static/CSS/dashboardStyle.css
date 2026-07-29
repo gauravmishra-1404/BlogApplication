@@ -65,10 +65,18 @@
     margin-bottom: 10px;
 }
 
-.post-author-link {
+/* Shared byline layout - .post-author-link is the clickable case (post.user has a username),
+   .post-author is the fallback (no username to link to yet, e.g. before GlobalModelAttributes'
+   backfill runs) - profileLinks.js listens for .post-author-link specifically, so the fallback
+   must stay a separate class rather than reuse it with no data-profile-url to navigate to. */
+.post-author-link,
+.post-author {
     display: inline-flex;
     align-items: center;
     gap: 8px;
+}
+
+.post-author-link {
     cursor: pointer;
 }
 

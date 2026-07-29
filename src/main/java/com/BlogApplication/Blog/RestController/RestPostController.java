@@ -11,6 +11,7 @@ import com.BlogApplication.Blog.services.PostService;
 import com.BlogApplication.Blog.services.PostViewService;
 import com.BlogApplication.Blog.services.TagService;
 import com.BlogApplication.Blog.services.VisitorIdentityService;
+import com.BlogApplication.Blog.util.PostAuthorization;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -93,13 +94,27 @@ public class RestPostController {
     }
 
     @PutMapping("/posts/{id}/edit")
-    public ResponseEntity<Post> editPostByID(@PathVariable int id, @RequestBody PostDto postDto) {
+    public ResponseEntity<Post> editPostByID(@PathVariable int id, @RequestBody PostDto postDto, Authentication authentication) {
+        PostDto existing = postService.getPostById(id);
+        if (existing == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+        if (!PostAuthorization.isOwnerOrAdmin(authentication, existing.getUser())) {
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
         postService.updatePostByID(postDto, id);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @DeleteMapping("/posts/{id}/delete")
-    public ResponseEntity<Void> deletePost(@PathVariable int id) {
+    public ResponseEntity<Void> deletePost(@PathVariable int id, Authentication authentication) {
+        PostDto existing = postService.getPostById(id);
+        if (existing == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+        if (!PostAuthorization.isOwnerOrAdmin(authentication, existing.getUser())) {
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
         postService.isDeleted(id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }

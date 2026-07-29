@@ -61,7 +61,7 @@
                     </span>
                     <span th:text="${post.author}">Author</span>
                 </span>
-                <span th:unless="${post.user != null and post.user.username != null}">
+                <span class="post-author" th:unless="${post.user != null and post.user.username != null}">
                     <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(post.user)}">
                         <div th:replace="~{fragments/avatarContent :: content(${post.user}, ${post.author})}"></div>
                     </span>
