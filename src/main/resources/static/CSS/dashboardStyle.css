@@ -65,6 +65,21 @@
     margin-bottom: 10px;
 }
 
+.post-author-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.post-author-link:hover .avatar {
+    box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.post-author-link:hover span:not(.avatar) {
+    text-decoration: underline;
+}
+
 .post-meta .avatar {
     width: 20px;
     height: 20px;

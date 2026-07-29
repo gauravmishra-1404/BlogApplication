@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bodh Sea - View Post</title>
-    <script>(function(){try{var t=JSON.parse(localStorage.getItem('theme'));if(t&&t.v==='dark'&&t.exp>Date.now()){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
+    <script src="/js/themeInit.js"></script>
     <link rel="stylesheet" href="/CSS/common.css">
     <link rel="stylesheet" href="/CSS/viewPostByID.css">
     <script src="/js/commentThread.js" defer></script>
@@ -12,6 +12,7 @@
     <script src="/js/reactions.js" defer></script>
     <script src="/js/share.js" defer></script>
     <script src="/js/theme.js" defer></script>
+    <script src="/js/navProfileMenu.js" defer></script>
     <script src="/js/postContent.js" defer></script>
 </head>
 <body>
@@ -53,9 +54,17 @@
     </div>
 
     <div class="post-footer-bar">
-        <div class="post-author-chip">
-            <span class="avatar"
-                  th:text="${post.author != null and !#strings.isEmpty(post.author)} ? ${#strings.toUpperCase(#strings.substring(post.author, 0, 1))} : '?'">A</span>
+        <a class="post-author-chip" th:if="${post.user != null and post.user.username != null}"
+           th:href="@{/profile/{u}(u=${post.user.username})}">
+            <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(post.user)}">
+                <div th:replace="~{fragments/avatarContent :: content(${post.user}, ${post.author})}"></div>
+            </span>
+            <span th:text="${post.author != null ? post.author : 'Unknown'}">Author Name</span>
+        </a>
+        <div class="post-author-chip" th:unless="${post.user != null and post.user.username != null}">
+            <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(post.user)}">
+                <div th:replace="~{fragments/avatarContent :: content(${post.user}, ${post.author})}"></div>
+            </span>
             <span th:text="${post.author != null ? post.author : 'Unknown'}">Author Name</span>
         </div>
 
@@ -80,7 +89,9 @@
 <div class="comment-section">
     <h3>Add a Comment</h3>
     <div class="comment-composer" sec:authorize="isAuthenticated()">
-        <div class="avatar" th:text="${currentUserName != null ? #strings.toUpperCase(#strings.substring(currentUserName, 0, 1)) : '?'}">T</div>
+        <div class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(currentUser)}">
+            <div th:replace="~{fragments/avatarContent :: content(${currentUser}, ${currentUser != null ? currentUser.name : null})}"></div>
+        </div>
         <div class="composer-body">
             <form th:action="@{/posts/{id}/comments/add(id=${post.id})}" th:method="POST">
                 <textarea name="content" class="composer-textarea" placeholder="Write your comment here..." required rows="1"></textarea>

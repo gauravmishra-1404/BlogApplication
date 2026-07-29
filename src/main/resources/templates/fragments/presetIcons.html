@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Avatar preset + cover-scene icon defs, split out from fragments/icons.html so the register
+     page (which needs only these 16, not the ~20 site-wide nav/reaction/share icons) doesn't
+     have to pull in the whole sprite. That bloat once pushed a response past Tomcat's output
+     buffer before the form's CSRF token was written, which crashes with "Cannot create a
+     session after the response has been committed" - splitting the sprite fixes it at the
+     root instead of just tuning buffer sizes. profile.html includes both this and
+     fragments/icons.html (via nav), since it uses icons from each set. -->
+<svg th:fragment="defs" style="display:none" aria-hidden="true">
+    <!-- Avatar preset icons - Bodh Sea's own ocean/nature iconography (fragments/avatarContent.html). -->
+    <symbol id="i-av-wave" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 8c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/><path d="M2 14c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0"/>
+    </symbol>
+    <symbol id="i-av-leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3C7 3 3 7 3 12c0 5 4 9 9 9 0-6 3-9 9-9 0-5-4-9-9-9Z"/><path d="M12 21c0-7 2-11 6-15"/>
+    </symbol>
+    <symbol id="i-av-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/>
+    </symbol>
+    <symbol id="i-av-compass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/><path d="M15 9l-2 4-4 2 2-4 4-2Z"/>
+    </symbol>
+    <symbol id="i-av-shell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3C7 8 4 13 4 19h16c0-6-3-11-8-16Z"/><path d="M8 19c0-5 1-9 4-13M16 19c0-5-1-9-4-13M12 19V9"/>
+    </symbol>
+    <symbol id="i-av-anchor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="5" r="2"/><path d="M12 7v13M6 13a6 6 0 0 0 12 0M5 13h3M16 13h3"/>
+    </symbol>
+    <symbol id="i-av-lotus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 20c-4-2-6-6-6-9 3 0 5 2 6 5 1-3 3-5 6-5 0 3-2 7-6 9Z"/><path d="M12 20v-9"/>
+    </symbol>
+    <symbol id="i-av-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/>
+    </symbol>
+
+    <!-- Cover-banner scenes - original layered-gradient illustrations (fragments/coverContent.html),
+         not stock photos. Each is self-contained (own gradient defs) so ids never collide even
+         when several are instantiated via <use> on the same page. -->
+    <symbol id="cover-dawn" viewBox="0 0 400 140" preserveAspectRatio="xMidYMid slice">
+        <defs><linearGradient id="cover-grad-dawn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fcd9a8"/><stop offset="1" stop-color="#5b8def"/></linearGradient></defs>
+        <rect width="400" height="140" fill="url(#cover-grad-dawn)"/>
+        <circle cx="330" cy="40" r="22" fill="#fff2d6" opacity="0.9"/>
+        <path d="M0 95 Q40 80 80 95 T160 95 T240 95 T320 95 T400 95 V140 H0 Z" fill="#7c5cf5" opacity="0.55"/>
+        <path d="M0 112 Q50 100 100 112 T200 112 T300 112 T400 112 V140 H0 Z" fill="#5b8def" opacity="0.8"/>
+    </symbol>
+    <symbol id="cover-deep" viewBox="0 0 400 140" preserveAspectRatio="xMidYMid slice">
+        <defs><linearGradient id="cover-grad-deep" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16222a"/><stop offset="1" stop-color="#3a6073"/></linearGradient></defs>
+        <rect width="400" height="140" fill="url(#cover-grad-deep)"/>
+        <path d="M0 100 Q40 88 80 100 T160 100 T240 100 T320 100 T400 100 V140 H0 Z" fill="#0f2027" opacity="0.6"/>
+        <path d="M0 118 Q50 108 100 118 T200 118 T300 118 T400 118 V140 H0 Z" fill="#16222a"/>
+    </symbol>
+    <symbol id="cover-moonlit" viewBox="0 0 400 140" preserveAspectRatio="xMidYMid slice">
+        <defs><linearGradient id="cover-grad-moonlit" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b101b"/><stop offset="1" stop-color="#1d2740"/></linearGradient></defs>
+        <rect width="400" height="140" fill="url(#cover-grad-moonlit)"/>
+        <circle cx="60" cy="30" r="1" fill="#fff"/><circle cx="120" cy="18" r="1.4" fill="#fff"/><circle cx="200" cy="35" r="1" fill="#fff"/>
+        <circle cx="260" cy="15" r="1.2" fill="#fff"/><circle cx="340" cy="28" r="1" fill="#fff"/><circle cx="90" cy="50" r="1" fill="#fff"/>
+        <path d="M330 50a16 16 0 1 1-11-25 12 12 0 0 0 11 25Z" fill="#e7ecf7"/>
+        <path d="M0 105 Q40 93 80 105 T160 105 T240 105 T320 105 T400 105 V140 H0 Z" fill="#2a3550" opacity="0.7"/>
+    </symbol>
+    <symbol id="cover-golden" viewBox="0 0 400 140" preserveAspectRatio="xMidYMid slice">
+        <defs><linearGradient id="cover-grad-golden" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fda085"/><stop offset="1" stop-color="#f6d365"/></linearGradient></defs>
+        <rect width="400" height="140" fill="url(#cover-grad-golden)"/>
+        <circle cx="200" cy="100" r="34" fill="#fff6df" opacity="0.85"/>
+        <path d="M0 100 Q50 90 100 100 T200 100 T300 100 T400 100 V140 H0 Z" fill="#f6a97a" opacity="0.7"/>
+    </symbol>
+    <symbol id="cover-misty" viewBox="0 0 400 140" preserveAspectRatio="xMidYMid slice">
+        <defs><linearGradient id="cover-grad-misty" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9d6e3"/><stop offset="1" stop-color="#8aa9d0"/></linearGradient></defs>
+        <rect width="400" height="140" fill="url(#cover-grad-misty)"/>
+        <path d="M0 90 L60 40 L110 80 L170 25 L230 75 L300 45 L360 85 L400 60 V140 H0 Z" fill="#6f8bb3" opacity="0.55"/>
+        <path d="M0 110 L80 65 L150 100 L230 55 L320 100 L400 80 V140 H0 Z" fill="#4d688e" opacity="0.7"/>
+    </symbol>
+    <symbol id="cover-lantern" viewBox="0 0 400 140" preserveAspectRatio="xMidYMid slice">
+        <defs><linearGradient id="cover-grad-lantern" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2d1b45"/><stop offset="1" stop-color="#a18cd1"/></linearGradient></defs>
+        <rect width="400" height="140" fill="url(#cover-grad-lantern)"/>
+        <circle cx="70" cy="55" r="5" fill="#fbc2eb"/><circle cx="140" cy="30" r="4" fill="#fbc2eb"/>
+        <circle cx="220" cy="60" r="5" fill="#fbc2eb"/><circle cx="300" cy="35" r="4" fill="#fbc2eb"/><circle cx="360" cy="65" r="5" fill="#fbc2eb"/>
+        <path d="M0 110 Q50 98 100 110 T200 110 T300 110 T400 110 V140 H0 Z" fill="#2d1b45" opacity="0.7"/>
+    </symbol>
+    <symbol id="cover-seafoam" viewBox="0 0 400 140" preserveAspectRatio="xMidYMid slice">
+        <defs><linearGradient id="cover-grad-seafoam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#43e97b"/><stop offset="1" stop-color="#2fb8af"/></linearGradient></defs>
+        <rect width="400" height="140" fill="url(#cover-grad-seafoam)"/>
+        <path d="M0 95 Q40 80 80 95 T160 95 T240 95 T320 95 T400 95 V140 H0 Z" fill="#1f7a72" opacity="0.5"/>
+        <path d="M0 115 Q50 103 100 115 T200 115 T300 115 T400 115 V140 H0 Z" fill="#16665f" opacity="0.7"/>
+    </symbol>
+    <symbol id="cover-sunrise" viewBox="0 0 400 140" preserveAspectRatio="xMidYMid slice">
+        <defs><linearGradient id="cover-grad-sunrise" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff9a8b"/><stop offset="1" stop-color="#ffecd2"/></linearGradient></defs>
+        <rect width="400" height="140" fill="url(#cover-grad-sunrise)"/>
+        <circle cx="200" cy="115" r="46" fill="#ffe3b3" opacity="0.6"/>
+        <path d="M0 118 Q60 105 120 118 T240 118 T360 118 T400 118 V140 H0 Z" fill="#ff8a65" opacity="0.55"/>
+    </symbol>
+</svg>
+</body>
+</html>

@@ -120,11 +120,7 @@ public class PostController {
 
         model.addAttribute("comment", new Comment());
         model.addAttribute("post", postDtoById);
-        // This page is publicly viewable (permitAll), so authentication can be null here for an
-        // anonymous visitor - guard before looking up "who's logged in" for the template.
-        if (authentication != null) {
-            userRepo.findByEmail(authentication.getName()).ifPresent(u -> model.addAttribute("currentUserName", u.getName()));
-        }
+        // currentUser is populated globally for every page by GlobalModelAttributes now.
 
         // Reaction counts are public (shown to everyone, like the view count); only reacting
         // itself requires login. userEmail is null for a logged-out viewer, which both reaction

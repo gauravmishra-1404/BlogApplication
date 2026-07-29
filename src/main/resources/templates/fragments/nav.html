@@ -7,6 +7,7 @@
      nav ends up needing icons somewhere (comments, post actions, pagination, etc). -->
 <th:block th:fragment="nav">
     <div th:replace="~{fragments/icons :: defs}"></div>
+    <div th:replace="~{fragments/presetIcons :: defs}"></div>
     <header class="app-header">
         <div class="header-container">
             <a th:href="@{/posts}" class="app-title">
@@ -32,16 +33,45 @@
                     <a th:href="@{/login}" class="login-button"><svg class="icon" aria-hidden="true"><use href="#i-login"/></svg>Login</a>
                 </div>
 
-                <div sec:authorize="isAuthenticated()">
-                    <form th:action="@{/logout}" th:method="post">
-                        <button type="submit" class="logout-button"><svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg>Logout</button>
-                    </form>
+                <!-- Profile dropdown - replaces the old separate logout button + standalone
+                     theme-toggle circle with one avatar trigger, per the design review: avatar
+                     header, "View profile", a proper toggle-switch for dark mode (clearer than
+                     an icon swap that it's a persistent setting), then logout. -->
+                <div class="nav-profile" sec:authorize="isAuthenticated()" th:if="${currentUser != null}">
+                    <button type="button" class="nav-avatar-trigger" id="navAvatarTrigger" aria-haspopup="true" aria-expanded="false" aria-label="Profile menu">
+                        <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(currentUser)}">
+                            <div th:replace="~{fragments/avatarContent :: content(${currentUser}, ${currentUser.name})}"></div>
+                        </span>
+                    </button>
+                    <div class="nav-profile-dropdown" id="navProfileDropdown" hidden>
+                        <div class="nav-dd-header">
+                            <span class="avatar nav-dd-avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(currentUser)}">
+                                <div th:replace="~{fragments/avatarContent :: content(${currentUser}, ${currentUser.name})}"></div>
+                            </span>
+                            <div>
+                                <div class="nav-dd-name" th:text="${currentUser.name}">Name</div>
+                                <div class="nav-dd-handle" th:text="'@' + ${currentUser.username}">@handle</div>
+                            </div>
+                        </div>
+                        <div class="nav-dd-divider"></div>
+                        <div class="nav-dd-items">
+                            <a th:if="${currentUser.username != null}" th:href="@{/profile/{u}(u=${currentUser.username})}" class="nav-dd-item">
+                                <svg class="icon" aria-hidden="true"><use href="#i-user"/></svg>View profile</a>
+                            <button type="button" class="nav-dd-item" id="theme-toggle">
+                                <svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg>
+                                <span class="nav-dd-grow">Dark mode</span>
+                                <span class="nav-dd-switch"></span>
+                            </button>
+                        </div>
+                        <div class="nav-dd-divider"></div>
+                        <div class="nav-dd-items">
+                            <form th:action="@{/logout}" th:method="post">
+                                <button type="submit" class="nav-dd-item nav-dd-danger">
+                                    <svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg>Log out</button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
-
-                <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
-                    <svg class="icon icon-sun" aria-hidden="true"><use href="#i-sun"/></svg>
-                    <svg class="icon icon-moon" aria-hidden="true"><use href="#i-moon"/></svg>
-                </button>
             </nav>
         </div>
     </header>

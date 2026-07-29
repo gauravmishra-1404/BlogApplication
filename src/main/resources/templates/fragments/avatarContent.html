@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Inner content only (no outer circle) - the caller keeps its own .avatar element (size,
+     link/button semantics, hover styles all differ by context) and applies
+     AvatarPresets.gradientStyle(user) to it; this fragment just fills in whichever of
+     photo / preset-icon / initial-letter is currently active for that user. -->
+<th:block th:fragment="content(user, fallbackName)"
+          th:with="mode=${user == null ? 'letter' : (user.avatarType == 'preset' ? 'preset' : (user.avatarType == 'color' ? 'color' : (!#strings.isEmpty(user.profilePic) ? 'photo' : 'letter')))}">
+    <img th:if="${mode == 'photo'}" th:src="${user.profilePic}" alt=""/>
+    <svg th:if="${mode == 'preset'}" class="icon avatar-icon" aria-hidden="true"><use th:attr="href='#i-av-' + ${user.avatarPreset}"/></svg>
+    <!-- fallbackName (usually the display name) wins when present; if it's blank, try the
+         user's @handle before finally giving up and showing "?" - a real account should
+         essentially never fall all the way through to that, since username is required at
+         signup, but name alone can be blank for older/edge-case rows. -->
+    <span th:if="${mode == 'color' or mode == 'letter'}"
+          th:text="${fallbackName != null and !#strings.isEmpty(fallbackName)} ? ${#strings.toUpperCase(#strings.substring(fallbackName, 0, 1))} : (${user != null and user.username != null and !#strings.isEmpty(user.username)} ? ${#strings.toUpperCase(#strings.substring(user.username, 0, 1))} : '?')">A</span>
+</th:block>
+</body>
+</html>

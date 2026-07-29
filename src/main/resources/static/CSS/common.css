@@ -131,7 +131,17 @@ body {
 }
 
 /* Shared app header, used by fragments/nav.html on every app page (not the standalone auth pages).
-   Frosted glass over the blue background - same padding/layout as before, only the fill changes. */
+   Frosted glass over the blue background - same padding/layout as before, only the fill changes.
+   position+z-index here (not just on the profile dropdown inside it) matters: .filter-sort-container
+   below explicitly promotes itself to z-index 10 (and its own dropdown panel to 20) since its
+   backdrop-filter creates a stacking context - without the header ALSO being explicitly
+   stacked, the nav profile dropdown's z-index:30 is trapped inside an unstacked parent and
+   loses to that sibling regardless of its own z-index. */
+.app-header {
+    position: relative;
+    z-index: 50;
+}
+
 .app-header .header-container {
     display: flex;
     flex-wrap: wrap;
@@ -172,8 +182,25 @@ body {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
+    overflow: hidden;
     color: #fff;
     font-weight: bold;
+}
+
+.avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Preset avatar icon (fragments/avatarContent.html) - sized as a share of whatever circle it's
+   in rather than the fixed 16px .icon default, since that circle ranges from a 20px dashboard
+   byline up to a 108px profile header. */
+svg.avatar-icon {
+    width: 55%;
+    height: 55%;
+    flex: 0 0 auto;
+    vertical-align: 0;
 }
 
 .app-header nav {
@@ -184,6 +211,157 @@ body {
     flex: 1 1 auto;
     justify-content: flex-end;
     min-width: 0;
+}
+
+/* ---- Nav profile dropdown (fragments/nav.html) - avatar trigger + panel replacing the old
+   separate logout button and standalone theme-toggle circle. ---- */
+.nav-profile {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.nav-avatar-trigger {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 2px solid var(--header-glass-border);
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    display: block;
+}
+
+.nav-avatar-trigger .avatar {
+    width: 100%;
+    height: 100%;
+    font-size: var(--text-sm);
+    background: var(--gradient-primary);
+}
+
+.nav-profile-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 30;
+    width: 250px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    box-shadow: 0 16px 40px rgba(10, 16, 30, 0.25);
+    overflow: hidden;
+}
+
+.nav-profile-dropdown[hidden] {
+    display: none;
+}
+
+.nav-dd-header {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 16px;
+}
+
+.nav-dd-avatar {
+    width: 42px;
+    height: 42px;
+    font-size: var(--text-base);
+    background: var(--gradient-primary);
+    flex: 0 0 auto;
+}
+
+.nav-dd-name {
+    font-weight: 700;
+    font-size: var(--text-sm);
+    color: var(--color-text);
+}
+
+.nav-dd-handle {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}
+
+.nav-dd-divider {
+    height: 1px;
+    background: var(--color-border);
+}
+
+.nav-dd-items {
+    padding: 6px;
+}
+
+.nav-dd-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    width: 100%;
+    padding: 10px;
+    border: none;
+    background: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--text-sm);
+    color: var(--color-text);
+    text-align: left;
+    text-decoration: none;
+    box-sizing: border-box;
+}
+
+.nav-dd-item:hover {
+    background: var(--color-surface-tint);
+}
+
+.nav-dd-item svg {
+    width: 17px;
+    height: 17px;
+    color: var(--color-text-muted);
+    flex: 0 0 auto;
+}
+
+.nav-dd-item.nav-dd-danger {
+    color: var(--color-danger);
+}
+
+.nav-dd-item.nav-dd-danger svg {
+    color: var(--color-danger);
+}
+
+.nav-dd-grow {
+    flex: 1 1 auto;
+}
+
+/* Toggle switch for the dark-mode row - reflects state via [data-theme="dark"] on <html>,
+   same source of truth js/theme.js already reads/writes. */
+.nav-dd-switch {
+    width: 34px;
+    height: 19px;
+    border-radius: 999px;
+    background: var(--color-border);
+    position: relative;
+    flex: 0 0 auto;
+    transition: background 0.2s ease;
+}
+
+.nav-dd-switch::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="dark"] .nav-dd-switch {
+    background: var(--gradient-primary);
+}
+
+:root[data-theme="dark"] .nav-dd-switch::after {
+    transform: translateX(15px);
 }
 
 /* Icons: inherit currentColor from whatever button/link/text contains them */

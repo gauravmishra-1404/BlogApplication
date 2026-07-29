@@ -269,6 +269,48 @@ body {
     transform: translateY(-1px);
 }
 
+/* ---- Password strength hint (client-side only - see passwordStrength.js) - a quiet one-line
+   rule reminder plus a slim 4-segment bar, filled/colored as the user types. ---- */
+.password-strength {
+    margin-top: 8px;
+}
+
+.strength-hint {
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 6px;
+}
+
+.strength-bar {
+    display: flex;
+    gap: 3px;
+    height: 4px;
+}
+
+.strength-bar span {
+    flex: 1;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+    transition: background 0.2s ease;
+}
+
+.strength-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    margin-top: 5px;
+    min-height: 14px;
+}
+
+.password-strength.shake {
+    animation: strength-shake 0.4s ease;
+}
+
+@keyframes strength-shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+}
+
 .auth-submit {
     width: 100%;
     padding: 12px;
@@ -311,4 +353,455 @@ body {
     top: 20px;
     right: 20px;
     z-index: 3;
+}
+
+/* ---- Signup "identity card" (Option B from the design review) - a live, WYSIWYG mini
+   profile: the avatar overlaps the cover banner exactly like the real profile page, so signup
+   already looks like the account being built. Clicking either part opens its own customizer
+   modal below - always skippable, registration never depends on either. ---- */
+.identity-card {
+    width: 100%;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    margin: 0 0 20px;
+}
+
+.identity-banner {
+    height: 78px;
+    border-radius: 14px 14px 0 0;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    width: 100%;
+    display: block;
+}
+
+.identity-banner svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.identity-edit-pill {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    background: rgba(0, 0, 0, 0.45);
+    color: #fff;
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 4px 9px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.identity-edit-pill svg {
+    width: 10px;
+    height: 10px;
+}
+
+.identity-header {
+    padding: 0 14px 14px;
+    position: relative;
+}
+
+.identity-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+    border: 3px solid #14428c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    cursor: pointer;
+    position: relative;
+    margin-top: -30px;
+    padding: 0;
+    font: inherit;
+}
+
+.identity-avatar svg { width: 22px; height: 22px; }
+
+/* No overflow:hidden on .identity-avatar itself - the cam-badge below is deliberately
+   positioned half outside its box (bottom:-1px/right:-1px), and clipping the parent would
+   clip the badge too. The <img> clips itself to a circle instead, achieving the same crop
+   without touching the badge. */
+.identity-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.identity-avatar.filled { border-style: solid; }
+
+.identity-avatar .cam-badge {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    color: #14428c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #14428c;
+}
+
+.identity-avatar .cam-badge svg { width: 10px; height: 10px; }
+
+.identity-hint {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 10.5px;
+    margin: 8px 0 0;
+}
+
+/* ---- Avatar customizer modal - same frosted-glass treatment as .auth-card, since it opens
+   on top of the same ocean background rather than a plain page. ---- */
+.avatar-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(5, 10, 20, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.avatar-modal-backdrop[hidden] { display: none; }
+
+.avatar-modal {
+    position: relative;
+    width: 100%;
+    max-width: 380px;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: rgba(20, 30, 55, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 26px 24px 22px;
+    box-shadow: 0 24px 70px rgba(4, 10, 25, 0.5);
+    color: #fff;
+}
+
+.avatar-modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.avatar-modal-close svg { width: 11px; height: 11px; }
+
+.avatar-modal h2 {
+    margin: 0 0 2px;
+    font-size: 1.15rem;
+    text-align: center;
+    color: #fff;
+}
+
+.avatar-modal .modal-sub {
+    margin: 0 0 20px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.78rem;
+}
+
+.avatar-modal-preview {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.avatar-circle-preview {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 2rem;
+    font-weight: 700;
+    overflow: hidden;
+    position: relative;
+}
+
+.avatar-circle-preview svg { width: 26px; height: 26px; }
+.avatar-circle-preview img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-circle-preview .avatar-icon { width: 46%; height: 46%; }
+
+/* ---- Cover photo modal - reuses .avatar-modal/.avatar-tabs/.avatar-panel/.avatar-dropzone
+   above (those are already shape-agnostic), just needs its own wide (3:1) preview/grid instead
+   of circles. ---- */
+.avatar-modal.cover-modal {
+    max-width: 440px;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* legacy Edge/IE */
+}
+
+/* Still scrollable (.avatar-modal's overflow-y: auto) if content ever exceeds max-height - this
+   only hides the visible track/thumb so it doesn't show over the frosted card. */
+.avatar-modal.cover-modal::-webkit-scrollbar {
+    display: none;
+}
+
+.cover-modal-preview {
+    width: 100%;
+    aspect-ratio: 3.2 / 1;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.cover-modal-preview img { width: 100%; height: 100%; object-fit: cover; }
+.cover-modal-preview svg { width: 100%; height: 100%; display: block; }
+
+.cover-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.cover-preset-option {
+    aspect-ratio: 2.6 / 1;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    padding: 0;
+    cursor: pointer;
+    background: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.cover-preset-option.selected { border-color: #fff; }
+
+.cover-swatch {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+}
+
+.cover-swatch svg { width: 26%; height: 26%; }
+
+.cover-preset-option .cover-label {
+    position: absolute;
+    left: 8px;
+    bottom: 6px;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.cover-color-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.cover-color-option {
+    aspect-ratio: 2.6 / 1;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    background: none;
+}
+
+.cover-color-option.selected { border-color: #fff; }
+
+.cover-color-fill {
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+    display: block;
+}
+
+.avatar-tabs {
+    display: flex;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 4px;
+    gap: 4px;
+    margin-bottom: 18px;
+}
+
+.avatar-tab {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 8px 4px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+}
+
+.avatar-tab.active {
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+}
+
+.avatar-panel { display: none; }
+.avatar-panel.active { display: block; }
+
+.avatar-dropzone {
+    display: block;
+    border: 1.5px dashed rgba(255, 255, 255, 0.35);
+    border-radius: 14px;
+    padding: 22px 16px;
+    text-align: center;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.avatar-dropzone:hover {
+    border-color: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.avatar-dropzone svg {
+    width: 24px;
+    height: 24px;
+    margin-bottom: 6px;
+    color: #fff;
+}
+
+.avatar-dropzone .dz-title {
+    display: block;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.avatar-dropzone .dz-desc {
+    display: block;
+    font-size: 0.72rem;
+    margin-top: 2px;
+}
+
+.avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.avatar-preset-option, .avatar-color-option {
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    padding: 3px;
+    cursor: pointer;
+    background: transparent;
+}
+
+.avatar-preset-option.selected, .avatar-color-option.selected {
+    border-color: #fff;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
+}
+
+.preset-swatch, .color-swatch {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+}
+
+.preset-swatch svg { width: 44%; height: 44%; }
+
+.avatar-hue-row {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.avatar-hue-row label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.avatar-hue-row input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(90deg,
+        hsl(0,80%,60%), hsl(60,80%,60%), hsl(120,80%,60%), hsl(180,80%,60%),
+        hsl(240,80%,60%), hsl(300,80%,60%), hsl(360,80%,60%));
+    cursor: pointer;
+}
+
+.avatar-hue-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #14428c;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.avatar-hue-row input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #14428c;
+}
+
+.avatar-modal-actions {
+    margin-top: 22px;
+}
+
+.avatar-modal-actions .btn-save {
+    width: 100%;
+    padding: 11px;
+    border-radius: 10px;
+    border: none;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    background: linear-gradient(135deg, #ffffff 0%, #dce8ff 100%);
+    color: #14428c;
 }

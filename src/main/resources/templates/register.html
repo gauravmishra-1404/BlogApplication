@@ -4,12 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bodh Sea - Create Account</title>
-    <script>(function(){try{var t=JSON.parse(localStorage.getItem('theme'));if(t&&t.v==='dark'&&t.exp>Date.now()){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
+    <script src="/js/themeInit.js"></script>
     <link rel="stylesheet" th:href="@{/CSS/common.css}">
     <link rel="stylesheet" th:href="@{/CSS/authPage.css}">
     <script src="/js/theme.js" defer></script>
+    <script src="/js/registerAvatarPicker.js" defer></script>
+    <script src="/js/registerCoverPicker.js" defer></script>
+    <script src="/js/modalScrollLock.js" defer></script>
+    <script src="/js/passwordStrength.js" defer></script>
 </head>
 <body>
+<div th:replace="~{fragments/presetIcons :: defs}"></div>
 <button type="button" id="theme-toggle" class="theme-toggle auth-theme-toggle" aria-label="Toggle dark mode">
     <svg class="icon icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/>
@@ -52,7 +57,44 @@
         <h2>Create account</h2>
         <p class="sub">Join Bodh Sea and start writing</p>
         <div class="auth-error" th:if="${error}" th:text="${error}"></div>
-        <form th:action="@{/registerUser}" th:method="post" th:object="${userDto}">
+        <form th:action="@{/registerUser}" th:method="post" th:object="${userDto}" enctype="multipart/form-data">
+            <div class="identity-card">
+                <div class="identity-banner" id="identityBanner" role="button" tabindex="0" aria-label="Choose a cover photo" aria-haspopup="dialog">
+                    <svg id="identityCoverSvg" viewBox="0 0 400 140" preserveAspectRatio="xMidYMid slice">
+                        <use th:attr="href='#cover-' + ${coverScenes[0].key()}"/>
+                    </svg>
+                    <span class="identity-edit-pill">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/></svg>
+                        Cover
+                    </span>
+                </div>
+                <div class="identity-header">
+                    <button type="button" class="identity-avatar" id="avatar-circle" aria-label="Choose your avatar" aria-haspopup="dialog">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/>
+                        </svg>
+                        <span class="cam-badge">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/>
+                            </svg>
+                        </span>
+                    </button>
+                    <p class="identity-hint" id="identityHint">This is how your profile will look</p>
+                </div>
+            </div>
+
+            <input type="hidden" name="avatarMode" id="avatarMode" value="">
+            <input type="hidden" name="avatarPreset" id="avatarPresetInput" value="">
+            <input type="hidden" name="avatarSwatchIndex" id="avatarSwatchInput" value="">
+            <input type="hidden" name="avatarHue" id="avatarHueInput" value="">
+            <input type="file" id="avatarFileInput" name="avatar" accept="image/*" style="display:none">
+
+            <input type="hidden" name="coverMode" id="coverMode" value="preset">
+            <input type="hidden" name="coverPreset" id="coverPresetInput" th:value="${coverScenes[0].key()}">
+            <input type="hidden" name="coverSwatchIndex" id="coverSwatchInput" value="">
+            <input type="hidden" name="coverHue" id="coverHueInput" value="">
+            <input type="file" id="coverFileInput" name="cover" accept="image/*" style="display:none">
+
             <div class="auth-field">
                 <label for="name">Name</label>
                 <input type="text" id="name" th:field="*{name}" placeholder="Your name" required>
@@ -63,7 +105,12 @@
             </div>
             <div class="auth-field">
                 <label for="password">Password</label>
-                <input type="password" id="password" th:field="*{password}" placeholder="••••••••" required>
+                <input type="password" id="password" th:field="*{password}" placeholder="••••••••" required minlength="8">
+                <div class="password-strength" id="passwordStrength">
+                    <div class="strength-hint">8+ characters, with a mix of letters, numbers &amp; symbols</div>
+                    <div class="strength-bar"><span></span><span></span><span></span><span></span></div>
+                    <div class="strength-label"></div>
+                </div>
             </div>
             <button type="submit" class="auth-submit">Create Account</button>
         </form>
@@ -84,6 +131,132 @@
         <svg class="wave-front" viewBox="0 0 1440 140" preserveAspectRatio="none">
             <path fill="#ffffff" d="M0,90 C260,50 500,120 760,80 C1020,40 1240,100 1440,70 L1440,140 L0,140 Z"/>
         </svg>
+    </div>
+</div>
+
+<div class="avatar-modal-backdrop" id="avatarModalBackdrop" hidden>
+    <div class="avatar-modal" role="dialog" aria-modal="true" aria-labelledby="avatarModalTitle">
+        <button type="button" class="avatar-modal-close" id="avatarModalClose" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+        <h2 id="avatarModalTitle">Customize your avatar</h2>
+        <p class="modal-sub">Upload a photo, pick a Bodh Sea icon, or choose your own colors</p>
+
+        <div class="avatar-modal-preview">
+            <div class="avatar-circle-preview" id="avatarModalPreview">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="avatar-tabs">
+            <button type="button" class="avatar-tab active" data-panel="photo">Photo</button>
+            <button type="button" class="avatar-tab" data-panel="presets">Presets</button>
+            <button type="button" class="avatar-tab" data-panel="color">Color</button>
+        </div>
+
+        <div class="avatar-panel active" data-panel="photo">
+            <label class="avatar-dropzone" for="avatarFileInput">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+                </svg>
+                <span class="dz-title">Upload a photo</span>
+                <span class="dz-desc">PNG or JPG, any size &mdash; cropped to a circle</span>
+            </label>
+        </div>
+
+        <div class="avatar-panel" data-panel="presets">
+            <div class="avatar-grid" id="avatarPresetGrid">
+                <button type="button" class="avatar-preset-option" th:each="g : ${avatarGradients}"
+                        th:attr="data-key=${g.presetKey()},data-gradient=${g.css()}">
+                    <span class="preset-swatch" th:style="'background:' + ${g.css()} + ';'">
+                        <svg class="icon" aria-hidden="true"><use th:attr="href='#i-av-' + ${g.presetKey()}"/></svg>
+                    </span>
+                </button>
+            </div>
+        </div>
+
+        <div class="avatar-panel" data-panel="color">
+            <div class="avatar-grid" id="avatarColorGrid">
+                <button type="button" class="avatar-color-option" th:each="g,iter : ${avatarGradients}"
+                        th:attr="data-index=${iter.index},data-gradient=${g.css()}">
+                    <span class="color-swatch" th:style="'background:' + ${g.css()} + ';'"></span>
+                </button>
+            </div>
+            <div class="avatar-hue-row">
+                <label for="avatarHueSlider">Or mix your own</label>
+                <input type="range" id="avatarHueSlider" min="0" max="360" value="220">
+            </div>
+        </div>
+
+        <div class="avatar-modal-actions">
+            <button type="button" class="btn-save" id="avatarModalDone">Done</button>
+        </div>
+    </div>
+</div>
+
+<div class="avatar-modal-backdrop" id="coverModalBackdrop" hidden>
+    <div class="avatar-modal cover-modal" role="dialog" aria-modal="true" aria-labelledby="coverModalTitle">
+        <button type="button" class="avatar-modal-close" id="coverModalClose" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+        <h2 id="coverModalTitle">Cover photo</h2>
+        <p class="modal-sub">Upload an image, pick a Bodh Sea scene, or set a gradient</p>
+
+        <div class="avatar-modal-preview">
+            <div class="cover-modal-preview" id="coverModalPreview">
+                <svg id="coverModalSvg" viewBox="0 0 400 140" preserveAspectRatio="xMidYMid slice">
+                    <use th:attr="href='#cover-' + ${coverScenes[0].key()}"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="avatar-tabs">
+            <button type="button" class="avatar-tab active" data-panel="c-photo">Upload</button>
+            <button type="button" class="avatar-tab" data-panel="c-presets">Presets</button>
+            <button type="button" class="avatar-tab" data-panel="c-color">Color</button>
+        </div>
+
+        <div class="avatar-panel active" data-panel="c-photo">
+            <label class="avatar-dropzone" for="coverFileInput">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+                </svg>
+                <span class="dz-title">Upload a cover image</span>
+                <span class="dz-desc">Wide images work best (3:1) &mdash; cropped to fit</span>
+            </label>
+        </div>
+
+        <div class="avatar-panel" data-panel="c-presets">
+            <div class="cover-grid" id="coverPresetGrid">
+                <button type="button" class="cover-preset-option" th:each="scene,iter : ${coverScenes}"
+                        th:attr="data-key=${scene.key()}"
+                        th:classappend="${iter.index == 0} ? ' selected' : ''">
+                    <span class="cover-swatch" th:style="'background:' + ${scene.swatchCss()} + ';'">
+                        <svg class="icon" aria-hidden="true"><use th:attr="href='#i-av-' + ${scene.icon()}"/></svg>
+                    </span>
+                    <span class="cover-label" th:text="${scene.label()}">Scene</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="avatar-panel" data-panel="c-color">
+            <div class="cover-color-grid" id="coverColorGrid">
+                <button type="button" class="cover-color-option" th:each="g,iter : ${coverGradients}"
+                        th:attr="data-index=${iter.index},data-gradient=${g.css()}">
+                    <span class="cover-color-fill" th:style="'background:' + ${g.css()} + ';'"></span>
+                </button>
+            </div>
+            <div class="avatar-hue-row">
+                <label for="coverHueSlider">Or mix your own</label>
+                <input type="range" id="coverHueSlider" min="0" max="360" value="220">
+            </div>
+        </div>
+
+        <div class="avatar-modal-actions">
+            <button type="button" class="btn-save" id="coverModalDone">Done</button>
+        </div>
     </div>
 </div>
 </body>

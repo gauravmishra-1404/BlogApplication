@@ -76,28 +76,20 @@ public class SecurityConfig {
                                 "/api/posts/{id}/delete",
                                 "/api/posts/comments/{id}/delete"
                         ).hasAnyRole("ADMIN", "AUTHOR")
+                        // Everything that's actually part of the app - dashboard, posts, profiles,
+                        // search/filter/sort, downloads, the JSON API mirrors - requires login.
+                        // The only permitAll list left below is the small, unavoidable set of
+                        // routes needed to LOG IN or CREATE an account in the first place: you
+                        // can't gate the login page behind being logged in.
                         .requestMatchers(
                                 "/CSS/**",
                                 "/js/**",
                                 "/images/**",
-                                "/post/viewPost",
-                                "/post/download",
-                                "/posts",
-                                "/posts/filter-author",
-                                "/posts/filter-tag",
-                                "/posts/search",
-                                "/posts/sort",
                                 "/registerUser",
                                 "/forgot-password",
                                 "/reset-password",
                                 "/verify-email",
                                 "/resend-verification",
-                                "/api/posts",
-                                "/api/posts/search",
-                                "/api/posts/sort",
-                                "/api/posts/filter-author",
-                                "/api/posts/filter-tag",
-                                "/api/post/{id}/view",
                                 "/api/users/register"
                         ).permitAll()
                         .anyRequest().authenticated()
@@ -107,9 +99,13 @@ public class SecurityConfig {
                         .loginProcessingUrl("/authenticateTheUser")
                         .defaultSuccessUrl("/posts", true)
                 )
+                // logoutSuccessUrl deliberately points at /login, not /posts - .permitAll() here
+                // auto-whitelists whatever that URL is (so /logout itself works for a session
+                // that's already gone), and pointing it at /posts would silently punch that path
+                // back open to anonymous users, undoing the lockdown above.
                 .logout(logout -> logout
                         .logoutUrl("/logout")
-                        .logoutSuccessUrl("/posts")
+                        .logoutSuccessUrl("/login")
                         .invalidateHttpSession(true)
                         .clearAuthentication(true)
                         .deleteCookies("JSESSIONID", "remember-me")

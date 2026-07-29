@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Inner content only (no outer .profile-banner) - the caller applies
+     CoverPresets.gradientStyle(user) to its own banner element; this fragment just fills in
+     whichever of photo / scene-illustration is currently active. "color" mode and the
+     no-selection default need nothing here - the gradient background alone is the whole look. -->
+<th:block th:fragment="content(user)"
+          th:with="mode=${user == null ? 'default' : (user.coverType == 'preset' ? 'preset' : (user.coverType == 'color' ? 'color' : (!#strings.isEmpty(user.coverImage) ? 'photo' : 'default')))}">
+    <img th:if="${mode == 'photo'}" th:src="${user.coverImage}" alt=""/>
+    <svg th:if="${mode == 'preset'}" viewBox="0 0 400 140" preserveAspectRatio="xMidYMid slice"><use th:attr="href='#cover-' + ${user.coverPreset}"/></svg>
+</th:block>
+</body>
+</html>

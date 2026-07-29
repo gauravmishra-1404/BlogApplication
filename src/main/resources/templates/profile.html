@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${profileUser.name} + ' (@' + ${profileUser.username} + ') - Bodh Sea'">Profile - Bodh Sea</title>
+    <script src="/js/themeInit.js"></script>
+    <link rel="stylesheet" href="/CSS/common.css">
+    <link rel="stylesheet" href="/CSS/profileStyle.css">
+    <script src="/js/theme.js" defer></script>
+    <script src="/js/navProfileMenu.js" defer></script>
+    <script src="/js/profileTabs.js" defer></script>
+    <script src="/js/profileEditMenu.js" defer></script>
+    <script src="/js/avatarEditor.js" defer></script>
+    <script src="/js/coverEditor.js" defer></script>
+    <script src="/js/modalScrollLock.js" defer></script>
+</head>
+<body>
+<div th:replace="~{fragments/nav :: nav}"></div>
+
+<main class="profile-wrap">
+    <div class="profile-card">
+        <div class="profile-banner" th:style="${T(com.BlogApplication.Blog.util.CoverPresets).gradientStyle(profileUser)}">
+            <div th:replace="~{fragments/coverContent :: content(${profileUser})}"></div>
+        </div>
+        <div class="profile-header">
+            <div class="profile-actions" th:if="${isOwnProfile}">
+                <button type="button" class="edit-profile-btn" id="editProfileBtn">
+                    Edit profile
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="edit-dropdown" id="editDropdown">
+                    <button type="button" data-action="avatar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/></svg>
+                        Profile photo
+                    </button>
+                    <button type="button" data-action="cover">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="m21 15-5-5L5 19"/></svg>
+                        Cover photo
+                    </button>
+                    <div class="divider"></div>
+                    <button type="button" class="disabled" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+                        Personal info<span class="reserved-tag">soon</span>
+                    </button>
+                    <button type="button" class="disabled" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"/></svg>
+                        Settings<span class="reserved-tag">soon</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="profile-avatar" id="profileAvatarZoom"
+                 th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(profileUser)}">
+                <div th:replace="~{fragments/avatarContent :: content(${profileUser}, ${profileUser.name})}"></div>
+            </div>
+
+            <h1 class="profile-name" th:text="${profileUser.name != null ? profileUser.name : profileUser.username}">Name</h1>
+            <p class="profile-handle" th:text="'@' + ${profileUser.username}">@handle</p>
+            <p class="profile-bio" th:if="${profileUser.bio != null and !#strings.isEmpty(profileUser.bio)}" th:text="${profileUser.bio}">Bio</p>
+
+            <div class="profile-meta" th:if="${profileUser.createdAt != null}">
+                <svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg>
+                <span th:text="'Joined ' + ${#temporals.format(profileUser.createdAt, 'MMMM yyyy')}">Joined</span>
+            </div>
+
+            <div class="profile-stats">
+                <span class="stat"><b th:text="${#lists.size(posts)}">0</b> Posts</span>
+                <span class="stat reserved"><b>&mdash;</b> Followers<span class="reserved-tag">soon</span></span>
+                <span class="stat reserved"><b>&mdash;</b> Following<span class="reserved-tag">soon</span></span>
+            </div>
+        </div>
+
+        <div class="tab-bar">
+            <button type="button" class="tab-item active" data-tab="posts">Posts</button>
+            <button type="button" class="tab-item" data-tab="replies">Replies</button>
+        </div>
+
+        <div class="tab-panel" data-panel="posts">
+            <div class="post-list" th:if="${!#lists.isEmpty(posts)}">
+                <a class="post-row" th:each="post : ${posts}" th:href="@{/post/viewPost(id=${post.id})}">
+                    <h3 class="post-title" th:text="${post.title}">Title</h3>
+                    <div class="post-meta">
+                        <span th:if="${post.updatedAt != null}"
+                              th:text="${T(com.BlogApplication.Blog.util.TimeFormatter).relative(post.updatedAt)}">date</span>
+                    </div>
+                    <p class="post-excerpt" th:text="${post.excerpt}">Excerpt</p>
+                </a>
+            </div>
+            <p class="empty-hint" th:if="${#lists.isEmpty(posts)}">No posts yet.</p>
+        </div>
+
+        <div class="tab-panel" data-panel="replies" hidden>
+            <div th:if="${!#lists.isEmpty(comments)}">
+                <div class="reply-row" th:each="comment : ${comments}">
+                    <p class="reply-context">Commented on
+                        <a th:href="@{/post/viewPost(id=${comment.post.id})}" th:text="${comment.post.title}">Post</a>
+                    </p>
+                    <p class="reply-text" th:text="${comment.content}">Comment</p>
+                </div>
+            </div>
+            <p class="empty-hint" th:if="${#lists.isEmpty(comments)}">No replies yet.</p>
+        </div>
+    </div>
+</main>
+
+<div class="avatar-modal-backdrop" id="avatarModalBackdrop" th:if="${isOwnProfile}"
+     th:attr="data-initial=${profileUser.name != null and !#strings.isEmpty(profileUser.name)} ? ${#strings.toUpperCase(#strings.substring(profileUser.name, 0, 1))} : (${profileUser.username != null and !#strings.isEmpty(profileUser.username)} ? ${#strings.toUpperCase(#strings.substring(profileUser.username, 0, 1))} : '?')"
+     hidden>
+    <div class="avatar-modal" role="dialog" aria-modal="true" aria-labelledby="avatarModalTitle">
+        <button type="button" class="avatar-modal-close" id="avatarModalClose" aria-label="Close">
+            <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+        </button>
+        <h2 id="avatarModalTitle">Customize your avatar</h2>
+        <p class="modal-sub">Upload a photo, pick a Bodh Sea icon, or choose your own colors</p>
+
+        <div class="avatar-modal-preview">
+            <div class="avatar modal-preview-circle" id="avatarPreview"
+                 th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(profileUser)}">
+                <div th:replace="~{fragments/avatarContent :: content(${profileUser}, ${profileUser.name})}"></div>
+            </div>
+        </div>
+
+        <div class="avatar-tabs">
+            <button type="button" class="avatar-tab active" data-panel="photo">Photo</button>
+            <button type="button" class="avatar-tab" data-panel="presets">Presets</button>
+            <button type="button" class="avatar-tab" data-panel="color">Color</button>
+        </div>
+
+        <form id="avatarForm" th:action="@{/profile/avatar}" th:method="post" enctype="multipart/form-data">
+            <input type="hidden" name="mode" id="avatarMode" value="photo">
+            <input type="hidden" name="preset" id="avatarPresetInput" value="">
+            <input type="hidden" name="swatchIndex" id="avatarSwatchInput" value="">
+            <input type="hidden" name="hue" id="avatarHueInput" value="">
+
+            <div class="avatar-panel active" data-panel="photo">
+                <label class="avatar-dropzone" for="avatarFileInput">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/>
+                    </svg>
+                    <span class="dz-title">Upload a photo</span>
+                    <span class="dz-desc">PNG or JPG, any size &mdash; cropped to a circle</span>
+                </label>
+                <input type="file" id="avatarFileInput" name="avatar" accept="image/*">
+            </div>
+
+            <div class="avatar-panel" data-panel="presets">
+                <div class="avatar-grid" id="avatarPresetGrid">
+                    <button type="button" class="avatar-preset-option" th:each="g : ${avatarGradients}"
+                            th:attr="data-key=${g.presetKey()},data-gradient=${g.css()}"
+                            th:classappend="${profileUser.avatarType == 'preset' and profileUser.avatarPreset == g.presetKey()} ? ' selected' : ''">
+                        <span class="preset-swatch" th:style="'background:' + ${g.css()} + ';'">
+                            <svg class="icon" aria-hidden="true"><use th:attr="href='#i-av-' + ${g.presetKey()}"/></svg>
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="avatar-panel" data-panel="color">
+                <div class="avatar-grid" id="avatarColorGrid">
+                    <button type="button" class="avatar-color-option" th:each="g,iter : ${avatarGradients}"
+                            th:attr="data-index=${iter.index},data-gradient=${g.css()}"
+                            th:classappend="${profileUser.avatarType == 'color' and profileUser.avatarGradient == g.css()} ? ' selected' : ''">
+                        <span class="color-swatch" th:style="'background:' + ${g.css()} + ';'"></span>
+                    </button>
+                </div>
+                <div class="avatar-hue-row">
+                    <label for="avatarHueSlider">Or mix your own</label>
+                    <input type="range" id="avatarHueSlider" min="0" max="360" value="220">
+                </div>
+            </div>
+
+            <div class="avatar-modal-actions">
+                <button type="button" class="btn-cancel" id="avatarCancelBtn">Cancel</button>
+                <button type="submit" class="btn-save">Save changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Zoom view when clicking the avatar itself (not the edit menu) - a plain lightbox, no
+     editing controls, matching how other social apps separate "view" from "edit". -->
+<div class="lightbox" id="avatarLightbox" hidden>
+    <button type="button" class="lightbox-close" id="lightboxClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <div class="lightbox-circle" id="lightboxCircle"
+         th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(profileUser)}">
+        <div th:replace="~{fragments/avatarContent :: content(${profileUser}, ${profileUser.name})}"></div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="coverModalBackdrop" th:if="${isOwnProfile}" hidden>
+    <div class="modal cover-modal" role="dialog" aria-modal="true" aria-labelledby="coverModalTitle">
+        <button type="button" class="modal-close" id="coverModalClose" aria-label="Close">
+            <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+        </button>
+        <h2 id="coverModalTitle">Cover photo</h2>
+        <p class="modal-sub">Upload an image, pick a Bodh Sea scene, or set a gradient</p>
+
+        <div class="cover-preview-wrap">
+            <div class="cover-preview" id="coverPreview"
+                 th:style="${T(com.BlogApplication.Blog.util.CoverPresets).gradientStyle(profileUser)}">
+                <div th:replace="~{fragments/coverContent :: content(${profileUser})}"></div>
+            </div>
+        </div>
+
+        <div class="cover-tabs">
+            <button type="button" class="cover-tab active" data-panel="c-photo">Upload</button>
+            <button type="button" class="cover-tab" data-panel="c-presets">Presets</button>
+            <button type="button" class="cover-tab" data-panel="c-color">Color</button>
+        </div>
+
+        <form id="coverForm" th:action="@{/profile/cover}" th:method="post" enctype="multipart/form-data">
+            <input type="hidden" name="mode" id="coverMode" value="photo">
+            <input type="hidden" name="preset" id="coverPresetInput" value="">
+            <input type="hidden" name="swatchIndex" id="coverSwatchInput" value="">
+            <input type="hidden" name="hue" id="coverHueInput" value="">
+
+            <div class="cover-panel active" data-panel="c-photo">
+                <label class="cover-dropzone" for="coverFileInput">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+                    </svg>
+                    <span class="dz-title">Upload a cover image</span>
+                    <span class="dz-desc">Wide images work best (3:1) &mdash; cropped to fit</span>
+                </label>
+                <input type="file" id="coverFileInput" name="cover" accept="image/*">
+            </div>
+
+            <div class="cover-panel" data-panel="c-presets">
+                <div class="cover-grid" id="coverPresetGrid">
+                    <button type="button" class="cover-preset-option" th:each="scene : ${coverScenes}"
+                            th:attr="data-key=${scene.key()}"
+                            th:classappend="${profileUser.coverType == 'preset' and profileUser.coverPreset == scene.key()} ? ' selected' : ''">
+                        <span class="cover-swatch" th:style="'background:' + ${scene.swatchCss()} + ';'">
+                            <svg class="icon" aria-hidden="true"><use th:attr="href='#i-av-' + ${scene.icon()}"/></svg>
+                        </span>
+                        <span class="cover-label" th:text="${scene.label()}">Scene</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="cover-panel" data-panel="c-color">
+                <div class="cover-color-grid" id="coverColorGrid">
+                    <button type="button" class="cover-color-option" th:each="g,iter : ${coverGradients}"
+                            th:attr="data-index=${iter.index},data-gradient=${g.css()}"
+                            th:classappend="${profileUser.coverType == 'color' and profileUser.coverGradient == g.css()} ? ' selected' : ''">
+                        <span class="cover-color-fill" th:style="'background:' + ${g.css()} + ';'"></span>
+                    </button>
+                </div>
+                <div class="avatar-hue-row">
+                    <label for="coverHueSlider">Or mix your own</label>
+                    <input type="range" id="coverHueSlider" min="0" max="360" value="220">
+                </div>
+            </div>
+
+            <div class="avatar-modal-actions">
+                <button type="button" class="btn-cancel" id="coverCancelBtn">Cancel</button>
+                <button type="submit" class="btn-save">Save changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>

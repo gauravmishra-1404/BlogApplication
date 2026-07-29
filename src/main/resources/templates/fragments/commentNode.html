@@ -4,12 +4,24 @@
 <!-- Recursive comment/reply fragment: renders a comment, its author/edit/delete controls,
      a reply form, and then re-invokes itself for each nested reply so threads of any depth render. -->
 <div th:fragment="commentNode(comment, reactions)" class="comment-node" th:with="reaction=${reactions.get(comment.id)}">
-    <div class="avatar" th:classappend="${comment.user == null} ? 'deleted' : ''"
-         th:text="${comment.user != null ? #strings.toUpperCase(#strings.substring(comment.user.name, 0, 1)) : '?'}">A</div>
+    <a class="avatar" th:if="${comment.user != null and comment.user.username != null}"
+       th:href="@{/profile/{u}(u=${comment.user.username})}"
+       th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(comment.user)}">
+        <div th:replace="~{fragments/avatarContent :: content(${comment.user}, ${comment.user.name})}"></div>
+    </a>
+    <div class="avatar" th:unless="${comment.user != null and comment.user.username != null}"
+         th:classappend="${comment.user == null} ? 'deleted' : ''"
+         th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(comment.user)}">
+        <div th:replace="~{fragments/avatarContent :: content(${comment.user}, ${comment.user != null ? comment.user.name : null})}"></div>
+    </div>
 
     <div class="comment-body">
         <div class="comment-head">
-            <span class="comment-author" th:text="${comment.user != null ? comment.user.name : 'Deleted user'}">Comment Author</span>
+            <a class="comment-author" th:if="${comment.user != null and comment.user.username != null}"
+               th:href="@{/profile/{u}(u=${comment.user.username})}"
+               th:text="${comment.user.name}">Comment Author</a>
+            <span class="comment-author" th:unless="${comment.user != null and comment.user.username != null}"
+                  th:text="${comment.user != null ? comment.user.name : 'Deleted user'}">Comment Author</span>
             <span class="comment-meta" th:if="${comment.createdAt != null}"
                   th:text="${T(com.BlogApplication.Blog.util.TimeFormatter).relative(comment.createdAt)}"
                   th:title="${T(com.BlogApplication.Blog.util.TimeFormatter).absolute(comment.createdAt)}">date</span>
