@@ -56,6 +56,7 @@ public class PostServiceImpl implements PostService {
         post.setAuthor(post.getAuthor());
         post.setUpdatedAt(LocalDateTime.now());
         post.setPublishedAt(LocalDateTime.now());
+        post.setPublished(true);
         Optional<User> userOptional = userRepo.findByEmail(principal.getName());
 
         if (userOptional.isEmpty()) {

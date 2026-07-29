@@ -28,8 +28,15 @@ public class Post {
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 
+    // Nullable Boolean, not a primitive - existing rows never had this explicitly set (the
+    // column existed but nothing ever called setPublished(true)), so a primitive would have
+    // silently read every one of them as false via JDBC's getBoolean()-on-NULL behavior. Same
+    // null-safe-default pattern as Post.deleted/Comment.edited/User.emailVerified: null reads as
+    // published, since every post that exists today genuinely is (no draft feature yet - see
+    // docs/feature_future.md). PostServiceImpl.save() sets this true explicitly on every new
+    // publish; a future draft feature would set it false there instead until the user publishes.
     @Column(name = "is_published")
-    private boolean isPublished;
+    private Boolean isPublished;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -68,7 +75,7 @@ public class Post {
     }
 
     public boolean isPublished() {
-        return isPublished;
+        return isPublished == null || isPublished;
     }
 
     public List<Comment> getComments() {
@@ -136,7 +143,7 @@ public class Post {
     }
 
     public boolean getPublished() {
-        return isPublished;
+        return isPublished();
     }
 
     public void setPublished(boolean published) {
