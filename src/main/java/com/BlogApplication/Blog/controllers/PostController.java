@@ -1,16 +1,17 @@
 package com.BlogApplication.Blog.controllers;
 
+import com.BlogApplication.Blog.exceptions.InvalidPostException;
 import com.BlogApplication.Blog.models.Comment;
 import com.BlogApplication.Blog.models.Post;
 import com.BlogApplication.Blog.models.User;
+import com.BlogApplication.Blog.payloads.PostDetail;
 import com.BlogApplication.Blog.payloads.PostDto;
+import com.BlogApplication.Blog.payloads.PostListing;
 import com.BlogApplication.Blog.util.PostAuthorization;
 import com.BlogApplication.Blog.repositories.CommentRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
-import com.BlogApplication.Blog.services.CommentReactionService;
 import com.BlogApplication.Blog.services.CommentService;
 import com.BlogApplication.Blog.services.PostPdfService;
-import com.BlogApplication.Blog.services.PostReactionService;
 import com.BlogApplication.Blog.services.PostService;
 import com.BlogApplication.Blog.services.PostViewService;
 import com.BlogApplication.Blog.services.TagService;
@@ -18,7 +19,6 @@ import com.BlogApplication.Blog.services.VisitorIdentityService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -61,15 +61,9 @@ public class PostController {
     private VisitorIdentityService visitorIdentityService;
 
     @Autowired
-    private PostReactionService postReactionService;
-
-    @Autowired
-    private CommentReactionService commentReactionService;
-
-    @Autowired
     private PostPdfService postPdfService;
 
-    @GetMapping("/posts")
+    @GetMapping("/home")
     public String getAllPosts(@RequestParam(defaultValue = "0") int page,
                               @RequestParam(defaultValue = "10") int size,
                               @RequestParam(required = false) String query,
@@ -98,45 +92,70 @@ public class PostController {
 
 
     @PostMapping("/post/publish")
-    public String publishPost(@ModelAttribute("postDto") PostDto postDto, Principal principal) {
+    public String publishPost(@ModelAttribute("postDto") PostDto postDto, Principal principal, Model model) {
         postDto.setCreatedAt(LocalDateTime.now());
-        postService.save(postDto, principal);
-        return "redirect:/posts";
+        try {
+            postService.save(postDto, principal);
+        } catch (InvalidPostException ex) {
+            userRepo.findByEmail(principal.getName()).ifPresent(u -> model.addAttribute("role", u.getRole()));
+            model.addAttribute("postDto", postDto);
+            model.addAttribute("error", ex.getMessage());
+            return "newPost";
+        }
+        return "redirect:/home";
     }
 
     @GetMapping("/post/viewPost")
     public String viewPostByID(@RequestParam("id") int id, Model model, Authentication authentication,
                                HttpServletRequest request, HttpServletResponse response) {
-        PostDto postDtoById = postService.getPostById(id);
-
-        if (postDtoById == null) {
-            return "redirect:/posts";
+        PostDetail detail = recordViewAndGetDetail(id, authentication, request, response);
+        if (detail == null) {
+            return "redirect:/home";
         }
 
-        // Anonymous visitors count too (this page is publicly viewable without login), tracked
-        // via a long-lived cookie rather than an account - see VisitorIdentityService.
-        String viewerToken = visitorIdentityService.resolveViewerToken(authentication, request, response);
-        postViewService.recordView(id, viewerToken);
-        postDtoById.setViewCount(postViewService.countViews(id));
-
         model.addAttribute("comment", new Comment());
-        model.addAttribute("post", postDtoById);
+        model.addAttribute("post", detail.getPost());
+        model.addAttribute("postReaction", detail.getPostReaction());
+        model.addAttribute("commentReactions", detail.getCommentReactions());
         // currentUser is populated globally for every page by GlobalModelAttributes now.
 
-        // Reaction counts are public (shown to everyone, like the view count); only reacting
-        // itself requires login. userEmail is null for a logged-out viewer, which both reaction
-        // services already treat as "no reaction of mine" rather than an error.
+        return "viewPostByID";
+    }
+
+    // Dashboard's modal post view (js/postModal.js) - same content as the full page above, just
+    // rendered as a fragment for injection into an overlay instead of a page navigation. Reuses
+    // recordViewAndGetDetail so a view counts the same way regardless of which UI path was used.
+    @GetMapping("/post/{id}/modal")
+    public String postModal(@PathVariable int id, Model model, Authentication authentication,
+                            HttpServletRequest request, HttpServletResponse response) {
+        PostDetail detail = recordViewAndGetDetail(id, authentication, request, response);
+        if (detail == null) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return "fragments/postModal :: notFound";
+        }
+
+        model.addAttribute("comment", new Comment());
+        model.addAttribute("post", detail.getPost());
+        model.addAttribute("postReaction", detail.getPostReaction());
+        model.addAttribute("commentReactions", detail.getCommentReactions());
+
+        return "fragments/postModal :: postModal";
+    }
+
+    // Anonymous visitors count too (both the full page and the modal are publicly viewable
+    // without login), tracked via a long-lived cookie rather than an account - see
+    // VisitorIdentityService. Reaction counts are public the same way; only reacting itself
+    // requires login. userEmail is null for a logged-out viewer, which both reaction services
+    // already treat as "no reaction of mine" rather than an error.
+    private PostDetail recordViewAndGetDetail(int id, Authentication authentication,
+                                              HttpServletRequest request, HttpServletResponse response) {
+        String viewerToken = visitorIdentityService.resolveViewerToken(authentication, request, response);
+        postViewService.recordView(id, viewerToken);
+
         boolean isLoggedIn = authentication != null && !(authentication instanceof AnonymousAuthenticationToken);
         String userEmail = isLoggedIn ? authentication.getName() : null;
 
-        model.addAttribute("postReaction", postReactionService.getSummary(id, userEmail));
-
-        List<Integer> commentIds = postDtoById.getComments() == null
-                ? List.of()
-                : postDtoById.getComments().stream().map(Comment::getId).toList();
-        model.addAttribute("commentReactions", commentReactionService.getSummaries(commentIds, userEmail));
-
-        return "viewPostByID";
+        return postService.getPostDetail(id, userEmail);
     }
 
     // Same visibility rule as viewing the post (permitAll, missing/soft-deleted -> 404) since
@@ -165,7 +184,7 @@ public class PostController {
     public String editPostByID(@RequestParam("id") int id, Model model, Authentication authentication){
         PostDto postDto = postService.getPostById(id);
         if (postDto == null) {
-            return "redirect:/posts";
+            return "redirect:/home";
         }
         // Only the post's own author (or an ADMIN) may edit it - the UI already hides this link
         // for everyone else, but that's cosmetic; a direct request to this URL must be rejected
@@ -180,37 +199,62 @@ public class PostController {
 
     //rePublishByID(){}
     @PostMapping("/post/republish")
-    public String rePublishPostByID(@ModelAttribute("postDto") PostDto postDto, Authentication authentication){
+    public String rePublishPostByID(@ModelAttribute("postDto") PostDto postDto, Authentication authentication, Model model){
         // Re-check ownership against the post as it exists in the DB right now - never trust the
         // submitted form for who owns the post, since that's exactly what an attacker controls.
         PostDto existing = postService.getPostById(postDto.getId());
         if (existing == null) {
-            return "redirect:/posts";
+            return "redirect:/home";
         }
         if (!PostAuthorization.isOwnerOrAdmin(authentication, existing.getUser())) {
             return "redirect:/post/viewPost?id=" + postDto.getId();
         }
-        postService.updatePostByID(postDto, postDto.getId());
-        return "redirect:/posts";
+        try {
+            postService.updatePostByID(postDto, postDto.getId());
+        } catch (InvalidPostException ex) {
+            model.addAttribute("post", postDto);
+            model.addAttribute("error", ex.getMessage());
+            return "editByPostID";
+        }
+        return "redirect:/home";
     }
 
     //deletePostByID
     @PostMapping("/posts/delete")
-    public String deletePost(@RequestParam("id") int id, RedirectAttributes redirectAttributes, Authentication authentication){
+    public String deletePost(@RequestParam("id") int id, RedirectAttributes redirectAttributes, Authentication authentication, HttpServletRequest request){
         PostDto existing = postService.getPostById(id);
         if (existing == null) {
-            return "redirect:/posts";
+            return "redirect:/home";
         }
         if (!PostAuthorization.isOwnerOrAdmin(authentication, existing.getUser())) {
             return "redirect:/post/viewPost?id=" + id;
         }
         postService.isDeleted(id);
         redirectAttributes.addFlashAttribute("message", "Post deleted successfully");
-        return  "redirect:/posts";
+        return "redirect:" + profileRefererOrHome(request);
+    }
+
+    // The post itself is gone after a delete, so there's no page left to show it on - but a post
+    // opened from a user's profile should still land back on that profile afterward rather than
+    // always bouncing to /home. Only ever trusts a same-host /profile/* path out of the Referer
+    // header (never an arbitrary external URL), so this can't become an open redirect.
+    private String profileRefererOrHome(HttpServletRequest request) {
+        String referer = request.getHeader("Referer");
+        if (referer != null) {
+            try {
+                java.net.URI uri = new java.net.URI(referer);
+                if (uri.getHost() != null && uri.getHost().equalsIgnoreCase(request.getServerName())
+                        && uri.getPath() != null && uri.getPath().startsWith("/profile/")) {
+                    return uri.getPath();
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return "/home";
     }
 
     //sorting post
-    @GetMapping("/posts/sort")
+    @GetMapping("/home/sort")
     public String sortingOrder(@RequestParam(defaultValue = "0") int page,
                                @RequestParam(defaultValue = "10") int size,
                                @RequestParam(required = false) String query,
@@ -222,7 +266,7 @@ public class PostController {
     }
 
     //searching
-    @GetMapping("/posts/search")
+    @GetMapping("/home/search")
     public String searchController(@RequestParam(defaultValue = "0") int page,
                                    @RequestParam(defaultValue = "10") int size,
                                    @RequestParam(required = false) String query,
@@ -234,7 +278,7 @@ public class PostController {
     }
 
     //filtering
-    @GetMapping("/posts/filter-author")
+    @GetMapping("/home/filter-author")
     public String filteredPostAuthor(@RequestParam(defaultValue = "0") int page,
                                      @RequestParam(defaultValue = "10") int size,
                                      @RequestParam(required = false) String query,
@@ -245,7 +289,7 @@ public class PostController {
         return listPosts(query, author, tag, order, page, size, model);
     }
 
-    @GetMapping("/posts/filter-tag")
+    @GetMapping("/home/filter-tag")
     public String filteredPostTag(@RequestParam(defaultValue = "0") int page,
                                   @RequestParam(defaultValue = "10") int size,
                                   @RequestParam(required = false) String query,
@@ -256,30 +300,55 @@ public class PostController {
         return listPosts(query, author, tag, order, page, size, model);
     }
 
+    // Kept for the initial full-page load (and any bookmarked/shared filtered URL still linking
+    // to page=N directly) - the dashboard itself no longer shows page links, js/infiniteScroll.js
+    // drives further pages through postsFragment() below instead.
     private String listPosts(String query, List<String> author, List<String> tag, String order,
                              int page, int size, Model model) {
-        Page<Post> postPage = postService.searchPosts(query, author, tag, order, page, size);
-        List<Integer> postIds = postPage.getContent().stream().map(Post::getId).toList();
-
-        model.addAttribute("posts", postPage.getContent());
-        model.addAttribute("viewCounts", postViewService.countViewsForPosts(postIds));
-        // Just public counts here (no per-viewer "did I react" state, unlike the post page
-        // itself) - the dashboard is a listing, not somewhere you react from.
-        model.addAttribute("postReactions", postReactionService.getSummaries(postIds, null));
-        model.addAttribute("currentPage", page);
-        model.addAttribute("totalPages", postPage.getTotalPages());
-        model.addAttribute("totalItems", postPage.getTotalElements());
-        model.addAttribute("pageSize", size);
+        addListingToModel(query, author, tag, order, page, size, model);
 
         model.addAttribute("authors", postService.getAllUniqueAuthor());
         model.addAttribute("tags", tagService.getAllUniqueTags());
 
-        model.addAttribute("activeQuery", query);
-        model.addAttribute("activeAuthors", author == null ? List.of() : author);
-        model.addAttribute("activeTags", tag == null ? List.of() : tag);
-        model.addAttribute("activeOrder", order);
+        // Dashboard sidebar/right-rail widgets - real data, not placeholders.
+        model.addAttribute("trendingTags", tagService.getTrendingTags(5));
+        model.addAttribute("topAuthors", postService.getTopAuthors(3));
 
         return "postDashboard";
+    }
+
+    // Infinite scroll's per-batch fetch (js/infiniteScroll.js) - same search/filter/sort as the
+    // full page, but renders only the repeated post-row markup (fragments/postRows.html) so the
+    // client appends it to the existing list instead of re-rendering the whole dashboard.
+    @GetMapping("/home/fragment")
+    public String postsFragment(@RequestParam(defaultValue = "0") int page,
+                                @RequestParam(defaultValue = "10") int size,
+                                @RequestParam(required = false) String query,
+                                @RequestParam(required = false) List<String> author,
+                                @RequestParam(required = false) List<String> tag,
+                                @RequestParam(required = false) String order,
+                                Model model) {
+        addListingToModel(query, author, tag, order, page, size, model);
+        return "fragments/postRows :: postRows";
+    }
+
+    private void addListingToModel(String query, List<String> author, List<String> tag, String order,
+                                   int page, int size, Model model) {
+        PostListing listing = postService.getListing(query, author, tag, order, page, size);
+
+        model.addAttribute("posts", listing.getPosts());
+        model.addAttribute("viewCounts", listing.getViewCounts());
+        model.addAttribute("postReactions", listing.getReactions());
+        model.addAttribute("commentCounts", listing.getCommentCounts());
+        model.addAttribute("currentPage", listing.getCurrentPage());
+        model.addAttribute("totalPages", listing.getTotalPages());
+        model.addAttribute("totalItems", listing.getTotalItems());
+        model.addAttribute("pageSize", listing.getPageSize());
+        model.addAttribute("hasNextPage", listing.isHasNextPage());
+        model.addAttribute("activeQuery", listing.getActiveQuery());
+        model.addAttribute("activeAuthors", listing.getActiveAuthors());
+        model.addAttribute("activeTags", listing.getActiveTags());
+        model.addAttribute("activeOrder", listing.getActiveOrder());
     }
 
     //    add comments on post by id
@@ -290,7 +359,7 @@ public class PostController {
         // getPostById returns null for a missing OR soft-deleted post - reusing that contract
         // here blocks commenting on a "deleted" post the same way viewing it is already blocked.
         if (postService.getPostById(postId) == null) {
-            return "redirect:/posts";
+            return "redirect:/home";
         }
         commentService.save(postId, content, authentication.getName());
         return "redirect:/post/viewPost?id=" + postId;
@@ -300,12 +369,12 @@ public class PostController {
     public String deleteComment(@PathVariable("id") int commentId, Authentication authentication) {
         Comment com = commentRepo.findById(commentId);
         if (com == null) {
-            return "redirect:/posts";
+            return "redirect:/home";
         }
 
         Post postCom = com.getPost();
         if (postCom == null || postCom.isDeleted()) {
-            return "redirect:/posts";
+            return "redirect:/home";
         }
 
         if (!isAuthorizedForComment(authentication, com)) {
@@ -335,7 +404,7 @@ public class PostController {
     public String editCommentPage(@RequestParam("id") int commentId, Model model, Authentication authentication) {
         Comment comment = commentRepo.findById(commentId);
         if (comment == null || comment.getPost() == null || comment.getPost().isDeleted() || comment.isDeleted()) {
-            return "redirect:/posts";
+            return "redirect:/home";
         }
 
         if (!isAuthorizedForComment(authentication, comment)) {
@@ -353,7 +422,7 @@ public class PostController {
                               Authentication authentication) {
         Comment comment = commentRepo.findById(commentId);
         if (comment == null || comment.getPost() == null || comment.getPost().isDeleted() || comment.isDeleted()) {
-            return "redirect:/posts";
+            return "redirect:/home";
         }
 
         if (!isAuthorizedForComment(authentication, comment)) {
@@ -395,7 +464,7 @@ public class PostController {
         // directly (same reasoning either way: the thing being replied to is supposed to be gone).
         if (parentComment == null || parentComment.getPost() == null
                 || parentComment.getPost().isDeleted() || parentComment.isDeleted()) {
-            return "redirect:/posts";
+            return "redirect:/home";
         }
 
         commentService.saveReply(commentId, content, authentication.getName());

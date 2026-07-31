@@ -3,6 +3,7 @@ package com.BlogApplication.Blog.services.impl;
 import com.BlogApplication.Blog.models.Comment;
 import com.BlogApplication.Blog.models.Post;
 import com.BlogApplication.Blog.models.User;
+import com.BlogApplication.Blog.repositories.CommentCount;
 import com.BlogApplication.Blog.repositories.CommentRepo;
 import com.BlogApplication.Blog.repositories.PostRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
@@ -12,6 +13,9 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class CommentServiceImpl implements CommentService {
@@ -65,5 +69,14 @@ public class CommentServiceImpl implements CommentService {
     private User findUser(String email) {
         return userRepo.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Could not find user !!"));
+    }
+
+    @Override
+    public Map<Integer, Long> countCommentsForPosts(List<Integer> postIds) {
+        Map<Integer, Long> counts = new HashMap<>();
+        for (CommentCount row : commentRepo.countGroupedByPostIds(postIds)) {
+            counts.put(row.getPostId(), row.getCommentCount());
+        }
+        return counts;
     }
 }

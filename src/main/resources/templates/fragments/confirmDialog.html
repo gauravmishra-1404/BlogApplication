@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Shared "are you sure?" dialog, replacing the browser's native confirm() for every delete
+     form (fragments/shareMenu.html's Delete Post, fragments/commentNode.html's Delete Comment).
+     js/confirmDialog.js drives it generically: any <form> carrying data-confirm-title (and
+     optionally data-confirm-message/data-confirm-label) gets its submit intercepted, shown here
+     instead, and actually submitted only if the user clicks through - no per-form JS needed.
+     Only ever needs including once per page, alongside fragments/icons.html. -->
+<div th:fragment="confirmDialog" class="confirm-dialog-backdrop" id="confirmDialogBackdrop" hidden>
+    <div class="confirm-dialog-card">
+        <div class="confirm-dialog-icon">
+            <svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>
+        </div>
+        <h2 class="confirm-dialog-title" id="confirmDialogTitle">Are you sure?</h2>
+        <p class="confirm-dialog-message" id="confirmDialogMessage">This action cannot be undone.</p>
+        <div class="confirm-dialog-actions">
+            <button type="button" class="confirm-dialog-btn confirm-dialog-cancel" id="confirmDialogCancel">Cancel</button>
+            <button type="button" class="confirm-dialog-btn confirm-dialog-danger" id="confirmDialogOk">Delete</button>
+        </div>
+    </div>
+</div>
+</body>
+</html>

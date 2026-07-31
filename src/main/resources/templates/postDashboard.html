@@ -7,99 +7,191 @@
     <script src="/js/themeInit.js"></script>
     <link rel="stylesheet" href="/CSS/common.css">
     <link rel="stylesheet" href="/CSS/dashboardStyle.css">
+    <!-- Needed because the modal post view (fragments/postModal.html) reuses viewPostByID's own
+         markup/classes and scripts wholesale instead of duplicating them. -->
+    <link rel="stylesheet" href="/CSS/viewPostByID.css">
     <script src="/js/filterDropdown.js" defer></script>
     <script src="/js/share.js" defer></script>
     <script src="/js/theme.js" defer></script>
     <script src="/js/navProfileMenu.js" defer></script>
     <script src="/js/profileLinks.js" defer></script>
+    <script src="/js/dashboardFilterToggle.js" defer></script>
+    <script src="/js/infiniteScroll.js" defer></script>
+    <script src="/js/commentThread.js" defer></script>
+    <script src="/js/commentComposer.js" defer></script>
+    <script src="/js/reactions.js" defer></script>
+    <script src="/js/postModal.js" defer></script>
+    <script src="/js/composeModal.js" defer></script>
+    <script src="/js/confirmDialog.js" defer></script>
 </head>
 <body>
-<div th:replace="~{fragments/nav :: nav}"></div>
-<main>
-    <div class="filter-sort-container">
-        <div class="filter-sort-controls">
-            <span class="filter-sort-label">Filter by</span>
+<div th:replace="~{fragments/icons :: defs}"></div>
+<div th:replace="~{fragments/presetIcons :: defs}"></div>
+<div th:replace="~{fragments/confirmDialog :: confirmDialog}"></div>
 
-            <!-- Author Filter with Multiple Selection -->
-            <form th:action="@{/posts/filter-author}" th:method="get" class="filter-form">
-                <div th:replace="~{fragments/filterDropdown :: filterDropdown('Author', 'author', ${authors}, ${activeAuthors})}"></div>
-                <input type="hidden" name="query" th:value="${activeQuery}"/>
-                <input type="hidden" th:each="t : ${activeTags}" name="tag" th:value="${t}"/>
-                <input type="hidden" name="order" th:value="${activeOrder}"/>
-            </form>
+<div class="dashboard-shell">
 
-            <form th:action="@{/posts/filter-tag}" th:method="get" class="filter-form">
-                <div th:replace="~{fragments/filterDropdown :: filterDropdown('Tag', 'tag', ${tags}, ${activeTags})}"></div>
-                <input type="hidden" name="query" th:value="${activeQuery}"/>
-                <input type="hidden" th:each="a : ${activeAuthors}" name="author" th:value="${a}"/>
-                <input type="hidden" name="order" th:value="${activeOrder}"/>
-            </form>
+    <!-- ============ LEFT: sidebar ============ -->
+    <aside class="sidebar">
+        <a th:href="@{/home}" class="sidebar-brand">
+            <svg class="brand-mark" aria-hidden="true"><use href="#i-brand"/></svg>
+            <span>Bodh Sea</span>
+        </a>
 
-            <span class="filter-sort-label">Sort by</span>
-            <form th:action="@{/posts/sort}" th:method="get" class="filter-form">
-                <select name="order" class="sort-dropdown" onchange="this.form.submit()">
-                    <option value="">Newest first</option>
-                    <option value="decrease" th:selected="${activeOrder == 'decrease'}">Newer To Older</option>
-                    <option value="increase" th:selected="${activeOrder == 'increase'}">Older To Newer</option>
-                </select>
-                <input type="hidden" name="query" th:value="${activeQuery}"/>
-                <input type="hidden" th:each="a : ${activeAuthors}" name="author" th:value="${a}"/>
-                <input type="hidden" th:each="t : ${activeTags}" name="tag" th:value="${t}"/>
-            </form>
+        <form th:action="@{/home/search}" th:method="get" class="sidebar-search">
+            <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+            <input type="text" name="query" th:value="${activeQuery}" placeholder="Quick search&hellip;">
+            <input type="hidden" th:each="a : ${activeAuthors ?: {}}" name="author" th:value="${a}"/>
+            <input type="hidden" th:each="t : ${activeTags ?: {}}" name="tag" th:value="${t}"/>
+            <input type="hidden" name="order" th:value="${activeOrder}"/>
+        </form>
+
+        <div>
+            <div class="sidebar-group-label">Library</div>
+            <a th:href="@{/home}" class="sidebar-navitem active">
+                <svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span>For you</span></a>
+            <span class="sidebar-navitem disabled" title="Not built yet">
+                <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span>Following</span><span class="soon-badge">Soon</span></span>
+            <span class="sidebar-navitem disabled" title="Not built yet">
+                <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><span>Bookmarks</span><span class="soon-badge">Soon</span></span>
+            <span class="sidebar-navitem disabled" title="Not built yet">
+                <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg><span>Drafts</span><span class="soon-badge">Soon</span></span>
         </div>
-    </div>
-    <div class="post-list">
-        <a class="post-row" th:each="post : ${posts}" th:href="@{/post/viewPost(id=${post.id})}">
-            <h2 class="post-title" th:text="${post.title}">Post Title</h2>
-            <div class="post-meta" th:with="viewCount=${viewCounts.get(post.id)} ?: 0, reaction=${postReactions.get(post.id)}">
-                <!-- Not a real <a> - this row is already one big <a>, and nesting another
-                     interactive element inside it would split the card in two (see js/profileLinks.js). -->
-                <span class="post-author-link" th:if="${post.user != null and post.user.username != null}"
-                      role="link" tabindex="0" th:attr="data-profile-url=@{/profile/{u}(u=${post.user.username})}">
-                    <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(post.user)}">
-                        <div th:replace="~{fragments/avatarContent :: content(${post.user}, ${post.author})}"></div>
-                    </span>
-                    <span th:text="${post.author}">Author</span>
+
+        <!-- Profile dropdown - identical trigger/panel/ids to the old shared header (see
+             fragments/nav.html), just relocated into the sidebar footer. navProfileMenu.js and
+             common.css's .nav-profile* rules are id/class-based, not header-specific, so the
+             exact same markup works unchanged here. -->
+        <div class="nav-profile sidebar-foot" sec:authorize="isAuthenticated()" th:if="${currentUser != null}">
+            <button type="button" class="nav-avatar-trigger sidebar-foot-trigger" id="navAvatarTrigger" aria-haspopup="true" aria-expanded="false" aria-label="Profile menu">
+                <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(currentUser)}">
+                    <div th:replace="~{fragments/avatarContent :: content(${currentUser}, ${currentUser.name})}"></div>
                 </span>
-                <span class="post-author" th:unless="${post.user != null and post.user.username != null}">
-                    <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(post.user)}">
-                        <div th:replace="~{fragments/avatarContent :: content(${post.user}, ${post.author})}"></div>
-                    </span>
-                    <span th:text="${post.author}">Author</span>
-                </span>
-                <span class="dot"></span>
-                <span th:if="${post.updatedAt != null}"
-                      th:text="${T(com.BlogApplication.Blog.util.TimeFormatter).relative(post.updatedAt)}"
-                      th:title="${T(com.BlogApplication.Blog.util.TimeFormatter).absolute(post.updatedAt)}"></span>
-                <span class="dot"></span>
-                <span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(viewCount)} + ' ' + (${viewCount} == 1 ? 'view' : 'views')"></span>
-                <span class="dot"></span>
-                <span class="post-reactions">
-                    <svg class="icon" aria-hidden="true"><use href="#i-thumbs-up"/></svg><span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.likeCount : 0)}">0</span>
-                    <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg><span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.dislikeCount : 0)}">0</span>
-                    <div th:replace="~{fragments/shareMenu :: shareMenu(${post.id}, @{/post/viewPost(id=${post.id})}, ${post.title})}"></div>
-                </span>
+                <span class="who"><b th:text="${currentUser.name}">Name</b><span th:text="'@' + ${currentUser.username}">@handle</span></span>
+            </button>
+            <div class="nav-profile-dropdown sidebar-dropdown" id="navProfileDropdown" hidden>
+                <div class="nav-dd-items">
+                    <a th:if="${currentUser.username != null}" th:href="@{/profile/{u}(u=${currentUser.username})}" class="nav-dd-item">
+                        <svg class="icon" aria-hidden="true"><use href="#i-user"/></svg>View profile</a>
+                    <button type="button" class="nav-dd-item" id="theme-toggle">
+                        <svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg>
+                        <span class="nav-dd-grow">Dark mode</span>
+                        <span class="nav-dd-switch"></span>
+                    </button>
+                </div>
+                <div class="nav-dd-divider"></div>
+                <div class="nav-dd-items">
+                    <form th:action="@{/logout}" th:method="post">
+                        <button type="submit" class="nav-dd-item nav-dd-danger">
+                            <svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg>Log out</button>
+                    </form>
+                </div>
             </div>
-            <p class="post-excerpt" th:text="${post.excerpt}">Post content excerpt...</p>
-            <div class="post-tags">
-                <span th:each="tag : ${post.tagList}" th:text="${tag.name}">Tag</span>
+        </div>
+    </aside>
+
+    <!-- ============ CENTER: top bar + feed ============ -->
+    <main class="center">
+        <div class="topbar">
+            <div class="crumb">Home / <b>For you</b></div>
+            <div class="topbar-spacer"></div>
+            <button type="button" class="chip-btn" id="filterToggleBtn" aria-expanded="false" aria-controls="filterPanel">
+                <svg class="icon" aria-hidden="true"><use href="#i-filter"/></svg>Filter</button>
+            <span class="chip-btn disabled" title="Not built yet">
+                <svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg>Activity<span class="soon-badge">Soon</span></span>
+        </div>
+
+        <div class="filter-panel-row" id="filterPanel" hidden>
+            <div class="filter-sort-controls">
+                <span class="filter-sort-label">Filter by</span>
+                <form th:action="@{/home/filter-author}" th:method="get" class="filter-form">
+                    <div th:replace="~{fragments/filterDropdown :: filterDropdown('Author', 'author', ${authors}, ${activeAuthors})}"></div>
+                    <input type="hidden" name="query" th:value="${activeQuery}"/>
+                    <input type="hidden" th:each="t : ${activeTags}" name="tag" th:value="${t}"/>
+                    <input type="hidden" name="order" th:value="${activeOrder}"/>
+                </form>
+                <form th:action="@{/home/filter-tag}" th:method="get" class="filter-form">
+                    <div th:replace="~{fragments/filterDropdown :: filterDropdown('Tag', 'tag', ${tags}, ${activeTags})}"></div>
+                    <input type="hidden" name="query" th:value="${activeQuery}"/>
+                    <input type="hidden" th:each="a : ${activeAuthors}" name="author" th:value="${a}"/>
+                    <input type="hidden" name="order" th:value="${activeOrder}"/>
+                </form>
+                <span class="filter-sort-label">Sort by</span>
+                <form th:action="@{/home/sort}" th:method="get" class="filter-form">
+                    <select name="order" class="sort-dropdown" onchange="this.form.submit()">
+                        <option value="">Newest first</option>
+                        <option value="decrease" th:selected="${activeOrder == 'decrease'}">Newer To Older</option>
+                        <option value="increase" th:selected="${activeOrder == 'increase'}">Older To Newer</option>
+                    </select>
+                    <input type="hidden" name="query" th:value="${activeQuery}"/>
+                    <input type="hidden" th:each="a : ${activeAuthors}" name="author" th:value="${a}"/>
+                    <input type="hidden" th:each="t : ${activeTags}" name="tag" th:value="${t}"/>
+                </form>
             </div>
-        </a>
-    </div>
-    <div class="pagination-controls">
-        <a class="pagination-button"
-           th:if="${currentPage > 0}"
-           th:href="@{/posts(page=${currentPage - 1}, size=${pageSize}, query=${activeQuery}, author=${activeAuthors}, tag=${activeTags}, order=${activeOrder})}">
-            <svg class="icon" aria-hidden="true"><use href="#i-chevron-left"/></svg>Previous
-        </a>
-        <span th:text="'Page ' + (${currentPage} + 1) + ' of ' + ${totalPages}">Page 1 of 10</span>
-        <a class="pagination-button"
-           th:if="${currentPage + 1 < totalPages}"
-           th:href="@{/posts(page=${currentPage + 1}, size=${pageSize}, query=${activeQuery}, author=${activeAuthors}, tag=${activeTags}, order=${activeOrder})}">
-            Next<svg class="icon" aria-hidden="true"><use href="#i-chevron-right"/></svg>
-        </a>
-    </div>
-</main>
+        </div>
+
+        <div class="post-list" id="postList"
+             th:attr="data-page-size=${pageSize}, data-query=${activeQuery}, data-authors=${#strings.listJoin(activeAuthors, '&#124;')}, data-tags=${#strings.listJoin(activeTags, '&#124;')}, data-order=${activeOrder}"
+             th:data-next-page="${currentPage + 1}">
+            <div th:replace="~{fragments/postRows :: postRows}"></div>
+        </div>
+        <!-- Purely a transient "fetch in progress" indicator (js/infiniteScroll.js) - hidden by
+             default, shown only while a batch is actually loading, hidden again once it resolves
+             regardless of whether there's a further page. No "you're all caught up" state at
+             all: once there's nothing left, this simply never reappears. -->
+        <div class="infinite-scroll-status" id="infiniteScrollStatus" hidden>
+            <div class="leaf-loader" aria-label="Loading more posts" role="status">
+                <svg class="ring" viewBox="0 0 40 40" aria-hidden="true">
+                    <circle cx="20" cy="20" r="16" fill="none" stroke="var(--color-border)" stroke-width="3"/>
+                    <circle cx="20" cy="20" r="16" fill="none" stroke="url(#leafLoaderGradient)" stroke-width="3" stroke-linecap="round" stroke-dasharray="28 101"/>
+                </svg>
+                <svg class="leaf" viewBox="-10 -13 20 26" aria-hidden="true">
+                    <path d="M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z" fill="url(#leafLoaderGradient)"/>
+                </svg>
+            </div>
+        </div>
+    </main>
+
+    <!-- ============ RIGHT: real-data widgets ============ -->
+    <aside class="side">
+        <div class="widget" th:if="${trendingTags != null and !trendingTags.isEmpty()}">
+            <h4>Trending tags</h4>
+            <div class="trend-row" th:each="t : ${trendingTags}">
+                <span th:text="'#' + ${#strings.toLowerCase(t.name)}">#tag</span>
+                <b th:text="${t.postCount} + (${t.postCount} == 1 ? ' post' : ' posts')">0 posts</b>
+            </div>
+        </div>
+
+        <div class="widget" th:if="${topAuthors != null and !topAuthors.isEmpty()}">
+            <h4>Active writers</h4>
+            <a class="follow-row" th:each="a : ${topAuthors}"
+               th:href="${a.user.username != null} ? @{/profile/{u}(u=${a.user.username})} : '#'">
+                <span class="avatar" style="width:30px;height:30px;font-size:12px"
+                      th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(a.user)}">
+                    <div th:replace="~{fragments/avatarContent :: content(${a.user}, ${a.user.name})}"></div>
+                </span>
+                <span class="who"><b th:text="${a.user.name}">Name</b><span th:text="${a.postCount} + (${a.postCount} == 1 ? ' post' : ' posts')">0 posts</span></span>
+            </a>
+        </div>
+    </aside>
+
+    <button type="button" class="fab" id="composeFabBtn" aria-label="Write a post">
+        <svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>
+    </button>
+
+</div>
+
+<!-- Modal post view (js/postModal.js) - empty until a post-row is clicked, which fetches
+     GET /post/{id}/modal and injects fragments/postModal.html's markup here. Feed scroll
+     position and loaded infinite-scroll batches are untouched by opening/closing this. -->
+<div class="post-modal-backdrop" id="postModalBackdrop" hidden>
+    <div class="post-modal-frame" id="postModalFrame"></div>
+</div>
+
+<!-- Compose modal (js/composeModal.js) - opened by the FAB above instead of navigating to
+     /posts/createForm. Always inline (unlike the post-view modal above), since its content
+     doesn't depend on which post was clicked - just the logged-in user, already in scope here. -->
+<div th:replace="~{fragments/composeModal :: composeModal}"></div>
 
 </body>
 </html>

@@ -7,6 +7,14 @@
     <script src="/js/themeInit.js"></script>
     <link rel="stylesheet" href="/CSS/common.css">
     <link rel="stylesheet" href="/CSS/profileStyle.css">
+    <!-- Needed because the post-view modal (fragments/postModal.html, opened by js/postModal.js
+         below) reuses viewPostByID's own markup/classes and dashboardStyle's modal chrome
+         wholesale instead of duplicating them - same reasoning as postDashboard.html's own
+         includes. profileStyle.css's .profile-wrap-scoped rules already win over dashboardStyle's
+         bare .post-row/.post-title/etc via specificity, so this doesn't change how the
+         Posts/Replies tabs themselves look. -->
+    <link rel="stylesheet" href="/CSS/dashboardStyle.css">
+    <link rel="stylesheet" href="/CSS/viewPostByID.css">
     <script src="/js/theme.js" defer></script>
     <script src="/js/navProfileMenu.js" defer></script>
     <script src="/js/profileTabs.js" defer></script>
@@ -14,9 +22,21 @@
     <script src="/js/avatarEditor.js" defer></script>
     <script src="/js/coverEditor.js" defer></script>
     <script src="/js/modalScrollLock.js" defer></script>
+    <script src="/js/commentThread.js" defer></script>
+    <script src="/js/commentComposer.js" defer></script>
+    <script src="/js/reactions.js" defer></script>
+    <script src="/js/share.js" defer></script>
+    <script src="/js/postModal.js" defer></script>
+    <script src="/js/confirmDialog.js" defer></script>
+    <!-- Same compose modal as postDashboard.html's Create/Edit - only Edit is reachable here
+         (no "Create" FAB on a profile page), which js/composeModal.js's init no longer requires
+         a FAB to exist for. -->
+    <script src="/js/composeModal.js" defer></script>
 </head>
 <body>
 <div th:replace="~{fragments/nav :: nav}"></div>
+<div th:replace="~{fragments/confirmDialog :: confirmDialog}"></div>
+<div th:replace="~{fragments/composeModal :: composeModal}"></div>
 
 <main class="profile-wrap">
     <div class="profile-card">
@@ -78,7 +98,7 @@
 
         <div class="tab-panel" data-panel="posts">
             <div class="post-list" th:if="${!#lists.isEmpty(posts)}">
-                <a class="post-row" th:each="post : ${posts}" th:href="@{/post/viewPost(id=${post.id})}">
+                <a class="post-row" th:each="post : ${posts}" th:href="@{/post/viewPost(id=${post.id})}" th:data-open-post-modal="${post.id}">
                     <h3 class="post-title" th:text="${post.title}">Title</h3>
                     <div class="post-meta">
                         <span th:if="${post.updatedAt != null}"
@@ -94,7 +114,7 @@
             <div th:if="${!#lists.isEmpty(comments)}">
                 <div class="reply-row" th:each="comment : ${comments}">
                     <p class="reply-context">Commented on
-                        <a th:href="@{/post/viewPost(id=${comment.post.id})}" th:text="${comment.post.title}">Post</a>
+                        <a th:href="@{/post/viewPost(id=${comment.post.id})}" th:text="${comment.post.title}" th:attr="data-open-post-modal=${comment.post.id}">Post</a>
                     </p>
                     <p class="reply-text" th:text="${comment.content}">Comment</p>
                 </div>
@@ -261,6 +281,13 @@
             </div>
         </form>
     </div>
+</div>
+
+<!-- Post-view modal (js/postModal.js) - opened by clicking a post in the Posts tab or a
+     "Commented on" link in the Replies tab, instead of navigating to /post/viewPost. Same
+     fragment/markup as postDashboard.html's own instance. -->
+<div class="post-modal-backdrop" id="postModalBackdrop" hidden>
+    <div class="post-modal-frame" id="postModalFrame"></div>
 </div>
 </body>
 </html>

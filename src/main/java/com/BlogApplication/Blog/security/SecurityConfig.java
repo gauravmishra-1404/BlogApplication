@@ -97,11 +97,11 @@ public class SecurityConfig {
                 .formLogin(form -> form
                         .loginPage("/login")
                         .loginProcessingUrl("/authenticateTheUser")
-                        .defaultSuccessUrl("/posts", true)
+                        .defaultSuccessUrl("/home", true)
                 )
-                // logoutSuccessUrl deliberately points at /login, not /posts - .permitAll() here
+                // logoutSuccessUrl deliberately points at /login, not /home - .permitAll() here
                 // auto-whitelists whatever that URL is (so /logout itself works for a session
-                // that's already gone), and pointing it at /posts would silently punch that path
+                // that's already gone), and pointing it at /home would silently punch that path
                 // back open to anonymous users, undoing the lockdown above.
                 .logout(logout -> logout
                         .logoutUrl("/logout")

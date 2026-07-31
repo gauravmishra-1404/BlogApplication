@@ -106,3 +106,24 @@ production.
   can't prove the production database or environment agrees. When in doubt about a production-only
   symptom, the fastest path is telling Claude the specific account/email/id involved so it can be
   reasoned about against the code, or checking it directly via Render's dashboard/psql.
+
+## Core UI design principles (2026-07-30)
+
+Every UI decision on this project gets checked against these before it's called done:
+
+- **Clarity and simplicity** — keep layouts clean and uncluttered. Every button, icon, and label
+  needs an obvious purpose; if part of the UI serves no practical purpose for the user, it
+  shouldn't be there.
+- **Consistency** — identical patterns, colors, fonts, and terms across the whole app, so
+  familiarity carries from one page to the next instead of resetting.
+- **Visual hierarchy** — arrange elements by size, contrast, and spacing so users know where to
+  look first and are guided naturally through the important information.
+- **Feedback** — show an immediate visual or textual response to every interaction: a button
+  changing state on click, a loading indicator while something is genuinely in flight (see the
+  leaf loader on the dashboard's infinite scroll — motion instead of a text label), a toast after
+  an action completes.
+- **User control and freedom** — let people undo actions, correct mistakes, or back out of a
+  screen they entered by accident, rather than trapping them in a flow.
+- **Accessibility** — usable for everyone, including people with visual or motor impairments:
+  high-contrast text, readable font sizing, and respect for `prefers-reduced-motion` wherever
+  something animates (same loader again — its spin/pulse both turn off under that media query).

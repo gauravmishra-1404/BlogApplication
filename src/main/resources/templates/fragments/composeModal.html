@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Dashboard's compose-post modal - doubles as both Create and Edit (js/composeModal.js opens
+     it instead of navigating to /posts/createForm for a new post, or /posts/edit for an
+     existing one). Create posts to /post/publish; Edit switches the same form's action to
+     /post/republish and adds the post's id, both existing endpoints unchanged - Spring binds
+     title/tags/author/content onto PostDto by request-param name regardless of which page/mode
+     the form came from. Edit mode is opened from fragments/shareMenu.html's Edit button, reading
+     the post's current title/content/tags straight out of the already-open post-view modal's own
+     DOM (fragments/postModal.html) rather than a second fetch - see js/composeModal.js's
+     openForEdit().
+
+     Media (photo/video/voice) and Poll/Schedule/Location are shown disabled with a "Soon" badge,
+     same convention as the sidebar's Following/Bookmarks/Drafts - no PostMedia schema exists yet,
+     so wiring these up for real (including showing/removing a post's *existing* attached media
+     in edit mode) is a separate, explicitly deferred piece of work. There is no GIF option here
+     (unlike the design artifact) since real GIF search needs a Giphy/Tenor API key and a
+     server-side proxy - faking it with local placeholders would ship non-functional UI. -->
+<div th:fragment="composeModal" class="compose-modal-backdrop" id="composeModalBackdrop" hidden>
+    <div class="compose-modal-frame">
+        <div class="compose-modal-head">
+            <div class="compose-modal-title">
+                <svg class="icon" aria-hidden="true"><use href="#i-brand"/></svg>
+                <span id="composeModalTitleText">Create post</span>
+            </div>
+            <button type="button" class="compose-modal-close" id="composeModalClose" aria-label="Close">
+                <svg class="icon" aria-hidden="true"><use href="#i-close"/></svg>
+            </button>
+        </div>
+
+        <form th:action="@{/post/publish}" th:attr="data-edit-action=@{/post/republish}" th:method="post" class="compose-modal-body" id="composeForm">
+            <input type="hidden" name="id" id="composePostId" value="">
+            <div class="compose-author">
+                <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(currentUser)}">
+                    <div th:replace="~{fragments/avatarContent :: content(${currentUser}, ${currentUser != null ? currentUser.name : null})}"></div>
+                </span>
+                <span class="who">
+                    <b th:text="${currentUser != null ? currentUser.name : ''}">Name</b>
+                    <span th:text="${currentUser != null and currentUser.username != null} ? ('@' + ${currentUser.username}) : ''">@handle</span>
+                </span>
+            </div>
+
+            <!-- Same "readonly unless ROLE_ADMIN" rule newPost.html already applies - a hidden
+                 field carries the fixed value for everyone else, since there's no visible input
+                 worth showing when it can't be changed. -->
+            <input type="hidden" name="author"
+                   th:if="${currentUser == null or currentUser.role != 'ROLE_ADMIN'}"
+                   th:value="${currentUser != null ? currentUser.name : ''}">
+            <input type="text" name="author" class="compose-author-input"
+                   th:if="${currentUser != null and currentUser.role == 'ROLE_ADMIN'}"
+                   th:value="${currentUser.name}" placeholder="Author name">
+
+            <input type="text" name="title" id="composeTitle" class="compose-title"
+                   placeholder="Give your post a title" required maxlength="200">
+            <textarea name="content" id="composeContent" class="compose-content"
+                      placeholder="Share your story, thoughts, or drop a meme..." required rows="3"></textarea>
+
+            <div class="media-dropzone disabled" title="Photo, video, and voice attachments - coming soon">
+                <svg class="icon" aria-hidden="true"><use href="#i-image"/></svg>
+                <div class="dz-title">Photo, video &amp; voice attachments</div>
+                <div class="dz-sub">Coming soon</div>
+            </div>
+
+            <div class="composer-section-label">Tags (at least one required)</div>
+            <div class="tag-input-wrap" id="composeTagWrap">
+                <input type="text" class="tag-input" id="composeTagInput" placeholder="Add a tag and press Enter">
+            </div>
+            <input type="hidden" name="tags" id="composeTagsHidden">
+
+            <div class="composer-toolbar">
+                <button type="button" class="tool-btn disabled" title="Photo, video &amp; voice - coming soon" disabled>
+                    <svg class="icon" aria-hidden="true"><use href="#i-image"/></svg>
+                    <span class="tt-soon">Soon</span>
+                </button>
+                <div class="tool-btn-wrap">
+                    <button type="button" class="tool-btn" id="composeEmojiBtn" aria-haspopup="true" aria-expanded="false" title="Emoji">
+                        <svg class="icon" aria-hidden="true"><use href="#i-smiley"/></svg>
+                    </button>
+                    <div class="picker-popover" id="composeEmojiPopover">
+                        <div class="picker-search-row">
+                            <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+                            <input type="text" id="composeEmojiSearch" placeholder="Search emojis">
+                            <button type="button" class="picker-search-clear" id="composeEmojiSearchClear" aria-label="Clear search">
+                                <svg class="icon" aria-hidden="true"><use href="#i-close"/></svg>
+                            </button>
+                        </div>
+                        <div class="emoji-categories" id="composeEmojiCategories"></div>
+                        <div class="emoji-section-label" id="composeEmojiSectionLabel">Smileys &amp; people</div>
+                        <div class="emoji-grid" id="composeEmojiGrid"></div>
+                        <div class="emoji-footer">
+                            <button type="button" class="skin-tone-btn" id="composeSkinToneBtn" title="Skin tone">👋</button>
+                            <button type="button" class="emoji-confirm" id="composeEmojiConfirm" title="Done" aria-label="Done">
+                                <svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="tool-btn" id="composeTagBtn" title="Add tag">
+                    <svg class="icon" aria-hidden="true"><use href="#i-hashtag"/></svg>
+                </button>
+                <button type="button" class="tool-btn disabled" title="Poll - coming soon" disabled>
+                    <svg class="icon" aria-hidden="true"><use href="#i-poll"/></svg>
+                    <span class="tt-soon">Soon</span>
+                </button>
+                <button type="button" class="tool-btn disabled" title="Schedule - coming soon" disabled>
+                    <svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg>
+                    <span class="tt-soon">Soon</span>
+                </button>
+                <button type="button" class="tool-btn disabled" title="Location - coming soon" disabled>
+                    <svg class="icon" aria-hidden="true"><use href="#i-map-pin"/></svg>
+                    <span class="tt-soon">Soon</span>
+                </button>
+            </div>
+
+            <div class="composer-footer">
+                <div class="footer-meta">
+                    <span id="composeWordCount">0 words</span>
+                    <span class="dot">&middot;</span>
+                    <span id="composeReadTime">0 min read</span>
+                </div>
+                <div class="footer-actions">
+                    <button type="button" class="btn-draft" disabled>Save draft <span class="soon">Soon</span></button>
+                    <button type="submit" class="btn-post" id="composePostBtn" disabled><span id="composePostBtnLabel">Post</span></button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>

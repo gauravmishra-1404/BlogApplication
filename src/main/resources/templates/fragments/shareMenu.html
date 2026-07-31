@@ -11,12 +11,25 @@
      runs the HTML5 tree-construction algorithm a real browser does). Plain <span>s avoid that
      entirely. js/share.js drives all interaction (open/close, the Share accordion, building
      the platform URLs, copy, and Enter/Space activation for keyboard users). -->
-<span th:fragment="shareMenu(postId, postUrl, postTitle)" class="options-menu"
+<!-- canEdit/editUrl/deleteUrl are optional-in-spirit: callers that never show Edit/Delete here
+     (the dashboard row, the full post page - which keeps its own separate Edit/Delete buttons)
+     pass canEdit=false, editUrl=null, deleteUrl=null. Only the modal post view passes real
+     values, since it's the one place these buttons were consolidated into this menu instead of
+     sitting as their own row above the title. -->
+<span th:fragment="shareMenu(postId, postUrl, postTitle, canEdit, editUrl, deleteUrl)" class="options-menu"
       th:attr="data-post-url=${postUrl}, data-post-title=${postTitle}">
     <span class="options-trigger" role="button" tabindex="0" aria-label="More options" aria-haspopup="true" aria-expanded="false">
         <svg class="icon" aria-hidden="true"><use href="#i-dots"/></svg>
     </span>
     <span class="share-panel" hidden>
+        <!-- canEdit is only ever true from the post-view modal (fragments/postModal.html),
+             which only ever renders inside postDashboard.html - so the compose modal
+             js/composeModal.js's openForEdit() opens into is guaranteed to already be on the
+             page. editUrl is kept as a fallback data attribute rather than removed outright, in
+             case a future caller passes canEdit=true from a page without that modal available. -->
+        <button type="button" class="share-option" th:if="${canEdit}" data-edit-post th:attr="data-edit-url=${editUrl}">
+            <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>Edit
+        </button>
         <span class="share-option" role="button" tabindex="0" data-share-accordion-toggle aria-expanded="false">
             <svg class="icon" aria-hidden="true"><use href="#i-share"/></svg>Share
             <svg class="icon chevron" aria-hidden="true"><use href="#i-chevron-right"/></svg>
@@ -43,9 +56,35 @@
             </span>
         </span>
         <span class="share-divider"></span>
-        <span class="share-option download" role="button" tabindex="0" th:attr="data-download-url=@{/post/download(id=${postId})}">
-            <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Download PDF
+        <!-- Download, expandable the same way Share is above - a checkbox per format this post
+             actually has, so a post with several attached formats can be downloaded as one
+             batch instead of one click per format. Text/PDF is the only format that exists
+             today (every post can always export its write-up); a photo/video/voice checkbox
+             goes here as a sibling .format-option, checked by default, once PostMedia (attached
+             media) exists - no markup restructuring needed later. -->
+        <span class="share-option" role="button" tabindex="0" data-share-accordion-toggle aria-expanded="false">
+            <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Download
+            <svg class="icon chevron" aria-hidden="true"><use href="#i-chevron-right"/></svg>
         </span>
+        <span class="accordion-body" hidden>
+            <label class="format-option">
+                <input type="checkbox" class="format-checkbox" checked th:attr="data-download-url=@{/post/download(id=${postId})}">
+                <svg class="icon" aria-hidden="true"><use href="#i-file"/></svg>
+                <span class="format-label-grow">Text (PDF)</span>
+            </label>
+            <button type="button" class="download-confirm">
+                <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>
+                <span class="download-confirm-label">Download selected</span>
+            </button>
+        </span>
+        <span class="share-divider" th:if="${canEdit}"></span>
+        <form th:if="${canEdit}" th:action="${deleteUrl}" th:method="post"
+              data-confirm-title="Delete this post?"
+              data-confirm-message="This can't be undone. It will be permanently removed from your profile and everyone's feed."
+              data-confirm-label="Delete">
+            <button type="submit" class="share-option share-option-danger">
+                <svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>Delete Post</button>
+        </form>
     </span>
 </span>
 </body>

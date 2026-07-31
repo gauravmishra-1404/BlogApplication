@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- The repeated post-card markup, shared between postDashboard.html's initial render and
+     PostController.postsFragment() (js/infiniteScroll.js's per-batch fetch), so both code paths
+     produce identical rows instead of two copies drifting apart. data-has-next-page on the root
+     lets the client read "is there another page" straight off the fetched fragment without a
+     separate response header. -->
+<th:block th:fragment="postRows">
+    <div style="display:contents" th:attr="data-has-next-page=${hasNextPage}">
+        <a class="post-row" th:each="post : ${posts}" th:href="@{/post/viewPost(id=${post.id})}" th:data-open-post-modal="${post.id}">
+            <h2 class="post-title" th:text="${post.title}">Post Title</h2>
+            <div class="post-meta" th:with="viewCount=${viewCounts.get(post.id)} ?: 0, reaction=${postReactions.get(post.id)}, commentCount=${commentCounts.get(post.id)} ?: 0">
+                <!-- Not a real <a> - this row is already one big <a>, and nesting another
+                     interactive element inside it would split the card in two (see js/profileLinks.js). -->
+                <span class="post-author-link" th:if="${post.user != null and post.user.username != null}"
+                      role="link" tabindex="0" th:attr="data-profile-url=@{/profile/{u}(u=${post.user.username})}">
+                    <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(post.user)}">
+                        <div th:replace="~{fragments/avatarContent :: content(${post.user}, ${post.author})}"></div>
+                    </span>
+                    <span th:text="${post.author}">Author</span>
+                </span>
+                <span class="post-author" th:unless="${post.user != null and post.user.username != null}">
+                    <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(post.user)}">
+                        <div th:replace="~{fragments/avatarContent :: content(${post.user}, ${post.author})}"></div>
+                    </span>
+                    <span th:text="${post.author}">Author</span>
+                </span>
+                <span class="dot"></span>
+                <span th:if="${post.updatedAt != null}"
+                      th:text="${T(com.BlogApplication.Blog.util.TimeFormatter).relative(post.updatedAt)}"
+                      th:title="${T(com.BlogApplication.Blog.util.TimeFormatter).absolute(post.updatedAt)}"></span>
+                <span class="dot"></span>
+                <span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(viewCount)} + ' ' + (${viewCount} == 1 ? 'view' : 'views')"></span>
+                <span class="dot"></span>
+                <span class="post-reactions">
+                    <svg class="icon" aria-hidden="true"><use href="#i-thumbs-up"/></svg><span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.likeCount : 0)}">0</span>
+                    <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg><span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.dislikeCount : 0)}">0</span>
+                    <svg class="icon" aria-hidden="true"><use href="#i-comment"/></svg><span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(commentCount)}">0</span>
+                    <div th:replace="~{fragments/shareMenu :: shareMenu(${post.id}, @{/post/viewPost(id=${post.id})}, ${post.title}, false, null, null)}"></div>
+                </span>
+            </div>
+            <p class="post-excerpt" th:text="${post.excerpt}">Post content excerpt...</p>
+            <div class="post-tags">
+                <span th:each="tag : ${post.tagList}" th:text="${tag.name}">Tag</span>
+            </div>
+        </a>
+    </div>
+</th:block>
+</body>
+</html>

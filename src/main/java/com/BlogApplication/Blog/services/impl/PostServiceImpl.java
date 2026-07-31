@@ -1,14 +1,23 @@
 package com.BlogApplication.Blog.services.impl;
 
+import com.BlogApplication.Blog.exceptions.InvalidPostException;
 import com.BlogApplication.Blog.models.Comment;
 import com.BlogApplication.Blog.models.Post;
 import com.BlogApplication.Blog.models.Tags;
 import com.BlogApplication.Blog.models.User;
+import com.BlogApplication.Blog.payloads.PostDetail;
 import com.BlogApplication.Blog.payloads.PostDto;
+import com.BlogApplication.Blog.payloads.PostListing;
+import com.BlogApplication.Blog.payloads.ReactionSummary;
+import com.BlogApplication.Blog.repositories.AuthorPostCount;
 import com.BlogApplication.Blog.repositories.PostRepo;
 import com.BlogApplication.Blog.repositories.PostViewRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
+import com.BlogApplication.Blog.services.CommentReactionService;
+import com.BlogApplication.Blog.services.CommentService;
+import com.BlogApplication.Blog.services.PostReactionService;
 import com.BlogApplication.Blog.services.PostService;
+import com.BlogApplication.Blog.services.PostViewService;
 import com.BlogApplication.Blog.services.TagService;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -40,6 +49,18 @@ public class PostServiceImpl implements PostService {
     private PostViewRepo postViewRepo;
 
     @Autowired
+    private PostViewService postViewService;
+
+    @Autowired
+    private PostReactionService postReactionService;
+
+    @Autowired
+    private CommentReactionService commentReactionService;
+
+    @Autowired
+    private CommentService commentService;
+
+    @Autowired
     private TagService tagService;
 
     @Autowired
@@ -51,6 +72,22 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public void save(PostDto postDto, Principal principal) {
+        // Authoritative check - the "required" attributes on newPost.html/composeModal.html's
+        // fields are UX, not enforcement (a direct POST to this endpoint bypasses them
+        // entirely, and previously did: a missing content crashed with a NullPointerException
+        // at the excerpt-generation line below, and a blank title or empty tags silently saved
+        // a broken post). Images/video are intentionally not checked here - they're optional
+        // per the actual feature, once PostMedia exists.
+        if (postDto.getTitle() == null || postDto.getTitle().isBlank()) {
+            throw new InvalidPostException("Title is required.");
+        }
+        if (postDto.getContent() == null || postDto.getContent().isBlank()) {
+            throw new InvalidPostException("Content is required.");
+        }
+        if (!hasAtLeastOneTag(postDto.getTags())) {
+            throw new InvalidPostException("At least one tag is required.");
+        }
+
         Post post = this.dtoToPost(postDto);
         post.setTitle(post.getTitle());
         post.setAuthor(post.getAuthor());
@@ -81,6 +118,18 @@ public class PostServiceImpl implements PostService {
     }
 
     public void updatePostByID(PostDto postDto, int id) {
+        // Same authoritative check as save() - the compose modal's edit mode enforces this
+        // client-side too, but a direct POST to /post/republish bypasses that entirely.
+        if (postDto.getTitle() == null || postDto.getTitle().isBlank()) {
+            throw new InvalidPostException("Title is required.");
+        }
+        if (postDto.getContent() == null || postDto.getContent().isBlank()) {
+            throw new InvalidPostException("Content is required.");
+        }
+        if (!hasAtLeastOneTag(postDto.getTags())) {
+            throw new InvalidPostException("At least one tag is required.");
+        }
+
         Post post = this.dtoToPost(postDto);
         post.setUpdatedAt(LocalDateTime.now());
 
@@ -101,6 +150,16 @@ public class PostServiceImpl implements PostService {
 
         postByID.setTagList(resolveTags(postDto.getTags()));
         postRepo.save(postByID);
+    }
+
+    // Same comma-split/trim rule resolveTags itself uses below - a plain !isBlank() check on
+    // the raw string would let "tags= , ," through as "non-empty" despite parsing to zero
+    // real tags.
+    private boolean hasAtLeastOneTag(String tagsInput) {
+        if (tagsInput == null || tagsInput.isBlank()) {
+            return false;
+        }
+        return Arrays.stream(tagsInput.split(",")).anyMatch(tag -> !tag.trim().isEmpty());
     }
 
     private List<Tags> resolveTags(String tagsInput) {
@@ -162,6 +221,30 @@ public class PostServiceImpl implements PostService {
         return postDtoByID;
     }
 
+    @Override
+    public PostDetail getPostDetail(int id, String userEmail) {
+        PostDto postDtoById = getPostById(id);
+        if (postDtoById == null) {
+            return null;
+        }
+        // Re-read after the caller's already-recorded view (see PostService.getPostDetail's
+        // javadoc) - getPostById's own count above was read before that, so it's stale by one.
+        postDtoById.setViewCount(postViewService.countViews(id));
+
+        ReactionSummary postReaction = postReactionService.getSummary(id, userEmail);
+
+        List<Integer> commentIds = postDtoById.getComments() == null
+                ? List.of()
+                : postDtoById.getComments().stream().map(Comment::getId).toList();
+        Map<Integer, ReactionSummary> commentReactions = commentReactionService.getSummaries(commentIds, userEmail);
+
+        return PostDetail.builder()
+                .post(postDtoById)
+                .postReaction(postReaction)
+                .commentReactions(commentReactions)
+                .build();
+    }
+
     // "Delete" is a soft delete: the row (and its comments/tags) stay in the database, just
     // hidden from listing/search/direct view. A hard delete here used to crash - Post/Tags had
     // a bidirectional CascadeType.ALL that reached into every other post sharing a tag - and
@@ -177,6 +260,11 @@ public class PostServiceImpl implements PostService {
     @Override
     public List<String> getAllUniqueAuthor() {
         return this.postRepo.distinctAuthor();
+    }
+
+    @Override
+    public List<AuthorPostCount> getTopAuthors(int limit) {
+        return postRepo.topAuthorsByPostCount(PageRequest.of(0, limit));
     }
 
     @Override
@@ -218,6 +306,30 @@ public class PostServiceImpl implements PostService {
 
         Pageable pageable = PageRequest.of(page, size, sort);
         return postRepo.findAll(spec, pageable);
+    }
+
+    @Override
+    public PostListing getListing(String query, List<String> authors, List<String> tags, String order, int page, int size) {
+        Page<Post> postPage = searchPosts(query, authors, tags, order, page, size);
+        List<Integer> postIds = postPage.getContent().stream().map(Post::getId).toList();
+
+        return PostListing.builder()
+                .posts(postPage.getContent())
+                .viewCounts(postViewService.countViewsForPosts(postIds))
+                // Just public counts here (no per-viewer "did I react" state, unlike the post
+                // page itself) - the dashboard is a listing, not somewhere you react from.
+                .reactions(postReactionService.getSummaries(postIds, null))
+                .commentCounts(commentService.countCommentsForPosts(postIds))
+                .currentPage(page)
+                .totalPages(postPage.getTotalPages())
+                .totalItems(postPage.getTotalElements())
+                .pageSize(size)
+                .hasNextPage(page + 1 < postPage.getTotalPages())
+                .activeQuery(query)
+                .activeAuthors(authors == null ? List.of() : authors)
+                .activeTags(tags == null ? List.of() : tags)
+                .activeOrder(order)
+                .build();
     }
 
     private List<String> cleanValues(List<String> values, java.util.function.Function<String, String> transform) {

@@ -14,6 +14,7 @@
 <div th:replace="~{fragments/nav :: nav}"></div>
 <div class="container">
     <h1>Edit Post</h1>
+    <div class="auth-error" th:if="${error}" th:text="${error}"></div>
     <form th:action="@{/post/republish}" th:method="post" th:object="${post}">
         <input type="hidden" th:field="*{id}" />
         <div class="form-group">
@@ -23,7 +24,7 @@
 
         <div class="form-group">
             <label for="tags">Tags</label>
-            <input type="text" id="tags" th:field="*{tags}" th:placeholder="|${post.tags}|">
+            <input type="text" id="tags" th:field="*{tags}" th:placeholder="|${post.tags}|" required>
         </div>
 
         <div class="form-group">
@@ -33,7 +34,7 @@
 
         <div class="form-group">
             <label for="content">Content</label>
-            <textarea id="content" th:field="*{content}" rows="10" th:placeholder="|${post.content}|"></textarea>
+            <textarea id="content" th:field="*{content}" rows="10" th:placeholder="|${post.content}|" required></textarea>
         </div>
         <!--        <a th:href="@{/posts/republish(id=${post.id})}" class="btn">Republish</a>-->
         <button type="submit" class="btn">Republish</button>

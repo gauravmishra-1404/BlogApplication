@@ -20,4 +20,12 @@ public interface CommentRepo extends JpaRepository<Comment,Integer> {
     // page's comment thread.
     @Query("SELECT c FROM Comment c WHERE c.user = :user AND (c.deleted IS NULL OR c.deleted = false) ORDER BY c.createdAt DESC")
     List<Comment> findVisibleByUser(@Param("user") User user);
+
+    // One query for a whole page of posts (e.g. the dashboard listing) instead of a separate
+    // COUNT per row, same pattern as PostViewRepo.countGroupedByPostIds. Counts replies too, not
+    // just top-level comments - the feed's count is "how big is this conversation", the same
+    // thing #i-comment next to it represents.
+    @Query("SELECT c.post.id AS postId, COUNT(c) AS commentCount FROM Comment c " +
+            "WHERE c.post.id IN :postIds AND (c.deleted IS NULL OR c.deleted = false) GROUP BY c.post.id")
+    List<CommentCount> countGroupedByPostIds(@Param("postIds") List<Integer> postIds);
 }

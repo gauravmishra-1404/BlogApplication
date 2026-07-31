@@ -14,16 +14,21 @@
     <script src="/js/theme.js" defer></script>
     <script src="/js/navProfileMenu.js" defer></script>
     <script src="/js/postContent.js" defer></script>
+    <script src="/js/confirmDialog.js" defer></script>
 </head>
 <body>
 <div th:replace="~{fragments/nav :: nav}"></div>
+<div th:replace="~{fragments/confirmDialog :: confirmDialog}"></div>
 
 <div class="container">
     <div class="post-actions" sec:authorize="isAuthenticated()"
          th:if="${#authorization.expression('hasRole(''ADMIN'')') or post.user.email==#authentication.name}">
         <a th:href="@{/posts/edit(id=${post.id})}" class="edit-button">
             <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>Edit</a>
-        <form th:action="@{/posts/delete(id=${post.id})}" th:method="post">
+        <form th:action="@{/posts/delete(id=${post.id})}" th:method="post"
+              data-confirm-title="Delete this post?"
+              data-confirm-message="This can't be undone. It will be permanently removed from your profile and everyone's feed."
+              data-confirm-label="Delete">
             <button type="submit" class="delete-button">
                 <svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>Delete Post</button>
         </form>
@@ -80,7 +85,7 @@
                 <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg>
                 <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(postReaction.dislikeCount)}">0</span>
             </button>
-            <div th:replace="~{fragments/shareMenu :: shareMenu(${post.id}, @{/post/viewPost(id=${post.id})}, ${post.title})}"></div>
+            <div th:replace="~{fragments/shareMenu :: shareMenu(${post.id}, @{/post/viewPost(id=${post.id})}, ${post.title}, false, null, null)}"></div>
         </div>
     </div>
 </div>

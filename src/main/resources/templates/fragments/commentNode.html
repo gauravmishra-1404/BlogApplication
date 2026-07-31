@@ -45,14 +45,17 @@
             </div>
             <button type="button" class="action-reply" sec:authorize="isAuthenticated()"
                     th:attr="data-toggle-reply=${'reply-box-' + comment.id}">Reply</button>
-            <a th:href="@{/posts/comments/edit(id=${comment.id})}" class="action-edit"
-               sec:authorize="isAuthenticated()"
-               th:if="${#authorization.expression('hasRole(''ADMIN'')')
+            <button type="button" class="action-edit"
+                    sec:authorize="isAuthenticated()"
+                    th:attr="data-toggle-edit=${'edit-box-' + comment.id}"
+                    th:if="${#authorization.expression('hasRole(''ADMIN'')')
                        or (comment.user != null and comment.user.email == #authentication.name)
                        or (comment.post != null and comment.post.user != null and comment.post.user.email == #authentication.name)}">
-                <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>Edit</a>
+                <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>Edit</button>
             <form th:action="@{/posts/comments/delete/{id}(id=${comment.id})}" th:method="post"
-                  onsubmit="return confirm('Are you sure you want to delete this comment?');"
+                  data-confirm-title="Delete this comment?"
+                  data-confirm-message="This can't be undone, and any replies underneath it will be removed too."
+                  data-confirm-label="Delete"
                   sec:authorize="isAuthenticated()"
                   th:if="${#authorization.expression('hasRole(''ADMIN'')')
                           or (comment.user != null and comment.user.email == #authentication.name)
@@ -68,6 +71,25 @@
                 <div class="composer-actions">
                     <button type="submit" class="composer-submit" disabled>
                         <svg class="icon" aria-hidden="true"><use href="#i-send"/></svg>Add Reply</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Edit, in-place instead of navigating to a separate page (see js/commentThread.js's
+             data-toggle-edit handler and js/postModal.js's fetch interception for this form) -
+             same swap-the-comment-for-a-textarea pattern used by plenty of comment UIs (YouTube,
+             Reddit) rather than a modal, since there's nothing here beyond one line of text. -->
+        <div class="edit-box" th:id="${'edit-box-' + comment.id}" sec:authorize="isAuthenticated()"
+             th:if="${#authorization.expression('hasRole(''ADMIN'')')
+                       or (comment.user != null and comment.user.email == #authentication.name)
+                       or (comment.post != null and comment.post.user != null and comment.post.user.email == #authentication.name)}">
+            <form th:action="@{/posts/comments/edit}" th:method="POST">
+                <input type="hidden" name="id" th:value="${comment.id}">
+                <textarea name="content" class="composer-textarea" required rows="1" th:text="${comment.content}"></textarea>
+                <div class="composer-actions">
+                    <button type="button" class="edit-cancel" th:attr="data-cancel-edit=${'edit-box-' + comment.id}">Cancel</button>
+                    <button type="submit" class="composer-submit">
+                        <svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Save</button>
                 </div>
             </form>
         </div>

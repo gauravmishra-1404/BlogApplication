@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<!-- Dashboard's modal post view (js/postModal.js opens this over the feed instead of navigating
+     to /post/viewPost). Reuses the exact same content structure as viewPostByID.html - same CSS
+     classes (viewPostByID.css, included by postDashboard.html), same fragments/commentNode.html
+     for the thread, same reaction-bar/shareMenu markup reactions.js/share.js already handle via
+     event delegation - only the outer wrapper (close button, modal chrome) is new. -->
+<div th:fragment="postModal" class="post-modal" th:attr="data-post-id=${post.id}">
+    <div class="post-modal-head">
+        <button type="button" class="post-modal-close" data-modal-close aria-label="Close">
+            <svg class="icon" aria-hidden="true"><use href="#i-close"/></svg>
+        </button>
+    </div>
+    <div class="post-modal-scroll">
+        <!-- Edit/Delete used to be their own buttons above the title (still true on the full
+             viewPostByID.html page) - here they're consolidated into the "..." share menu
+             instead (see fragments/shareMenu.html's canEdit param), so the modal has one action
+             menu instead of two. isAuthenticated() guard first, same as the original buttons had,
+             so #authentication.name is never evaluated for an anonymous viewer. -->
+        <div class="container"
+             th:with="canEdit=${#authorization.expression('isAuthenticated()') and (#authorization.expression('hasRole(''ADMIN'')') or post.user.email==#authentication.name)}">
+            <h1 class="blog-title" th:text="${post.title != null ? post.title : 'No Title'}">Blog Post Title</h1>
+            <p class="blog-meta">
+                Written by <span th:text="${post.author != null ? post.author : 'Unknown'}">Author Name</span> on
+                <span th:if="${post.updatedAt != null}"
+                      th:text="${T(com.BlogApplication.Blog.util.TimeFormatter).relative(post.updatedAt)}"
+                      th:title="${T(com.BlogApplication.Blog.util.TimeFormatter).absolute(post.updatedAt)}">Date</span>
+                <span th:if="${post.updatedAt == null}">Date not available</span>
+                <span class="blog-views">&middot; <span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(post.viewCount)}">0</span> <span th:text="${post.viewCount == 1 ? 'view' : 'views'}">views</span></span>
+            </p>
+
+            <div class="blog-tags" th:if="${post.tags != null and !#strings.isEmpty(post.tags)}">
+                <p><strong>Tags:</strong></p>
+                <ul>
+                    <li th:each="tag : ${#strings.arraySplit(post.tags, ',')}"
+                        th:if="${!#strings.isEmpty(tag)}"
+                        th:text="${tag}">Tag Name</li>
+                </ul>
+            </div>
+            <div class="blog-content-wrap">
+                <div class="blog-content" th:text="${post.content != null ? post.content : 'No content available.'}">
+                    Blog content goes here...
+                </div>
+            </div>
+
+            <div class="post-footer-bar">
+                <a class="post-author-chip" th:if="${post.user != null and post.user.username != null}"
+                   th:href="@{/profile/{u}(u=${post.user.username})}">
+                    <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(post.user)}">
+                        <div th:replace="~{fragments/avatarContent :: content(${post.user}, ${post.author})}"></div>
+                    </span>
+                    <span th:text="${post.author != null ? post.author : 'Unknown'}">Author Name</span>
+                </a>
+                <div class="post-author-chip" th:unless="${post.user != null and post.user.username != null}">
+                    <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(post.user)}">
+                        <div th:replace="~{fragments/avatarContent :: content(${post.user}, ${post.author})}"></div>
+                    </span>
+                    <span th:text="${post.author != null ? post.author : 'Unknown'}">Author Name</span>
+                </div>
+
+                <div class="reaction-bar" data-target-type="post" th:data-target-id="${post.id}"
+                     th:data-logged-in="${#authorization.expression('isAuthenticated()')}">
+                    <button type="button" class="reaction-btn" data-reaction="LIKE"
+                            th:classappend="${postReaction.userReaction == 'LIKE'} ? ' active' : ''">
+                        <svg class="icon" aria-hidden="true"><use href="#i-thumbs-up"/></svg>
+                        <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(postReaction.likeCount)}">0</span>
+                    </button>
+                    <button type="button" class="reaction-btn" data-reaction="DISLIKE"
+                            th:classappend="${postReaction.userReaction == 'DISLIKE'} ? ' active' : ''">
+                        <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg>
+                        <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(postReaction.dislikeCount)}">0</span>
+                    </button>
+                    <div th:replace="~{fragments/shareMenu :: shareMenu(${post.id}, @{/post/viewPost(id=${post.id})}, ${post.title}, ${canEdit}, @{/posts/edit(id=${post.id})}, @{/posts/delete(id=${post.id})})}"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="comment-section">
+            <h3>Add a Comment</h3>
+            <div class="comment-composer" sec:authorize="isAuthenticated()">
+                <div class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(currentUser)}">
+                    <div th:replace="~{fragments/avatarContent :: content(${currentUser}, ${currentUser != null ? currentUser.name : null})}"></div>
+                </div>
+                <div class="composer-body">
+                    <form th:action="@{/posts/{id}/comments/add(id=${post.id})}" th:method="POST">
+                        <textarea name="content" class="composer-textarea" placeholder="Write your comment here..." required rows="1"></textarea>
+                        <div class="composer-actions">
+                            <button type="submit" class="composer-submit" disabled>
+                                <svg class="icon" aria-hidden="true"><use href="#i-send"/></svg>Add Comment</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="comment-login-prompt" sec:authorize="isAnonymous()">
+                <p>Join the conversation - sign in to leave a comment.</p>
+                <a th:href="@{/login}" class="composer-submit">
+                    <svg class="icon" aria-hidden="true"><use href="#i-login"/></svg>Log in</a>
+            </div>
+        </div>
+
+        <div class="comments-list">
+            <h3>Comments</h3>
+            <ul>
+                <li th:each="comment : ${post.comments}" th:if="${comment.parent == null and !comment.deleted}">
+                    <div th:replace="~{fragments/commentNode :: commentNode(${comment}, ${commentReactions})}"></div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div th:fragment="notFound" class="post-modal">
+    <div class="post-modal-head">
+        <button type="button" class="post-modal-close" data-modal-close aria-label="Close">
+            <svg class="icon" aria-hidden="true"><use href="#i-close"/></svg>
+        </button>
+    </div>
+    <div class="post-modal-scroll">
+        <p class="post-modal-error">This post isn't available anymore.</p>
+    </div>
+</div>
+</body>
+</html>

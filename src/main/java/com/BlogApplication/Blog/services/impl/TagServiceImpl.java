@@ -1,9 +1,11 @@
 package com.BlogApplication.Blog.services.impl;
 
 import com.BlogApplication.Blog.models.Tags;
+import com.BlogApplication.Blog.repositories.TagPostCount;
 import com.BlogApplication.Blog.repositories.TagRepo;
 import com.BlogApplication.Blog.services.TagService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -32,5 +34,10 @@ public class TagServiceImpl implements TagService {
     @Override
     public List<String> getAllUniqueTags() {
         return this.tagRepo.distinctTag();
+    }
+
+    @Override
+    public List<TagPostCount> getTrendingTags(int limit) {
+        return tagRepo.topTagsByPostCount(PageRequest.of(0, limit));
     }
 }

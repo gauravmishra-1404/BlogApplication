@@ -1,8 +1,13 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <body>
-<!-- Shared app header: title, search, create-post/login/logout. Used on every app page except the
-     standalone auth pages (login/register), which intentionally have their own minimal layout.
+<!-- Shared app header: brand + login/profile-menu only. Used on every app page except the
+     dashboard (postDashboard.html, which has its own sidebar) and the standalone auth pages
+     (login/register), which intentionally have their own minimal layout.
+     Search and Create Post used to live here too, but both are the dashboard's job now that
+     /home has its own search field and a real compose modal - keeping a second copy on every
+     other page (profile, view-post, edit pages) just duplicated it instead of each page doing
+     its own single job. The brand link below still gets you back to /home for either.
      Also carries the shared icon defs (fragments/icons.html) once per page, since every page using
      nav ends up needing icons somewhere (comments, post actions, pagination, etc). -->
 <th:block th:fragment="nav">
@@ -10,25 +15,11 @@
     <div th:replace="~{fragments/presetIcons :: defs}"></div>
     <header class="app-header">
         <div class="header-container">
-            <a th:href="@{/posts}" class="app-title">
+            <a th:href="@{/home}" class="app-title">
                 <svg class="brand-mark" aria-hidden="true"><use href="#i-brand"/></svg>
                 <h1>Bodh Sea</h1>
             </a>
             <nav>
-                <form th:action="@{/posts/search}" th:method="get" class="search-wrap">
-                    <svg class="icon search-icon" aria-hidden="true"><use href="#i-search"/></svg>
-                    <input type="text" name="query" th:value="${activeQuery}" placeholder="Search by Author and Title..." class="search-input">
-                    <input type="hidden" th:each="a : ${activeAuthors ?: {}}" name="author" th:value="${a}"/>
-                    <input type="hidden" th:each="t : ${activeTags ?: {}}" name="tag" th:value="${t}"/>
-                    <input type="hidden" name="order" th:value="${activeOrder}"/>
-                </form>
-
-                <div sec:authorize="isAuthenticated()">
-                    <form th:action="@{/posts/createForm}" th:method="get">
-                        <button type="submit" class="create-post-button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Create Post</button>
-                    </form>
-                </div>
-
                 <div sec:authorize="isAnonymous()">
                     <a th:href="@{/login}" class="login-button"><svg class="icon" aria-hidden="true"><use href="#i-login"/></svg>Login</a>
                 </div>

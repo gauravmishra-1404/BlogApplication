@@ -372,37 +372,9 @@ svg.avatar-icon {
     vertical-align: -3px;
 }
 
-.search-wrap {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    flex: 1 1 160px;
-    min-width: 0;
-    max-width: 320px;
-}
-
-.search-wrap .search-icon {
-    position: absolute;
-    left: 9px;
-    color: var(--color-text-muted);
-    pointer-events: none;
-}
-
-.search-input {
-    width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-    padding: 8px 10px 8px 30px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    color: var(--color-text);
-    background: var(--color-surface);
-}
-
 /* Buttons: gradient fill + a soft glow in the same hue, small lift on hover.
    One system, one accent per action - primary/success/warning/danger. */
 .login-button,
-.create-post-button,
 .logout-button,
 .pagination-button,
 .filter-apply-button {
@@ -421,7 +393,6 @@ svg.avatar-icon {
 }
 
 .login-button:hover,
-.create-post-button:hover,
 .logout-button:hover,
 .pagination-button:hover,
 .filter-apply-button:hover {
@@ -439,15 +410,6 @@ svg.avatar-icon {
 .pagination-button:hover,
 .filter-apply-button:hover {
     box-shadow: var(--shadow-primary-hover);
-}
-
-.create-post-button {
-    background: var(--gradient-success);
-    box-shadow: var(--shadow-success);
-}
-
-.create-post-button:hover {
-    box-shadow: var(--shadow-success-hover);
 }
 
 .logout-button {
@@ -549,6 +511,7 @@ svg.avatar-icon {
     right: 0;
     z-index: 30;
     width: 260px;
+    max-width: calc(100vw - 16px);
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: 12px;
@@ -595,6 +558,112 @@ svg.avatar-icon {
     text-align: left;
     text-decoration: none;
     box-sizing: border-box;
+}
+
+/* Delete Post, consolidated into this menu from its old standalone red button (modal post
+   view only - see fragments/shareMenu.html's canEdit param) - red text on the same row layout
+   instead of a solid button, matching how a destructive action reads in a dropdown menu. */
+.share-option-danger,
+.share-option-danger .icon {
+    color: var(--color-danger);
+}
+
+.share-option-danger:hover {
+    background: rgba(220, 38, 38, 0.1);
+}
+
+/* Shared "are you sure?" dialog (fragments/confirmDialog.html), replacing the browser's
+   native confirm() for delete forms. */
+.confirm-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(5, 8, 15, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.confirm-dialog-backdrop[hidden] {
+    display: none;
+}
+
+.confirm-dialog-card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.6);
+    padding: 24px 24px 20px;
+    text-align: center;
+}
+
+.confirm-dialog-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(220, 38, 38, 0.14);
+    color: var(--color-danger);
+}
+
+.confirm-dialog-icon .icon {
+    width: 24px;
+    height: 24px;
+}
+
+.confirm-dialog-title {
+    font-size: var(--text-lg);
+    font-weight: 800;
+    margin: 0 0 8px;
+    color: var(--color-text);
+}
+
+.confirm-dialog-message {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    line-height: 1.55;
+    margin: 0 0 22px;
+}
+
+.confirm-dialog-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.confirm-dialog-btn {
+    flex: 1;
+    border: none;
+    border-radius: 999px;
+    padding: 11px 0;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.confirm-dialog-cancel {
+    background: var(--color-surface-tint);
+    color: var(--color-text);
+}
+
+.confirm-dialog-cancel:hover {
+    background: var(--color-border);
+}
+
+.confirm-dialog-danger {
+    background: var(--gradient-danger);
+    color: #fff;
+    box-shadow: var(--shadow-danger);
+}
+
+.confirm-dialog-danger:hover {
+    box-shadow: var(--shadow-danger-hover);
 }
 
 .share-option:hover {
@@ -746,6 +815,74 @@ svg.avatar-icon {
     background: var(--gradient-success);
 }
 
+/* Download accordion's format checkboxes (fragments/shareMenu.html) - real <input>/<button>
+   elements, not spans like the rest of this menu's options: an empirically-confirmed headless-
+   Chrome DOM dump shows plain <button>/<input> nested inside the dashboard's post-row <a> stay
+   correctly nested (no card-splitting), unlike a real nested <a> or <form> - those still need
+   the span/role="button" treatment used elsewhere in this file. */
+.format-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 11px 9px 21px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.format-option:hover {
+    background: var(--color-surface-tint);
+}
+
+.format-option input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-primary);
+    flex: 0 0 auto;
+}
+
+.format-option .icon {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    color: var(--color-text-muted);
+}
+
+.format-label-grow {
+    flex: 1 1 auto;
+}
+
+.download-confirm {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: calc(100% - 10px);
+    margin: 6px 5px 2px;
+    border: none;
+    border-radius: 999px;
+    padding: 9px 0;
+    background: var(--gradient-primary);
+    color: #fff;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: var(--text-sm);
+    cursor: pointer;
+}
+
+.download-confirm:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.download-confirm .icon {
+    width: 15px;
+    height: 15px;
+}
+
 /* Shared responsive rules - the header/nav is used on every page via fragments/nav.html,
    so fixing it here covers the dashboard, post page, and every other page that includes it. */
 @media (max-width: 600px) {
@@ -764,22 +901,9 @@ svg.avatar-icon {
 
     .app-header nav {
         width: 100%;
-        /* space-between, not flex-start: search-wrap drops to its own full-width row (order: 3
-           below), leaving create-post-button and .nav-profile sharing this row. space-between
-           pins .nav-profile to nav's own right edge - which, since nav is full-width, IS the
-           screen's right edge - so nav-profile-dropdown's "right: 0" anchors correctly instead
-           of shifting left with whatever create-post-button's width happens to be. */
-        justify-content: space-between;
-    }
-
-    .search-wrap {
-        flex: 1 1 100%;
-        max-width: none;
-        order: 3;
     }
 
     .login-button,
-    .create-post-button,
     .logout-button {
         flex: 1 1 auto;
         justify-content: center;
