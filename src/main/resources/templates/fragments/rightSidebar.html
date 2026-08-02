@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Shared right-rail widgets (Trending tags, Active writers) for pages using the
+     dashboard-shell layout - previously only on postDashboard.html; extracted here so
+     followingFeed.html (a feed page, same shape as /home) can reuse it identically rather than
+     duplicating the markup, matching the same reasoning fragments/sidebar.html was extracted
+     for. Needs the model to carry trendingTags/topAuthors/followedAuthorIds/currentUser -
+     whichever controller renders the page around this fragment is responsible for populating
+     them (see PostController.listPosts / FollowingFeedController for the two current examples). -->
+<aside th:fragment="rightSidebar" class="side">
+    <div class="widget" th:if="${trendingTags != null and !trendingTags.isEmpty()}">
+        <h4>Trending tags</h4>
+        <div class="trend-row" th:each="t : ${trendingTags}">
+            <span th:text="'#' + ${#strings.toLowerCase(t.name)}">#tag</span>
+            <b th:text="${t.postCount} + (${t.postCount} == 1 ? ' post' : ' posts')">0 posts</b>
+        </div>
+    </div>
+
+    <div class="widget" th:if="${topAuthors != null and !topAuthors.isEmpty()}">
+        <h4>Active writers</h4>
+        <a class="follow-row" th:each="a : ${topAuthors}"
+           th:href="${a.user.username != null} ? @{/profile/{u}(u=${a.user.username})} : '#'">
+            <span class="avatar" style="width:30px;height:30px;font-size:12px"
+                  th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(a.user)}">
+                <div th:replace="~{fragments/avatarContent :: content(${a.user}, ${a.user.name})}"></div>
+            </span>
+            <span class="who"><b th:text="${a.user.name}">Name</b><span th:text="${a.postCount} + (${a.postCount} == 1 ? ' post' : ' posts')">0 posts</span></span>
+            <!-- Ranked by post count, so the logged-in viewer can easily be one of the top 3
+                 themselves - guarded out here since clicking Follow on your own card would
+                 otherwise 400 from the server-side self-follow rejection. -->
+            <button type="button" class="follow-btn compact"
+                    th:if="${currentUser == null or currentUser.id != a.user.id}"
+                    th:with="isFollowingAuthor=${followedAuthorIds != null and followedAuthorIds.contains(a.user.id)}"
+                    th:classappend="${isFollowingAuthor} ? ' following' : ''"
+                    th:text="${isFollowingAuthor} ? 'Following' : 'Follow'"
+                    th:attr="data-username=${a.user.username},data-logged-in=${currentUser != null}">
+                Follow
+            </button>
+        </a>
+    </div>
+</aside>
+</body>
+</html>

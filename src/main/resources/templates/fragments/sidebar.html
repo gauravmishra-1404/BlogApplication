@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<!-- Shared left sidebar for every page using the dashboard-shell layout (postDashboard.html,
+     followDirectory.html, and any future page in that family). Previously duplicated by hand
+     into each template, which let them drift apart (followDirectory.html silently lost the
+     "Following" nav item entirely) - one fragment now, parameterized only by which nav item is
+     "active", so every page stays structurally identical without relying on copy-paste
+     discipline. The search form's activeQuery/activeAuthors/activeTags/activeOrder are dashboard
+     (post-listing) specific model attributes - null-safe on any page that doesn't set them
+     (search still works, it just always searches posts regardless of which page it's shown on). -->
+<aside th:fragment="sidebar(activeItem)" class="sidebar">
+    <a th:href="@{/home}" class="sidebar-brand">
+        <svg class="brand-mark" aria-hidden="true"><use href="#i-brand"/></svg>
+        <span>Bodh Sea</span>
+    </a>
+
+    <form th:action="@{/home/search}" th:method="get" class="sidebar-search">
+        <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+        <input type="text" name="query" th:value="${activeQuery}" placeholder="Quick search&hellip;">
+        <input type="hidden" th:each="a : ${activeAuthors ?: {}}" name="author" th:value="${a}"/>
+        <input type="hidden" th:each="t : ${activeTags ?: {}}" name="tag" th:value="${t}"/>
+        <input type="hidden" name="order" th:value="${activeOrder}"/>
+    </form>
+
+    <div>
+        <div class="sidebar-group-label">Library</div>
+        <a th:href="@{/home}" class="sidebar-navitem" th:classappend="${activeItem == 'home'} ? ' active' : ''">
+            <svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span>For you</span></a>
+        <a th:href="@{/follow}" class="sidebar-navitem" th:classappend="${activeItem == 'follow'} ? ' active' : ''">
+            <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span>Follow</span></a>
+        <a th:href="@{/following}" class="sidebar-navitem" th:classappend="${activeItem == 'following'} ? ' active' : ''">
+            <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span>Following</span></a>
+        <span class="sidebar-navitem disabled" title="Not built yet">
+            <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><span>Bookmarks</span><span class="soon-badge">Soon</span></span>
+        <span class="sidebar-navitem disabled" title="Not built yet">
+            <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg><span>Drafts</span><span class="soon-badge">Soon</span></span>
+    </div>
+
+    <!-- Profile dropdown - identical trigger/panel/ids to the old shared header (see
+         fragments/nav.html), just relocated into the sidebar footer. navProfileMenu.js and
+         common.css's .nav-profile* rules are id/class-based, not header-specific, so the
+         exact same markup works unchanged here. -->
+    <div class="nav-profile sidebar-foot" sec:authorize="isAuthenticated()" th:if="${currentUser != null}">
+        <button type="button" class="nav-avatar-trigger sidebar-foot-trigger" id="navAvatarTrigger" aria-haspopup="true" aria-expanded="false" aria-label="Profile menu">
+            <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(currentUser)}">
+                <div th:replace="~{fragments/avatarContent :: content(${currentUser}, ${currentUser.name})}"></div>
+            </span>
+            <span class="who"><b th:text="${currentUser.name}">Name</b><span th:text="'@' + ${currentUser.username}">@handle</span></span>
+        </button>
+        <div class="nav-profile-dropdown sidebar-dropdown" id="navProfileDropdown" hidden>
+            <div class="nav-dd-items">
+                <a th:if="${currentUser.username != null}" th:href="@{/profile/{u}(u=${currentUser.username})}" class="nav-dd-item">
+                    <svg class="icon" aria-hidden="true"><use href="#i-user"/></svg>View profile</a>
+                <button type="button" class="nav-dd-item" id="theme-toggle">
+                    <svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg>
+                    <span class="nav-dd-grow">Dark mode</span>
+                    <span class="nav-dd-switch"></span>
+                </button>
+            </div>
+            <div class="nav-dd-divider"></div>
+            <div class="nav-dd-items">
+                <form th:action="@{/logout}" th:method="post">
+                    <button type="submit" class="nav-dd-item nav-dd-danger">
+                        <svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg>Log out</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</aside>
+</body>
+</html>

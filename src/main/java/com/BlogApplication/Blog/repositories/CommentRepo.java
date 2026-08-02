@@ -28,4 +28,12 @@ public interface CommentRepo extends JpaRepository<Comment,Integer> {
     @Query("SELECT c.post.id AS postId, COUNT(c) AS commentCount FROM Comment c " +
             "WHERE c.post.id IN :postIds AND (c.deleted IS NULL OR c.deleted = false) GROUP BY c.post.id")
     List<CommentCount> countGroupedByPostIds(@Param("postIds") List<Integer> postIds);
+
+    // Every comment a followed user left on any of these candidate posts, most recent first -
+    // backs the "Following" feed's relevance ordering and its "X commented" annotation.
+    // Most-recent-first + Java-side grouping (first match per post wins) gives the latest
+    // qualifying comment per post without a separate MAX()-plus-join query.
+    @Query("SELECT c FROM Comment c WHERE c.post.id IN :postIds AND c.user.id IN :followedIds " +
+            "AND (c.deleted IS NULL OR c.deleted = false) ORDER BY c.createdAt DESC")
+    List<Comment> findFollowedCommentsOnPosts(@Param("postIds") List<Integer> postIds, @Param("followedIds") List<Integer> followedIds);
 }

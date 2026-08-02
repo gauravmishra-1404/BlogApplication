@@ -23,6 +23,7 @@
     <script src="/js/postModal.js" defer></script>
     <script src="/js/composeModal.js" defer></script>
     <script src="/js/confirmDialog.js" defer></script>
+    <script src="/js/follow.js" defer></script>
 </head>
 <body>
 <div th:replace="~{fragments/icons :: defs}"></div>
@@ -32,63 +33,7 @@
 <div class="dashboard-shell">
 
     <!-- ============ LEFT: sidebar ============ -->
-    <aside class="sidebar">
-        <a th:href="@{/home}" class="sidebar-brand">
-            <svg class="brand-mark" aria-hidden="true"><use href="#i-brand"/></svg>
-            <span>Bodh Sea</span>
-        </a>
-
-        <form th:action="@{/home/search}" th:method="get" class="sidebar-search">
-            <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
-            <input type="text" name="query" th:value="${activeQuery}" placeholder="Quick search&hellip;">
-            <input type="hidden" th:each="a : ${activeAuthors ?: {}}" name="author" th:value="${a}"/>
-            <input type="hidden" th:each="t : ${activeTags ?: {}}" name="tag" th:value="${t}"/>
-            <input type="hidden" name="order" th:value="${activeOrder}"/>
-        </form>
-
-        <div>
-            <div class="sidebar-group-label">Library</div>
-            <a th:href="@{/home}" class="sidebar-navitem active">
-                <svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span>For you</span></a>
-            <span class="sidebar-navitem disabled" title="Not built yet">
-                <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span>Following</span><span class="soon-badge">Soon</span></span>
-            <span class="sidebar-navitem disabled" title="Not built yet">
-                <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><span>Bookmarks</span><span class="soon-badge">Soon</span></span>
-            <span class="sidebar-navitem disabled" title="Not built yet">
-                <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg><span>Drafts</span><span class="soon-badge">Soon</span></span>
-        </div>
-
-        <!-- Profile dropdown - identical trigger/panel/ids to the old shared header (see
-             fragments/nav.html), just relocated into the sidebar footer. navProfileMenu.js and
-             common.css's .nav-profile* rules are id/class-based, not header-specific, so the
-             exact same markup works unchanged here. -->
-        <div class="nav-profile sidebar-foot" sec:authorize="isAuthenticated()" th:if="${currentUser != null}">
-            <button type="button" class="nav-avatar-trigger sidebar-foot-trigger" id="navAvatarTrigger" aria-haspopup="true" aria-expanded="false" aria-label="Profile menu">
-                <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(currentUser)}">
-                    <div th:replace="~{fragments/avatarContent :: content(${currentUser}, ${currentUser.name})}"></div>
-                </span>
-                <span class="who"><b th:text="${currentUser.name}">Name</b><span th:text="'@' + ${currentUser.username}">@handle</span></span>
-            </button>
-            <div class="nav-profile-dropdown sidebar-dropdown" id="navProfileDropdown" hidden>
-                <div class="nav-dd-items">
-                    <a th:if="${currentUser.username != null}" th:href="@{/profile/{u}(u=${currentUser.username})}" class="nav-dd-item">
-                        <svg class="icon" aria-hidden="true"><use href="#i-user"/></svg>View profile</a>
-                    <button type="button" class="nav-dd-item" id="theme-toggle">
-                        <svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg>
-                        <span class="nav-dd-grow">Dark mode</span>
-                        <span class="nav-dd-switch"></span>
-                    </button>
-                </div>
-                <div class="nav-dd-divider"></div>
-                <div class="nav-dd-items">
-                    <form th:action="@{/logout}" th:method="post">
-                        <button type="submit" class="nav-dd-item nav-dd-danger">
-                            <svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg>Log out</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </aside>
+    <div th:replace="~{fragments/sidebar :: sidebar('home')}"></div>
 
     <!-- ============ CENTER: top bar + feed ============ -->
     <main class="center">
@@ -153,27 +98,7 @@
     </main>
 
     <!-- ============ RIGHT: real-data widgets ============ -->
-    <aside class="side">
-        <div class="widget" th:if="${trendingTags != null and !trendingTags.isEmpty()}">
-            <h4>Trending tags</h4>
-            <div class="trend-row" th:each="t : ${trendingTags}">
-                <span th:text="'#' + ${#strings.toLowerCase(t.name)}">#tag</span>
-                <b th:text="${t.postCount} + (${t.postCount} == 1 ? ' post' : ' posts')">0 posts</b>
-            </div>
-        </div>
-
-        <div class="widget" th:if="${topAuthors != null and !topAuthors.isEmpty()}">
-            <h4>Active writers</h4>
-            <a class="follow-row" th:each="a : ${topAuthors}"
-               th:href="${a.user.username != null} ? @{/profile/{u}(u=${a.user.username})} : '#'">
-                <span class="avatar" style="width:30px;height:30px;font-size:12px"
-                      th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(a.user)}">
-                    <div th:replace="~{fragments/avatarContent :: content(${a.user}, ${a.user.name})}"></div>
-                </span>
-                <span class="who"><b th:text="${a.user.name}">Name</b><span th:text="${a.postCount} + (${a.postCount} == 1 ? ' post' : ' posts')">0 posts</span></span>
-            </a>
-        </div>
-    </aside>
+    <div th:replace="~{fragments/rightSidebar :: rightSidebar}"></div>
 
     <button type="button" class="fab" id="composeFabBtn" aria-label="Write a post">
         <svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>

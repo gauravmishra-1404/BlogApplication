@@ -27,4 +27,16 @@ public interface PostRepo extends JpaRepository<Post,Integer>, JpaSpecificationE
     @Query("SELECT p.user AS user, COUNT(p) AS postCount FROM Post p WHERE p.user IS NOT NULL " +
            "AND (p.deleted IS NULL OR p.deleted = false) GROUP BY p.user ORDER BY COUNT(p) DESC")
     List<AuthorPostCount> topAuthorsByPostCount(Pageable pageable);
+
+    // "Following" feed candidates - a post qualifies if its author is someone the viewer
+    // follows, OR someone the viewer follows commented on it (regardless of who wrote it).
+    // Unsorted/unpaginated here on purpose - FollowingFeedController computes each post's
+    // relevance timestamp (own activity vs. latest qualifying comment) and paginates in Java,
+    // since that "whichever is more recent" comparison isn't cleanly expressible as portable
+    // JPQL ORDER BY across both H2 (local) and Postgres (production).
+    @Query("SELECT DISTINCT p FROM Post p WHERE (p.deleted IS NULL OR p.deleted = false) AND (" +
+           "p.user.id IN :followedIds OR p.id IN (" +
+           "SELECT c.post.id FROM Comment c WHERE (c.deleted IS NULL OR c.deleted = false) AND c.user.id IN :followedIds" +
+           "))")
+    List<Post> findFollowingFeedCandidates(@Param("followedIds") List<Integer> followedIds);
 }

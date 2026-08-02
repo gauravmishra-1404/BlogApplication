@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Repeated row markup for the "Follow" directory page, shared between followDirectory.html's
+     initial render and FollowPageController.followDirectoryFragment() (js/followDirectoryLoadMore.js's
+     per-batch fetch) - same "one fragment, two callers" shape postRows.html already uses for the
+     main feed. data-has-next-page on the root lets the client read "is there another page"
+     straight off the fetched fragment without a separate response header. -->
+<th:block th:fragment="followRows">
+    <div style="display:contents" th:attr="data-has-next-page=${hasNextPage}">
+        <div class="follow-directory-row" th:each="candidate : ${candidates}">
+            <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(candidate.user)}">
+                <div th:replace="~{fragments/avatarContent :: content(${candidate.user}, ${candidate.user.name})}"></div>
+            </span>
+            <div class="who">
+                <div class="name-line">
+                    <a th:if="${candidate.user.username != null}" th:href="@{/profile/{u}(u=${candidate.user.username})}"
+                       th:text="${candidate.user.name != null ? candidate.user.name : candidate.user.username}">Name</a>
+                    <span th:unless="${candidate.user.username != null}" th:text="${candidate.user.name}">Name</span>
+                    <span class="handle" th:text="'@' + ${candidate.user.username} + (${candidate.self} ? ' (you)' : '')">@handle</span>
+                </div>
+                <div class="follower-count">
+                    <b th:text="${candidate.followerCount}">0</b>
+                    <span th:text="${candidate.followerCount == 1} ? 'follower' : 'followers'">followers</span>
+                </div>
+                <p class="bio" th:if="${candidate.user.bio != null and !#strings.isEmpty(candidate.user.bio)}"
+                   th:text="${candidate.user.bio}">Bio</p>
+            </div>
+            <button type="button" class="follow-btn" th:unless="${candidate.self}"
+                    th:classappend="${candidate.followingThisUser} ? ' following' : ''"
+                    th:text="${candidate.followingThisUser} ? 'Following' : 'Follow'"
+                    th:attr="data-username=${candidate.user.username},data-logged-in=true">
+                Follow
+            </button>
+            <span class="follow-btn self" th:if="${candidate.self}">You</span>
+        </div>
+    </div>
+</th:block>
+</body>
+</html>

@@ -8,7 +8,20 @@
      separate response header. -->
 <th:block th:fragment="postRows">
     <div style="display:contents" th:attr="data-has-next-page=${hasNextPage}">
-        <a class="post-row" th:each="post : ${posts}" th:href="@{/post/viewPost(id=${post.id})}" th:data-open-post-modal="${post.id}">
+        <th:block th:each="post : ${posts}">
+        <!-- Only populated by the "Following" feed (FollowingFeedController) - absent/empty
+             everywhere else (the main dashboard feed), so this never renders there. Only ever
+             attached to a post whose own author ISN'T someone the viewer follows - otherwise the
+             post already reads as followed content without needing an explanation. -->
+        <div class="feed-activity-tag" th:if="${postAnnotations != null and postAnnotations.containsKey(post.id)}"
+             th:with="annotation=${postAnnotations.get(post.id)}">
+            <svg class="icon" aria-hidden="true"><use href="#i-comment"/></svg>
+            <span class="avatar-mini" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(annotation.commenter)}">
+                <div th:replace="~{fragments/avatarContent :: content(${annotation.commenter}, ${annotation.commenter.name})}"></div>
+            </span>
+            <span th:text="${annotation.commenter.name} + ' commented'">Someone commented</span>
+        </div>
+        <a class="post-row" th:href="@{/post/viewPost(id=${post.id})}" th:data-open-post-modal="${post.id}">
             <h2 class="post-title" th:text="${post.title}">Post Title</h2>
             <div class="post-meta" th:with="viewCount=${viewCounts.get(post.id)} ?: 0, reaction=${postReactions.get(post.id)}, commentCount=${commentCounts.get(post.id)} ?: 0">
                 <!-- Not a real <a> - this row is already one big <a>, and nesting another
@@ -45,6 +58,7 @@
                 <span th:each="tag : ${post.tagList}" th:text="${tag.name}">Tag</span>
             </div>
         </a>
+        </th:block>
     </div>
 </th:block>
 </body>

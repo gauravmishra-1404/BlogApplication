@@ -421,6 +421,69 @@ svg.avatar-icon {
     box-shadow: var(--shadow-danger-hover);
 }
 
+/* Follow/unfollow toggle (profile.html's header + postDashboard.html's Active-writers widget,
+   js/follow.js drives both). Not-following state mirrors .login-button's filled pill; the
+   .following state instead mirrors .edit-profile-btn's own neutral outline look (profileStyle.css)
+   since it visually replaces that exact button on someone else's profile - hovering while
+   following shifts to a danger tint as the "about to unfollow" cue, color/border only, no text
+   swap to "Unfollow". */
+.follow-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 16px;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: var(--text-sm);
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    background: var(--gradient-primary);
+    color: #fff;
+    box-shadow: var(--shadow-primary);
+    transition: box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.follow-btn:hover {
+    box-shadow: var(--shadow-primary-hover);
+}
+
+.follow-btn.following {
+    background: transparent;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    box-shadow: none;
+}
+
+.follow-btn.following:hover {
+    border-color: var(--color-danger);
+    background: rgba(220, 38, 38, 0.1);
+    color: var(--color-danger);
+}
+
+.follow-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.follow-btn.compact {
+    padding: 5px 12px;
+    font-size: var(--text-xs);
+    flex-shrink: 0;
+}
+
+/* The follower/following list modal's own row for the viewer themselves - not a real toggle
+   (js/follow.js skips it since it has no data-username), just a neutral badge in the same slot
+   a real button would occupy. */
+.follow-btn.self {
+    background: transparent;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border);
+    box-shadow: none;
+    cursor: default;
+}
+
 /* Dark mode toggle - lives in the header (fragments/nav.html) so it's on every page that
    shares that header, for logged-in and logged-out visitors alike. Both icons are always in
    the DOM; only one is shown at a time based on the current theme, so there's no layout

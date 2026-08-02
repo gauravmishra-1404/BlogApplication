@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Followers/Following modal - one shell (this fragment) included once in profile.html, its
+     body refilled per tab by fetching followListRows below via js/followListModal.js. Reuses
+     fragments/avatarContent.html for avatars, exactly like postRows.html/commentNode.html do -
+     one shared place for "photo vs preset vs initial letter", not re-derived here. -->
+<div th:fragment="followListModal" class="follow-list-backdrop" id="followListBackdrop" hidden
+     th:attr="data-profile-username=${profileUser.username},data-is-own-profile=${isOwnProfile}">
+    <div class="follow-list-card">
+        <div class="follow-list-head">
+            <h3 th:text="${profileUser.name != null ? profileUser.name : profileUser.username}">Name</h3>
+            <button type="button" class="follow-list-close" id="followListClose" aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="follow-list-tabs">
+            <button type="button" class="follow-list-tab" id="followersTabBtn" data-follow-tab="followers">
+                Followers <span id="followersTabCount" th:text="${followerCount}">0</span>
+            </button>
+            <button type="button" class="follow-list-tab" id="followingTabBtn" data-follow-tab="following">
+                Following <span id="followingTabCount" th:text="${followingCount}">0</span>
+            </button>
+        </div>
+        <div class="follow-list-body" id="followListBody"></div>
+    </div>
+</div>
+
+<th:block th:fragment="followListRows">
+    <div class="follow-list-empty" th:if="${#lists.isEmpty(entries)}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <div>Nobody here yet</div>
+    </div>
+    <a class="user-row" th:each="entry : ${entries}"
+       th:href="@{/profile/{u}(u=${entry.user.username})}">
+        <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(entry.user)}">
+            <div th:replace="~{fragments/avatarContent :: content(${entry.user}, ${entry.user.name})}"></div>
+        </span>
+        <span class="who">
+            <b th:text="${entry.user.name != null ? entry.user.name : entry.user.username}">Name</b>
+            <span>
+                <span th:text="'@' + ${entry.user.username}">@handle</span>
+                <span class="since" th:if="${entry.followedAt != null}"
+                      th:text="${T(com.BlogApplication.Blog.util.TimeFormatter).relative(entry.followedAt)}">time ago</span>
+            </span>
+        </span>
+        <!-- A real <button>/<span> nested inside this row's own <a> doesn't split the anchor -
+             only nesting another <a>/<form> does (verified via headless-Chrome DOM dump when
+             this same shape was built for the dashboard's Active-writers widget). -->
+        <button type="button" class="follow-btn" th:unless="${entry.self}"
+                th:classappend="${entry.followingThisUser} ? ' following' : ''"
+                th:text="${entry.followingThisUser} ? 'Following' : 'Follow'"
+                th:attr="data-username=${entry.user.username},data-logged-in=true">
+            Follow
+        </button>
+        <span class="follow-btn self" th:if="${entry.self}">You</span>
+    </a>
+</th:block>
+
+<div th:fragment="notFound" class="follow-list-empty">
+    <div>This profile isn't available anymore.</div>
+</div>
+</body>
+</html>

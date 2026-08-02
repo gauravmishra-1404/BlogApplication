@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Following - Bodh Sea</title>
+    <script src="/js/themeInit.js"></script>
+    <link rel="stylesheet" href="/CSS/common.css">
+    <link rel="stylesheet" href="/CSS/dashboardStyle.css">
+    <link rel="stylesheet" href="/CSS/viewPostByID.css">
+    <script src="/js/theme.js" defer></script>
+    <script src="/js/navProfileMenu.js" defer></script>
+    <script src="/js/profileLinks.js" defer></script>
+    <script src="/js/share.js" defer></script>
+    <script src="/js/commentThread.js" defer></script>
+    <script src="/js/commentComposer.js" defer></script>
+    <script src="/js/reactions.js" defer></script>
+    <script src="/js/postModal.js" defer></script>
+    <script src="/js/composeModal.js" defer></script>
+    <script src="/js/confirmDialog.js" defer></script>
+    <script src="/js/follow.js" defer></script>
+    <script src="/js/loadMoreFeed.js" defer></script>
+</head>
+<body>
+<div th:replace="~{fragments/icons :: defs}"></div>
+<div th:replace="~{fragments/presetIcons :: defs}"></div>
+<div th:replace="~{fragments/confirmDialog :: confirmDialog}"></div>
+
+<div class="dashboard-shell">
+
+    <!-- ============ LEFT: sidebar ============ -->
+    <div th:replace="~{fragments/sidebar :: sidebar('following')}"></div>
+
+    <!-- ============ CENTER: feed ============ -->
+    <main class="center">
+        <div class="topbar">
+            <div class="crumb">Home / <b>Following</b></div>
+        </div>
+
+        <div class="empty-following" th:if="${#lists.isEmpty(posts)}">
+            <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg>
+            <h3>Nothing here yet</h3>
+            <p>Follow some people and their posts (and the posts they comment on) will show up here.</p>
+            <a th:href="@{/follow}" class="cta-button">Find people to follow</a>
+        </div>
+
+        <div class="post-list" id="followingFeedList" data-load-more-list
+             th:unless="${#lists.isEmpty(posts)}"
+             data-load-more-button="followingFeedLoadMore" data-load-more-url="/following/fragment"
+             th:data-next-page="${currentPage + 1}">
+            <div th:replace="~{fragments/postRows :: postRows}"></div>
+        </div>
+
+        <button type="button" class="load-more-btn" id="followingFeedLoadMore" hidden>Load more</button>
+    </main>
+
+    <!-- ============ RIGHT: real-data widgets ============ -->
+    <div th:replace="~{fragments/rightSidebar :: rightSidebar}"></div>
+
+</div>
+
+<!-- Modal post view (js/postModal.js) - same as postDashboard.html's own. -->
+<div class="post-modal-backdrop" id="postModalBackdrop" hidden>
+    <div class="post-modal-frame" id="postModalFrame"></div>
+</div>
+
+<div th:replace="~{fragments/composeModal :: composeModal}"></div>
+
+</body>
+</html>

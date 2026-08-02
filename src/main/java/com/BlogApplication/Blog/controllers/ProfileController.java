@@ -1,13 +1,17 @@
 package com.BlogApplication.Blog.controllers;
 
+import com.BlogApplication.Blog.models.Follow;
 import com.BlogApplication.Blog.models.Post;
 import com.BlogApplication.Blog.models.User;
+import com.BlogApplication.Blog.payloads.FollowListEntry;
 import com.BlogApplication.Blog.repositories.CommentRepo;
+import com.BlogApplication.Blog.repositories.FollowRepo;
 import com.BlogApplication.Blog.repositories.PostRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.ImageStorageService;
 import com.BlogApplication.Blog.util.AvatarPresets;
 import com.BlogApplication.Blog.util.CoverPresets;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +25,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Controller
 public class ProfileController {
@@ -40,6 +48,9 @@ public class ProfileController {
     @Autowired
     private ImageStorageService imageStorageService;
 
+    @Autowired
+    private FollowRepo followRepo;
+
     @GetMapping("/profile/{username}")
     public String viewProfile(@PathVariable String username, Authentication authentication, Model model) {
         User profileUser = userRepo.findByUsername(username).orElse(null);
@@ -51,14 +62,85 @@ public class ProfileController {
                 && authentication.isAuthenticated()
                 && authentication.getName().equalsIgnoreCase(profileUser.getEmail());
 
+        boolean isFollowing = false;
+        if (!isOwnProfile && authentication != null && authentication.isAuthenticated()) {
+            User viewer = userRepo.findByEmail(authentication.getName()).orElse(null);
+            if (viewer != null) {
+                isFollowing = followRepo.existsByFollowerIdAndFollowedId(viewer.getId(), profileUser.getId());
+            }
+        }
+
         model.addAttribute("profileUser", profileUser);
         model.addAttribute("isOwnProfile", isOwnProfile);
+        model.addAttribute("isFollowing", isFollowing);
+        model.addAttribute("followerCount", followRepo.countByFollowedId(profileUser.getId()));
+        model.addAttribute("followingCount", followRepo.countByFollowerId(profileUser.getId()));
         model.addAttribute("posts", postRepo.findVisibleByUser(profileUser));
         model.addAttribute("comments", commentRepo.findVisibleByUser(profileUser));
         model.addAttribute("avatarGradients", AvatarPresets.GRADIENTS);
         model.addAttribute("coverGradients", AvatarPresets.GRADIENTS);
         model.addAttribute("coverScenes", CoverPresets.SCENES);
         return "profile";
+    }
+
+    // Followers/Following list modal (js/followListModal.js) - fetched as a fragment and
+    // injected into the modal body, same "fragment endpoint" shape as PostController's own
+    // /post/{id}/modal. followingThisUser/self are both computed relative to the VIEWER, not
+    // profileUser - a row's button always reflects the viewer's own relationship to that row's
+    // user, exactly like clicking into anyone's followers list on Twitter/Instagram still lets
+    // you follow/unfollow people directly from there.
+    @GetMapping("/profile/{username}/followers")
+    public String followersList(@PathVariable String username, Authentication authentication,
+                                 Model model, HttpServletResponse response) {
+        User profileUser = userRepo.findByUsername(username).orElse(null);
+        if (profileUser == null) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return "fragments/followListModal :: notFound";
+        }
+        List<Follow> rows = followRepo.findByFollowedIdOrderByCreatedAtDesc(profileUser.getId());
+        model.addAttribute("entries", buildEntries(rows, true, authentication));
+        return "fragments/followListModal :: followListRows";
+    }
+
+    @GetMapping("/profile/{username}/following")
+    public String followingList(@PathVariable String username, Authentication authentication,
+                                 Model model, HttpServletResponse response) {
+        User profileUser = userRepo.findByUsername(username).orElse(null);
+        if (profileUser == null) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return "fragments/followListModal :: notFound";
+        }
+        List<Follow> rows = followRepo.findByFollowerIdOrderByCreatedAtDesc(profileUser.getId());
+        model.addAttribute("entries", buildEntries(rows, false, authentication));
+        return "fragments/followListModal :: followListRows";
+    }
+
+    // isFollowersList picks which side of each Follow row is "the other person" to list -
+    // follower for a followers list, followed for a following list. followingThisUser/self are
+    // batched via FollowRepo.findFollowedIdsAmong (same query the dashboard's Active-writers
+    // widget already uses) rather than one existsBy call per row.
+    private List<FollowListEntry> buildEntries(List<Follow> rows, boolean isFollowersList, Authentication authentication) {
+        User viewer = (authentication != null && authentication.isAuthenticated())
+                ? userRepo.findByEmail(authentication.getName()).orElse(null)
+                : null;
+
+        List<Integer> otherUserIds = rows.stream()
+                .map(f -> isFollowersList ? f.getFollower().getId() : f.getFollowed().getId())
+                .toList();
+
+        Set<Integer> viewerFollows = Set.of();
+        if (viewer != null && !otherUserIds.isEmpty()) {
+            viewerFollows = new HashSet<>(followRepo.findFollowedIdsAmong(viewer.getId(), otherUserIds));
+        }
+
+        List<FollowListEntry> entries = new ArrayList<>();
+        for (Follow row : rows) {
+            User otherUser = isFollowersList ? row.getFollower() : row.getFollowed();
+            boolean self = viewer != null && viewer.getId() == otherUser.getId();
+            boolean followingThisUser = viewerFollows.contains(otherUser.getId());
+            entries.add(new FollowListEntry(otherUser, row.getCreatedAt(), followingThisUser, self));
+        }
+        return entries;
     }
 
     // Handles all 3 avatar modes from the same form. Only the fields for the submitted "mode"

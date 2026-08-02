@@ -8,7 +8,9 @@ import com.BlogApplication.Blog.payloads.PostDetail;
 import com.BlogApplication.Blog.payloads.PostDto;
 import com.BlogApplication.Blog.payloads.PostListing;
 import com.BlogApplication.Blog.util.PostAuthorization;
+import com.BlogApplication.Blog.repositories.AuthorPostCount;
 import com.BlogApplication.Blog.repositories.CommentRepo;
+import com.BlogApplication.Blog.repositories.FollowRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.CommentService;
 import com.BlogApplication.Blog.services.PostPdfService;
@@ -34,8 +36,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Controller
 public class PostController {
@@ -62,6 +66,9 @@ public class PostController {
 
     @Autowired
     private PostPdfService postPdfService;
+
+    @Autowired
+    private FollowRepo followRepo;
 
     @GetMapping("/home")
     public String getAllPosts(@RequestParam(defaultValue = "0") int page,
@@ -312,7 +319,21 @@ public class PostController {
 
         // Dashboard sidebar/right-rail widgets - real data, not placeholders.
         model.addAttribute("trendingTags", tagService.getTrendingTags(5));
-        model.addAttribute("topAuthors", postService.getTopAuthors(3));
+        List<AuthorPostCount> topAuthors = postService.getTopAuthors(3);
+        model.addAttribute("topAuthors", topAuthors);
+
+        // GlobalModelAttributes already resolved currentUser onto this same Model before this
+        // method ran - reading it back here avoids threading Authentication through all 5
+        // @GetMapping methods that call into this private method just for this one check.
+        Object currentUserAttr = model.getAttribute("currentUser");
+        Set<Integer> followedAuthorIds = Set.of();
+        if (currentUserAttr instanceof User viewer) {
+            List<Integer> topAuthorIds = topAuthors.stream().map(a -> a.getUser().getId()).toList();
+            if (!topAuthorIds.isEmpty()) {
+                followedAuthorIds = new HashSet<>(followRepo.findFollowedIdsAmong(viewer.getId(), topAuthorIds));
+            }
+        }
+        model.addAttribute("followedAuthorIds", followedAuthorIds);
 
         return "postDashboard";
     }

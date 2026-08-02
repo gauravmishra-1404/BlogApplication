@@ -1367,3 +1367,195 @@
 }
 .btn-post:hover:not(:disabled) { box-shadow: var(--shadow-primary-hover); transform: translateY(-1px); }
 .btn-post:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+
+/* ---------- "Follow" directory page (followDirectory.html) ---------- */
+.follow-directory-list {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.follow-directory-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.follow-directory-row:last-child {
+    border-bottom: none;
+}
+
+.follow-directory-row .avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: var(--text-sm);
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.follow-directory-row .who {
+    flex: 1;
+    min-width: 0;
+}
+
+.follow-directory-row .name-line {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.follow-directory-row .name-line a,
+.follow-directory-row .name-line span:first-child {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+.follow-directory-row .name-line a:hover {
+    text-decoration: underline;
+}
+
+.follow-directory-row .handle {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}
+
+.follow-directory-row .follower-count {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    margin-top: 2px;
+}
+
+.follow-directory-row .follower-count b {
+    color: var(--color-text);
+    font-size: var(--text-xs);
+}
+
+.follow-directory-row .bio {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    margin: 4px 0 0;
+    line-height: 1.4;
+}
+
+.follow-directory-row .follow-btn {
+    margin-top: 1px;
+    flex-shrink: 0;
+}
+
+.load-more-btn {
+    display: block;
+    width: 100%;
+    margin-top: 14px;
+    padding: 10px;
+    border-radius: 999px;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    font-family: inherit;
+    font-weight: 700;
+    font-size: var(--text-sm);
+    cursor: pointer;
+}
+
+/* Without this, the [hidden] attribute's own (low-specificity, UA-stylesheet) display:none gets
+   silently overridden by the display:block above - same reason every other hideable overlay in
+   this codebase (.confirm-dialog-backdrop[hidden], .follow-list-backdrop[hidden], etc.) has this
+   same explicit override. Missing it here meant "Load more" showed unconditionally regardless of
+   whether js/loadMoreFeed.js's hasNextPage check said there was actually more to load. */
+.load-more-btn[hidden] {
+    display: none;
+}
+
+.load-more-btn:hover {
+    background: var(--color-surface-tint);
+}
+
+.load-more-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ---------- "Following" feed (followingFeed.html) ---------- */
+/* Sits directly above a post-row, inside the same th:each iteration - only ever attached to a
+   post whose own author isn't followed (fragments/postRows.html), explaining why an
+   otherwise-unrelated post is showing up in this feed. */
+.feed-activity-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    color: var(--color-primary);
+    padding: 14px 22px 0;
+}
+
+.feed-activity-tag .icon {
+    width: 13px;
+    height: 13px;
+}
+
+.feed-activity-tag .avatar-mini {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 800;
+    color: #fff;
+}
+
+.empty-following {
+    padding: 60px 32px;
+    text-align: center;
+}
+
+.empty-following .icon {
+    width: 40px;
+    height: 40px;
+    color: var(--color-text-muted);
+    opacity: 0.5;
+    margin-bottom: 14px;
+}
+
+.empty-following h3 {
+    margin: 0 0 6px;
+    font-size: var(--text-lg);
+    color: var(--color-text);
+}
+
+.empty-following p {
+    margin: 0 0 18px;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+}
+
+.cta-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 18px;
+    border-radius: 999px;
+    background: var(--gradient-primary);
+    color: #fff;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: var(--shadow-primary);
+}
+
+.cta-button:hover {
+    box-shadow: var(--shadow-primary-hover);
+}

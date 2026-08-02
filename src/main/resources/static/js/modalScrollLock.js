@@ -5,7 +5,7 @@
 // Centralized here (rather than in every open/close handler) so a new overlay just needs the
 // same "hidden" attribute toggle to get this for free.
 (function () {
-    var OVERLAY_SELECTOR = '.avatar-modal-backdrop, .modal-backdrop, .lightbox';
+    var OVERLAY_SELECTOR = '.avatar-modal-backdrop, .modal-backdrop, .lightbox, .follow-list-backdrop';
 
     function anyOverlayOpen() {
         var overlays = document.querySelectorAll(OVERLAY_SELECTOR);

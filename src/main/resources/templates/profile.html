@@ -28,6 +28,8 @@
     <script src="/js/share.js" defer></script>
     <script src="/js/postModal.js" defer></script>
     <script src="/js/confirmDialog.js" defer></script>
+    <script src="/js/follow.js" defer></script>
+    <script src="/js/followListModal.js" defer></script>
     <!-- Same compose modal as postDashboard.html's Create/Edit - only Edit is reachable here
          (no "Create" FAB on a profile page), which js/composeModal.js's init no longer requires
          a FAB to exist for. -->
@@ -37,6 +39,7 @@
 <div th:replace="~{fragments/nav :: nav}"></div>
 <div th:replace="~{fragments/confirmDialog :: confirmDialog}"></div>
 <div th:replace="~{fragments/composeModal :: composeModal}"></div>
+<div th:replace="~{fragments/followListModal :: followListModal}"></div>
 
 <main class="profile-wrap">
     <div class="profile-card">
@@ -69,6 +72,14 @@
                     </button>
                 </div>
             </div>
+            <div class="profile-actions" th:unless="${isOwnProfile}">
+                <button type="button" class="follow-btn" id="profileFollowBtn"
+                        th:classappend="${isFollowing} ? ' following' : ''"
+                        th:text="${isFollowing} ? 'Following' : 'Follow'"
+                        th:attr="data-username=${profileUser.username},data-logged-in=${currentUser != null}">
+                    Follow
+                </button>
+            </div>
 
             <div class="profile-avatar" id="profileAvatarZoom"
                  th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(profileUser)}">
@@ -86,8 +97,12 @@
 
             <div class="profile-stats">
                 <span class="stat"><b th:text="${#lists.size(posts)}">0</b> Posts</span>
-                <span class="stat reserved"><b>&mdash;</b> Followers<span class="reserved-tag">soon</span></span>
-                <span class="stat reserved"><b>&mdash;</b> Following<span class="reserved-tag">soon</span></span>
+                <span class="stat clickable" data-open-follow-list="followers">
+                    <b id="followerCountValue" th:text="${followerCount}">0</b> Followers
+                </span>
+                <span class="stat clickable" data-open-follow-list="following">
+                    <b th:id="${isOwnProfile} ? 'followingCountValue' : null" th:text="${followingCount}">0</b> Following
+                </span>
             </div>
         </div>
 
