@@ -45,12 +45,17 @@
             </div>
             <button type="button" class="action-reply" sec:authorize="isAuthenticated()"
                     th:attr="data-toggle-reply=${'reply-box-' + comment.id}">Reply</button>
+            <!-- Author-or-admin ONLY - deliberately narrower than the Delete form below, which
+                 also lets a post's own owner moderate comments off their post. Editing rewrites
+                 the comment's own words, not just removes it, so a post owner being able to
+                 silently rewrite what someone else said (still displaying as their comment, just
+                 marked "(edited)") was a real bug, not a shared permission - see
+                 PostController.isCommentAuthorOrAdmin. -->
             <button type="button" class="action-edit"
                     sec:authorize="isAuthenticated()"
                     th:attr="data-toggle-edit=${'edit-box-' + comment.id}"
                     th:if="${#authorization.expression('hasRole(''ADMIN'')')
-                       or (comment.user != null and comment.user.email == #authentication.name)
-                       or (comment.post != null and comment.post.user != null and comment.post.user.email == #authentication.name)}">
+                       or (comment.user != null and comment.user.email == #authentication.name)}">
                 <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>Edit</button>
             <form th:action="@{/posts/comments/delete/{id}(id=${comment.id})}" th:method="post"
                   data-confirm-title="Delete this comment?"
@@ -79,10 +84,11 @@
              data-toggle-edit handler and js/postModal.js's fetch interception for this form) -
              same swap-the-comment-for-a-textarea pattern used by plenty of comment UIs (YouTube,
              Reddit) rather than a modal, since there's nothing here beyond one line of text. -->
+        <!-- Same author-or-admin-only rule as the Edit button above, not the broader
+             delete/moderation rule - see that button's own comment. -->
         <div class="edit-box" th:id="${'edit-box-' + comment.id}" sec:authorize="isAuthenticated()"
              th:if="${#authorization.expression('hasRole(''ADMIN'')')
-                       or (comment.user != null and comment.user.email == #authentication.name)
-                       or (comment.post != null and comment.post.user != null and comment.post.user.email == #authentication.name)}">
+                       or (comment.user != null and comment.user.email == #authentication.name)}">
             <form th:action="@{/posts/comments/edit}" th:method="POST">
                 <input type="hidden" name="id" th:value="${comment.id}">
                 <textarea name="content" class="composer-textarea" required rows="1" th:text="${comment.content}"></textarea>

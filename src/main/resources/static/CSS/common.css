@@ -47,6 +47,12 @@
     --text-2xl: 1.75rem;   /* 28px — page headings */
     --text-3xl: 2.25rem;   /* 36px — hero/brand text */
 
+    /* Draft badge/icon tint (draftsPage.html, composeModal's "Save draft" affordance) - reuses
+       --color-warning's own hue rather than a new color, just a lightly-tinted background
+       version of it, same "semantic color + tint" pattern already used elsewhere
+       (.share-option-danger:hover's rgba(220, 38, 38, 0.1), for example). */
+    --color-draft-bg: rgba(217, 119, 6, 0.12);
+
     --header-glass: rgba(255, 255, 255, 0.14);
     --header-glass-border: rgba(255, 255, 255, 0.25);
     --color-surface-translucent: rgba(255, 255, 255, 0.92);
@@ -91,6 +97,8 @@
     --color-text-muted: #92a0bd;
 
     --shadow-sm: 0 4px 10px rgba(0, 0, 0, 0.35);
+
+    --color-draft-bg: rgba(251, 191, 36, 0.14);
 
     --header-glass: rgba(255, 255, 255, 0.05);
     --header-glass-border: rgba(255, 255, 255, 0.1);
@@ -976,5 +984,43 @@ svg.avatar-icon {
        exceed the viewport on very narrow phones, regardless of where the trigger sits. */
     .nav-profile-dropdown {
         max-width: calc(100vw - 24px);
+    }
+}
+
+/* Flash-message toast (fragments/toast.html + js/toast.js) - "Saved as draft"/"Post
+   published"/"Post deleted successfully" etc. Bottom-center rather than a corner: the FAB
+   already claims bottom-right on dashboard-shell pages, and center keeps this safe on any
+   page regardless of what else is anchored to an edge. */
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translate(-50%, 16px);
+    z-index: 300;
+    max-width: calc(100vw - 32px);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: 12px 20px;
+    border-radius: 999px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    cursor: pointer;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+    pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .toast {
+        transition: opacity 0.01s linear;
+        transform: translate(-50%, 0);
     }
 }

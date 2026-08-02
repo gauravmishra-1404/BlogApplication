@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drafts - Bodh Sea</title>
+    <script src="/js/themeInit.js"></script>
+    <link rel="stylesheet" href="/CSS/common.css">
+    <link rel="stylesheet" href="/CSS/dashboardStyle.css">
+    <script src="/js/theme.js" defer></script>
+    <script src="/js/navProfileMenu.js" defer></script>
+    <script src="/js/confirmDialog.js" defer></script>
+    <script src="/js/toast.js" defer></script>
+    <script src="/js/composeModal.js" defer></script>
+    <script src="/js/draftRows.js" defer></script>
+</head>
+<body>
+<div th:replace="~{fragments/icons :: defs}"></div>
+<div th:replace="~{fragments/confirmDialog :: confirmDialog}"></div>
+<div th:replace="~{fragments/toast :: toast}"></div>
+
+<div class="dashboard-shell">
+
+    <!-- ============ LEFT: sidebar ============ -->
+    <div th:replace="~{fragments/sidebar :: sidebar('drafts')}"></div>
+
+    <!-- ============ CENTER: drafts list ============ -->
+    <main class="center">
+        <div class="topbar">
+            <div class="crumb">Home / <b>Drafts</b></div>
+        </div>
+
+        <div class="empty-drafts" th:if="${#lists.isEmpty(drafts)}">
+            <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>
+            <h3>No drafts yet</h3>
+            <p>Start writing and save it as a draft any time before you're ready to publish.</p>
+            <!-- Reuses composeModal.js's existing FAB-wiring as-is (id="composeFabBtn" is the
+                 exact id that script already listens for to reset-and-open the compose modal in
+                 create mode) rather than inventing a second "open for create" entry point. -->
+            <button type="button" class="cta-button" id="composeFabBtn">Start writing</button>
+        </div>
+
+        <div class="draft-list" th:unless="${#lists.isEmpty(drafts)}">
+            <!-- Not a real <a> - a draft has no URL of its own to navigate to, it only ever
+                 opens in the compose modal (js/draftRows.js), so this is a plain clickable row
+                 (role="button", not role="link") - same reasoning fragments/postRows.html's own
+                 .post-author-link span already established for a non-navigating clickable. -->
+            <div class="draft-row" role="button" tabindex="0" th:each="draft : ${drafts}"
+                 th:attr="data-post-id=${draft.id},
+                        data-post-title=${draft.title},
+                        data-post-content=${draft.content},
+                        data-post-tags=${#strings.listJoin(draft.tagList.![name], ',')}">
+                <span class="draft-icon">
+                    <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>
+                </span>
+                <div class="draft-body">
+                    <div class="draft-head">
+                        <span class="draft-title" th:text="${draft.title != null and !#strings.isEmpty(draft.title)} ? ${draft.title} : 'Untitled'">Title</span>
+                        <span class="draft-badge">Draft</span>
+                    </div>
+                    <p class="draft-excerpt" th:text="${draft.content != null and !#strings.isEmpty(draft.content)} ? ${#strings.abbreviate(draft.content, 140)} : 'No content yet.'">Excerpt</p>
+                    <span class="draft-meta" th:text="'Edited ' + ${T(com.BlogApplication.Blog.util.TimeFormatter).relative(draft.updatedAt)}">Edited</span>
+                    <div class="draft-tags" th:if="${!draft.tagList.isEmpty()}">
+                        <span class="draft-tag" th:each="tag : ${draft.tagList}" th:text="${#strings.toLowerCase(tag.name)}">tag</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+</div>
+
+<div th:replace="~{fragments/composeModal :: composeModal}"></div>
+
+</body>
+</html>

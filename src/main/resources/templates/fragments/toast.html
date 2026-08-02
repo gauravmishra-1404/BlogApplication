@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Generic post-redirect confirmation toast (Gmail-style "Saved as draft" strip) - any
+     controller that does redirectAttributes.addFlashAttribute("message", "...") before a
+     redirect gets this rendered on whichever page the redirect lands on, no per-page wiring
+     needed. Was previously dead on arrival: PostController.deletePost already set this same
+     "message" flash attribute, but no template anywhere ever rendered it until this fragment
+     existed. th:if guards the whole thing so pages that never got a flash message render
+     nothing extra - not an empty hidden toast sitting in the DOM on every normal page load. -->
+<div th:if="${message != null}" th:fragment="toast" class="toast" id="flashToast" th:text="${message}" role="status"></div>
+</body>
+</html>

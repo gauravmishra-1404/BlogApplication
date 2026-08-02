@@ -78,22 +78,33 @@ public class PostServiceImpl implements PostService {
         // at the excerpt-generation line below, and a blank title or empty tags silently saved
         // a broken post). Images/video are intentionally not checked here - they're optional
         // per the actual feature, once PostMedia exists.
-        if (postDto.getTitle() == null || postDto.getTitle().isBlank()) {
-            throw new InvalidPostException("Title is required.");
-        }
-        if (postDto.getContent() == null || postDto.getContent().isBlank()) {
-            throw new InvalidPostException("Content is required.");
-        }
-        if (!hasAtLeastOneTag(postDto.getTags())) {
-            throw new InvalidPostException("At least one tag is required.");
+        //
+        // A draft is deliberately exempt from all of this - the entire point of Save Draft is
+        // to let someone stash unfinished work (no title yet, no tags yet) rather than forcing
+        // the same "finish it or lose it" choice Publish makes. Only an actual Publish action
+        // (postDto.getPublished() true) is held to the full requirement.
+        if (postDto.getPublished()) {
+            if (postDto.getTitle() == null || postDto.getTitle().isBlank()) {
+                throw new InvalidPostException("Title is required.");
+            }
+            if (postDto.getContent() == null || postDto.getContent().isBlank()) {
+                throw new InvalidPostException("Content is required.");
+            }
+            if (!hasAtLeastOneTag(postDto.getTags())) {
+                throw new InvalidPostException("At least one tag is required.");
+            }
         }
 
         Post post = this.dtoToPost(postDto);
         post.setTitle(post.getTitle());
         post.setAuthor(post.getAuthor());
         post.setUpdatedAt(LocalDateTime.now());
-        post.setPublishedAt(LocalDateTime.now());
-        post.setPublished(true);
+        if (postDto.getPublished()) {
+            post.setPublished(true);
+            post.setPublishedAt(LocalDateTime.now());
+        } else {
+            post.setPublished(false);
+        }
         Optional<User> userOptional = userRepo.findByEmail(principal.getName());
 
         if (userOptional.isEmpty()) {
@@ -102,32 +113,43 @@ public class PostServiceImpl implements PostService {
         User currentUser = userOptional.get();
         post.setUser(currentUser);
 
-        // Excerpt Generation
-        StringBuffer excerptString = new StringBuffer();
-        String[] excerptContent = post.getContent().split(" ");
-        for (int i = 0; i < 15 && i < excerptContent.length; i++) {
-            excerptString.append(excerptContent[i]);
-            excerptString.append(" ");
-        }
-        excerptString.append(".....");
-        post.setExcerpt(excerptString.toString());
+        post.setExcerpt(buildExcerpt(post.getContent()));
 
         post.setTagList(resolveTags(postDto.getTags()));
         currentUser.getPosts().add(post);
         postRepo.save(post);
     }
 
+    // A draft's content can genuinely be null/blank (Save Draft skips the "content required"
+    // check above) - the old inline version of this crashed with a NullPointerException the
+    // moment that became possible, since it called .split(" ") straight on post.getContent().
+    private String buildExcerpt(String content) {
+        if (content == null || content.isBlank()) {
+            return "";
+        }
+        StringBuilder excerptString = new StringBuilder();
+        String[] excerptContent = content.split(" ");
+        for (int i = 0; i < 15 && i < excerptContent.length; i++) {
+            excerptString.append(excerptContent[i]);
+            excerptString.append(" ");
+        }
+        excerptString.append(".....");
+        return excerptString.toString();
+    }
+
     public void updatePostByID(PostDto postDto, int id) {
-        // Same authoritative check as save() - the compose modal's edit mode enforces this
-        // client-side too, but a direct POST to /post/republish bypasses that entirely.
-        if (postDto.getTitle() == null || postDto.getTitle().isBlank()) {
-            throw new InvalidPostException("Title is required.");
-        }
-        if (postDto.getContent() == null || postDto.getContent().isBlank()) {
-            throw new InvalidPostException("Content is required.");
-        }
-        if (!hasAtLeastOneTag(postDto.getTags())) {
-            throw new InvalidPostException("At least one tag is required.");
+        // Same authoritative check as save() - only enforced for an actual Publish action, not
+        // a draft being saved again as a draft (see save()'s own comment for why).
+        if (postDto.getPublished()) {
+            if (postDto.getTitle() == null || postDto.getTitle().isBlank()) {
+                throw new InvalidPostException("Title is required.");
+            }
+            if (postDto.getContent() == null || postDto.getContent().isBlank()) {
+                throw new InvalidPostException("Content is required.");
+            }
+            if (!hasAtLeastOneTag(postDto.getTags())) {
+                throw new InvalidPostException("At least one tag is required.");
+            }
         }
 
         Post post = this.dtoToPost(postDto);
@@ -139,14 +161,16 @@ public class PostServiceImpl implements PostService {
         postByID.setTitle(post.getTitle());
         postByID.setAuthor(post.getAuthor());
 
-        StringBuffer excerptString = new StringBuffer();
-        String[] excerptContent = post.getContent().split(" ");
-        for (int i = 0; i < 15 && i < excerptContent.length; i++) {
-            excerptString.append(excerptContent[i]);
-            excerptString.append(" ");
+        // Publish is a one-way door once it's actually happened - an already-published post
+        // can never be flipped back to a draft through this path (only Delete removes a live
+        // post from view), regardless of what's submitted. A still-unpublished draft can move
+        // to published (stamping publishedAt for the first time) or stay a draft.
+        if (postDto.getPublished() && !postByID.isPublished()) {
+            postByID.setPublished(true);
+            postByID.setPublishedAt(LocalDateTime.now());
         }
-        excerptString.append(".....");
-        postByID.setExcerpt(excerptString.toString());
+
+        postByID.setExcerpt(buildExcerpt(post.getContent()));
 
         postByID.setTagList(resolveTags(postDto.getTags()));
         postRepo.save(postByID);
@@ -210,6 +234,11 @@ public class PostServiceImpl implements PostService {
         postDtoByID.setId(postByID.getId());
         postDtoByID.setComments(postByID.getComments());
         postDtoByID.setUser(postByID.getUser());
+        // isPublished()'s own null-safe getter (not the raw field) - a pre-draft-feature row
+        // with a null column still correctly reads as published here, same as everywhere else.
+        postDtoByID.setPublished(postByID.isPublished());
+        postDtoByID.setPublishedAt(postByID.getPublishedAt());
+        postDtoByID.setExcerpt(postByID.getExcerpt());
 
         List<Tags> tagsList = postByID.getTagList();
         StringBuilder constructTagList = new StringBuilder();
@@ -272,8 +301,14 @@ public class PostServiceImpl implements PostService {
         Specification<Post> spec = Specification.where((root, cq, cb) ->
                 cb.or(cb.isNull(root.get("deleted")), cb.isFalse(root.get("deleted"))));
 
+        // Drafts never appear in the main feed/search - same null-safe check as deleted (a row
+        // predating the draft feature has isPublished == null, which reads as published).
+        spec = spec.and((root, cq, cb) ->
+                cb.or(cb.isNull(root.get("isPublished")), cb.isTrue(root.get("isPublished"))));
+
         if (query != null && !query.isBlank()) {
-            String likePattern = "%" + query.trim().toLowerCase() + "%";
+            String likePattern = "%" + query.trim().toLowerCase() 
+            + "%";
             spec = spec.and((root, cq, cb) -> {
                 cq.distinct(true);
                 Join<Post, Tags> tagJoin = root.join("tagList", JoinType.LEFT);

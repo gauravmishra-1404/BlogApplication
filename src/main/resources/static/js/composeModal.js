@@ -25,12 +25,14 @@ document.addEventListener('DOMContentLoaded', function () {
     var modalTitleText = document.getElementById('composeModalTitleText');
     var form = document.getElementById('composeForm');
     var postIdInput = document.getElementById('composePostId');
+    var publishedInput = document.getElementById('composePublished');
     var titleInput = document.getElementById('composeTitle');
     var contentInput = document.getElementById('composeContent');
     var wordCount = document.getElementById('composeWordCount');
     var readTime = document.getElementById('composeReadTime');
     var postBtn = document.getElementById('composePostBtn');
     var postBtnLabel = document.getElementById('composePostBtnLabel');
+    var draftBtn = document.getElementById('composeDraftBtn');
     var tagWrap = document.getElementById('composeTagWrap');
     var tagInput = document.getElementById('composeTagInput');
     var tagsHidden = document.getElementById('composeTagsHidden');
@@ -77,13 +79,18 @@ document.addEventListener('DOMContentLoaded', function () {
         contentInput.value = '';
         clearTagChips();
         modalTitleText.textContent = 'Create post';
-        postBtnLabel.textContent = 'Post';
+        postBtnLabel.textContent = 'Publish';
+        draftBtn.hidden = false;
         autosize();
         updateCounts();
     }
 
-    // Called by js/share.js when Edit is clicked in the post-view modal's kebab menu.
-    // data: { id, title, content, tags: string[] }
+    // Called by js/share.js when Edit is clicked in the post-view modal's kebab menu, and by
+    // js/draftRows.js when a row on the Drafts page is clicked. data: { id, title, content,
+    // tags: string[], isDraft (optional, default false) }. Save Draft only ever shows for a
+    // brand-new post or one that's still a draft - an already-published post edited this way
+    // only ever gets "Save changes", since Publish is a one-way door (see
+    // PostServiceImpl.updatePostByID's own comment) and there's nothing left to "draft" back to.
     window.BodhSeaCompose = {
         openForEdit: function (data) {
             form.setAttribute('action', editAction);
@@ -93,8 +100,15 @@ document.addEventListener('DOMContentLoaded', function () {
             contentInput.value = data.content;
             clearTagChips();
             data.tags.forEach(function (tag) { addTag(tag); });
-            modalTitleText.textContent = 'Edit post';
-            postBtnLabel.textContent = 'Save changes';
+            if (data.isDraft) {
+                modalTitleText.textContent = 'Edit draft';
+                postBtnLabel.textContent = 'Publish';
+                draftBtn.hidden = false;
+            } else {
+                modalTitleText.textContent = 'Edit post';
+                postBtnLabel.textContent = 'Save changes';
+                draftBtn.hidden = true;
+            }
             autosize();
             updateCounts();
             openModal();
@@ -109,6 +123,21 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     closeBtn.addEventListener('click', closeModal);
     backdrop.addEventListener('click', function (e) { if (e.target === backdrop) closeModal(); });
+
+    // Both footer actions are real submits of the same form - which one fires just sets
+    // "published" first, so PostServiceImpl.save()/updatePostByID() know whether to enforce the
+    // full title/content/tags requirement (Publish) or accept whatever's there so far (Save
+    // draft). Plain buttons rather than one submit + a name/value pair, since a disabled
+    // submit button's own value is never sent at all, exactly the state Publish starts in
+    // before there's a title/content/tag to submit.
+    draftBtn.addEventListener('click', function () {
+        publishedInput.value = 'false';
+        form.requestSubmit();
+    });
+    postBtn.addEventListener('click', function () {
+        publishedInput.value = 'true';
+        form.requestSubmit();
+    });
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Escape' || backdrop.hidden) return;
         if (emojiPopover.classList.contains('open')) { closePicker(); return; }

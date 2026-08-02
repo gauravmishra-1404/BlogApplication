@@ -99,7 +99,8 @@ public class PostController {
 
 
     @PostMapping("/post/publish")
-    public String publishPost(@ModelAttribute("postDto") PostDto postDto, Principal principal, Model model) {
+    public String publishPost(@ModelAttribute("postDto") PostDto postDto, Principal principal, Model model,
+                              RedirectAttributes redirectAttributes) {
         postDto.setCreatedAt(LocalDateTime.now());
         try {
             postService.save(postDto, principal);
@@ -109,7 +110,12 @@ public class PostController {
             model.addAttribute("error", ex.getMessage());
             return "newPost";
         }
-        return "redirect:/home";
+        if (postDto.getPublished()) {
+            redirectAttributes.addFlashAttribute("message", "Post published");
+            return "redirect:/home";
+        }
+        redirectAttributes.addFlashAttribute("message", "Saved as draft");
+        return "redirect:/drafts";
     }
 
     @GetMapping("/post/viewPost")
@@ -154,8 +160,17 @@ public class PostController {
     // VisitorIdentityService. Reaction counts are public the same way; only reacting itself
     // requires login. userEmail is null for a logged-out viewer, which both reaction services
     // already treat as "no reaction of mine" rather than an error.
+    //
+    // A draft gets the exact same treatment as a soft-deleted post here (null -> caller
+    // redirects/404s), never a distinct "this is a draft" response - that would confirm the
+    // post exists to someone who has no business knowing that, the same reasoning
+    // PostAuthorization's own doc comment already established for edit/delete.
     private PostDetail recordViewAndGetDetail(int id, Authentication authentication,
                                               HttpServletRequest request, HttpServletResponse response) {
+        if (!canViewPost(id, authentication)) {
+            return null;
+        }
+
         String viewerToken = visitorIdentityService.resolveViewerToken(authentication, request, response);
         postViewService.recordView(id, viewerToken);
 
@@ -165,14 +180,22 @@ public class PostController {
         return postService.getPostDetail(id, userEmail);
     }
 
-    // Same visibility rule as viewing the post (permitAll, missing/soft-deleted -> 404) since
-    // downloading is just another way of reading a post someone can already see on-screen.
+    private boolean canViewPost(int id, Authentication authentication) {
+        PostDto post = postService.getPostById(id);
+        if (post == null) {
+            return false;
+        }
+        return post.getPublished() || PostAuthorization.isOwnerOrAdmin(authentication, post.getUser());
+    }
+
+    // Same visibility rule as viewing the post (permitAll, missing/soft-deleted/unpublished -> 404)
+    // since downloading is just another way of reading a post someone can already see on-screen.
     @GetMapping("/post/download")
-    public ResponseEntity<byte[]> downloadPost(@RequestParam("id") int id) {
-        PostDto postDtoById = postService.getPostById(id);
-        if (postDtoById == null) {
+    public ResponseEntity<byte[]> downloadPost(@RequestParam("id") int id, Authentication authentication) {
+        if (!canViewPost(id, authentication)) {
             return ResponseEntity.notFound().build();
         }
+        PostDto postDtoById = postService.getPostById(id);
 
         byte[] pdf = postPdfService.renderToPdf(postDtoById);
         String filename = (postDtoById.getTitle() != null ? postDtoById.getTitle() : "post")
@@ -206,7 +229,8 @@ public class PostController {
 
     //rePublishByID(){}
     @PostMapping("/post/republish")
-    public String rePublishPostByID(@ModelAttribute("postDto") PostDto postDto, Authentication authentication, Model model){
+    public String rePublishPostByID(@ModelAttribute("postDto") PostDto postDto, Authentication authentication, Model model,
+                                    RedirectAttributes redirectAttributes){
         // Re-check ownership against the post as it exists in the DB right now - never trust the
         // submitted form for who owns the post, since that's exactly what an attacker controls.
         PostDto existing = postService.getPostById(postDto.getId());
@@ -216,6 +240,7 @@ public class PostController {
         if (!PostAuthorization.isOwnerOrAdmin(authentication, existing.getUser())) {
             return "redirect:/post/viewPost?id=" + postDto.getId();
         }
+        boolean wasPublishedBefore = existing.getPublished();
         try {
             postService.updatePostByID(postDto, postDto.getId());
         } catch (InvalidPostException ex) {
@@ -223,6 +248,17 @@ public class PostController {
             model.addAttribute("error", ex.getMessage());
             return "editByPostID";
         }
+        // Saving a still-unpublished draft again lands back on /drafts, where it's actually
+        // visible - /home never shows drafts at all, so redirecting there after "Save draft"
+        // would make the save look like it vanished. An actual Publish (postDto.getPublished()
+        // true) still goes to /home, same as always, since that's genuinely where it now lives.
+        // The toast wording distinguishes a draft's first-ever Publish from a routine edit of an
+        // already-live post, using the pre-update state fetched above.
+        if (!postDto.getPublished()) {
+            redirectAttributes.addFlashAttribute("message", "Saved as draft");
+            return "redirect:/drafts";
+        }
+        redirectAttributes.addFlashAttribute("message", wasPublishedBefore ? "Changes saved" : "Post published");
         return "redirect:/home";
     }
 
@@ -377,9 +413,10 @@ public class PostController {
     public String addComment(@PathVariable("id") int postId,
                              @RequestParam String content,
                              Authentication authentication) {
-        // getPostById returns null for a missing OR soft-deleted post - reusing that contract
-        // here blocks commenting on a "deleted" post the same way viewing it is already blocked.
-        if (postService.getPostById(postId) == null) {
+        // canViewPost covers missing/deleted (null post) the same as before, plus blocks
+        // commenting on someone else's still-unpublished draft - a gap where the read path
+        // (viewPost/modal/download) was already locked down but this write path wasn't.
+        if (!canViewPost(postId, authentication)) {
             return "redirect:/home";
         }
         commentService.save(postId, content, authentication.getName());
@@ -428,7 +465,14 @@ public class PostController {
             return "redirect:/home";
         }
 
-        if (!isAuthorizedForComment(authentication, comment)) {
+        // Editing rewrites the comment's own words, so this is deliberately stricter than
+        // isAuthorizedForComment (used for delete below) - author-or-admin only, never the
+        // post's own owner. isAuthorizedForComment previously guarded this endpoint too, which
+        // meant a post's author could edit the actual wording of someone else's comment on their
+        // post - a real bug (moderating comments off your own post is legitimate; silently
+        // rewriting what someone else said, while it still displays as their comment just marked
+        // "(edited)", is not the same permission at all).
+        if (!isCommentAuthorOrAdmin(authentication, comment)) {
             return "redirect:/post/viewPost?id=" + comment.getPost().getId();
         }
 
@@ -446,7 +490,9 @@ public class PostController {
             return "redirect:/home";
         }
 
-        if (!isAuthorizedForComment(authentication, comment)) {
+        // Same author-or-admin-only check as editCommentPage above - never trust the GET page
+        // having been reached legitimately, this POST is reachable directly regardless.
+        if (!isCommentAuthorOrAdmin(authentication, comment)) {
             return "redirect:/post/viewPost?id=" + comment.getPost().getId();
         }
 
@@ -454,6 +500,20 @@ public class PostController {
         comment.setEdited(true);
         commentRepo.save(comment);
         return "redirect:/post/viewPost?id=" + comment.getPost().getId();
+    }
+
+    private boolean isCommentAuthorOrAdmin(Authentication authentication, Comment comment) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch("ROLE_ADMIN"::equals);
+
+        String commentAuthorEmail = comment.getUser() != null ? comment.getUser().getEmail() : null;
+
+        return isAdmin || (commentAuthorEmail != null && commentAuthorEmail.equals(authentication.getName()));
     }
 
     private boolean isAuthorizedForComment(Authentication authentication, Comment comment) {
@@ -485,6 +545,11 @@ public class PostController {
         // directly (same reasoning either way: the thing being replied to is supposed to be gone).
         if (parentComment == null || parentComment.getPost() == null
                 || parentComment.getPost().isDeleted() || parentComment.isDeleted()) {
+            return "redirect:/home";
+        }
+        // Same draft-visibility rule as addComment above - replying into someone else's
+        // unpublished draft thread was reachable even though the draft itself isn't viewable.
+        if (!canViewPost(parentComment.getPost().getId(), authentication)) {
             return "redirect:/home";
         }
 

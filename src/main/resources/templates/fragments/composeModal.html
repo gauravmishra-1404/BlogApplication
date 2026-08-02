@@ -31,6 +31,12 @@
 
         <form th:action="@{/post/publish}" th:attr="data-edit-action=@{/post/republish}" th:method="post" class="compose-modal-body" id="composeForm">
             <input type="hidden" name="id" id="composePostId" value="">
+            <!-- Draft vs Publish - js/composeModal.js sets this to "false"/"true" right before
+                 submitting depending on which footer button was clicked (see that file for why
+                 both buttons are type="button" rather than relying on a submit-button's own
+                 name/value). Defaults "true" so the old standalone newPost.html/editByPostID.html
+                 forms (which have no draft concept at all) keep behaving exactly as before. -->
+            <input type="hidden" name="published" id="composePublished" value="true">
             <div class="compose-author">
                 <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(currentUser)}">
                     <div th:replace="~{fragments/avatarContent :: content(${currentUser}, ${currentUser != null ? currentUser.name : null})}"></div>
@@ -51,10 +57,18 @@
                    th:if="${currentUser != null and currentUser.role == 'ROLE_ADMIN'}"
                    th:value="${currentUser.name}" placeholder="Author name">
 
+            <!-- No "required" here (pre-draft-feature leftover, removed) - both buttons now
+                 submit via form.requestSubmit(), which unlike a plain type="submit" button DOES
+                 enforce native HTML5 constraint validation, and would silently block Save Draft
+                 from ever reaching the server whenever title/content is still empty - exactly
+                 the case a draft exists to allow. Publish is still correctly gated: composePostBtn
+                 stays disabled until updatePostState() sees a real title/content/tag, and
+                 PostServiceImpl.save()/updatePostByID() still enforce all three server-side
+                 whenever postDto.getPublished() is true. -->
             <input type="text" name="title" id="composeTitle" class="compose-title"
-                   placeholder="Give your post a title" required maxlength="200">
+                   placeholder="Give your post a title" maxlength="200">
             <textarea name="content" id="composeContent" class="compose-content"
-                      placeholder="Share your story, thoughts, or drop a meme..." required rows="3"></textarea>
+                      placeholder="Share your story, thoughts, or drop a meme..." rows="3"></textarea>
 
             <div class="media-dropzone disabled" title="Photo, video, and voice attachments - coming soon">
                 <svg class="icon" aria-hidden="true"><use href="#i-image"/></svg>
@@ -120,8 +134,8 @@
                     <span id="composeReadTime">0 min read</span>
                 </div>
                 <div class="footer-actions">
-                    <button type="button" class="btn-draft" disabled>Save draft <span class="soon">Soon</span></button>
-                    <button type="submit" class="btn-post" id="composePostBtn" disabled><span id="composePostBtnLabel">Post</span></button>
+                    <button type="button" class="btn-draft" id="composeDraftBtn">Save draft</button>
+                    <button type="button" class="btn-post" id="composePostBtn" disabled><span id="composePostBtnLabel">Post</span></button>
                 </div>
             </div>
         </form>

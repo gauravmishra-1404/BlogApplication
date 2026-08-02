@@ -82,7 +82,10 @@ public class RestPostController {
     public ResponseEntity<PostDto> viewPostByID(@PathVariable int id, Authentication authentication,
                                                 HttpServletRequest request, HttpServletResponse response) {
         PostDto postDto = postService.getPostById(id);
-        if (postDto == null) {
+        // 404 rather than 403 for a draft that isn't the caller's own - same reasoning as
+        // PostController.canViewPost: confirming a post exists at all to someone with no
+        // business viewing it is its own leak, distinct from being told the exact reason.
+        if (postDto == null || !canViewPost(postDto, authentication)) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
 
@@ -151,9 +154,10 @@ public class RestPostController {
     public ResponseEntity<Void> addComment(@PathVariable int id,
                                            @RequestBody Comment comment,
                                            Authentication authentication) {
-        // getPostById returns null for a missing OR soft-deleted post - blocks commenting on a
-        // "deleted" post the same way viewing it is already blocked.
-        if (postService.getPostById(id) == null) {
+        // getPostById returns null for a missing OR soft-deleted post; canViewPost additionally
+        // blocks commenting on someone else's still-unpublished draft.
+        PostDto postDto = postService.getPostById(id);
+        if (postDto == null || !canViewPost(postDto, authentication)) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
         commentService.save(id, comment.getContent(), authentication.getName());
@@ -187,8 +191,22 @@ public class RestPostController {
                 || parentComment.getPost().isDeleted() || parentComment.isDeleted()) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
+        // Same draft-visibility rule as addComment above.
+        PostDto postDto = postService.getPostById(parentComment.getPost().getId());
+        if (postDto == null || !canViewPost(postDto, authentication)) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
         commentService.saveReply(commentId, reply.getContent(), authentication.getName());
         return new ResponseEntity<>(HttpStatus.CREATED);
+    }
+
+    // Mirrors PostController.canViewPost - a draft is visible only to its own owner or an
+    // ADMIN, same rule used to gate the Thymeleaf read paths (viewPost/modal/download). This
+    // REST controller never had an equivalent check on its own read/comment/reply endpoints,
+    // which meant any authenticated user could read, comment on, or reply into someone else's
+    // still-unpublished draft just by knowing (or guessing) its post id.
+    private boolean canViewPost(PostDto post, Authentication authentication) {
+        return post.getPublished() || PostAuthorization.isOwnerOrAdmin(authentication, post.getUser());
     }
 
     private boolean isAuthorizedForComment(Authentication authentication, Comment comment) {
