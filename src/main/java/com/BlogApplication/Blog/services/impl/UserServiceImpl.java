@@ -1,13 +1,17 @@
 package com.BlogApplication.Blog.services.impl;
 
 import com.BlogApplication.Blog.exceptions.DuplicateEmailException;
+import com.BlogApplication.Blog.exceptions.IncorrectPasswordException;
 import com.BlogApplication.Blog.exceptions.ResourceNotFoundException;
+import com.BlogApplication.Blog.exceptions.UsernameTakenException;
 import com.BlogApplication.Blog.models.TokenPurpose;
 import com.BlogApplication.Blog.models.User;
+import com.BlogApplication.Blog.models.VerificationToken;
 import com.BlogApplication.Blog.payloads.UserDto;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.EmailService;
 import com.BlogApplication.Blog.services.ImageStorageService;
+import com.BlogApplication.Blog.services.SmsService;
 import com.BlogApplication.Blog.services.UserService;
 import com.BlogApplication.Blog.services.VerificationTokenService;
 import com.BlogApplication.Blog.util.AvatarPresets;
@@ -16,13 +20,16 @@ import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,6 +49,15 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private SmsService smsService;
+
+    @Autowired
+    private BCryptPasswordEncoder passwordEncoder;
+
+    private static final long OTP_VALIDITY_MINUTES = 5;
+    private final SecureRandom otpRandom = new SecureRandom();
 
     @Autowired
     private ImageStorageService imageStorageService;
@@ -261,6 +277,108 @@ public class UserServiceImpl implements UserService {
             log.warn("Image upload failed for {}", keyHint, e);
             return null;
         }
+    }
+
+    @Override
+    public boolean isUsernameAvailable(String username, int currentUserId) {
+        return userRepo.findByUsername(username)
+                .map(existing -> existing.getId() == currentUserId)
+                .orElse(true);
+    }
+
+    @Override
+    public void updateUsername(User user, String newUsername) {
+        if (!isUsernameAvailable(newUsername, user.getId())) {
+            throw new UsernameTakenException("That username is already taken.");
+        }
+        user.setUsername(newUsername);
+        userRepo.save(user);
+    }
+
+    @Override
+    public void requestEmailChange(User user, String newEmail, String currentPassword) {
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new IncorrectPasswordException("That password isn't right.");
+        }
+        String normalizedNewEmail = newEmail.trim().toLowerCase();
+        // Same duplicate check registration already does - the unique constraint on `email`
+        // would catch this at save time regardless, but failing here gives a clear reason
+        // instead of a generic save error.
+        if (userRepo.findByEmail(normalizedNewEmail).isPresent()) {
+            throw new DuplicateEmailException(normalizedNewEmail);
+        }
+
+        user.setPendingEmail(normalizedNewEmail);
+        userRepo.save(user);
+
+        String token = verificationTokenService.createToken(user, TokenPurpose.CHANGE_EMAIL);
+        emailService.sendEmailChangeConfirmation(user, normalizedNewEmail, token);
+    }
+
+    @Override
+    public boolean confirmEmailChange(String token) {
+        Optional<VerificationToken> verificationToken = verificationTokenService.validate(token, TokenPurpose.CHANGE_EMAIL);
+        if (verificationToken.isEmpty()) {
+            return false;
+        }
+
+        User user = verificationToken.get().getUser();
+        String newEmail = user.getPendingEmail();
+        if (newEmail == null) {
+            // Already applied by an earlier click of the same link, or the pending change was
+            // superseded - nothing left to do, but not an error either.
+            return false;
+        }
+
+        user.setEmail(newEmail);
+        user.setPendingEmail(null);
+        user.setEmailVerified(true);
+        try {
+            userRepo.save(user);
+        } catch (DataIntegrityViolationException e) {
+            // Someone else claimed newEmail in the window between request and confirm - back
+            // out the pending state so the UI doesn't keep showing a change that can never land.
+            user.setPendingEmail(null);
+            userRepo.save(user);
+            return false;
+        }
+
+        verificationTokenService.markUsed(verificationToken.get());
+        return true;
+    }
+
+    @Override
+    public void requestMobileOtp(User user, String newMobile, String currentPassword) {
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new IncorrectPasswordException("That password isn't right.");
+        }
+
+        String code = String.format("%06d", otpRandom.nextInt(1_000_000));
+        user.setPendingMobileNumber(newMobile.trim());
+        user.setMobileOtpCode(code);
+        user.setMobileOtpExpiry(LocalDateTime.now().plusMinutes(OTP_VALIDITY_MINUTES));
+        userRepo.save(user);
+
+        smsService.sendOtp(newMobile.trim(), code);
+    }
+
+    @Override
+    public boolean confirmMobileOtp(User user, String code) {
+        if (user.getPendingMobileNumber() == null || user.getMobileOtpCode() == null
+                || user.getMobileOtpExpiry() == null || user.getMobileOtpExpiry().isBefore(LocalDateTime.now())) {
+            return false;
+        }
+        if (!user.getMobileOtpCode().equals(code.trim())) {
+            return false;
+        }
+
+        user.setMobileNumber(user.getPendingMobileNumber());
+        user.setMobileVerified(true);
+        user.setPendingMobileNumber(null);
+        user.setMobileOtpCode(null);
+        user.setMobileOtpExpiry(null);
+        userRepo.save(user);
+        return true;
     }
 
 }

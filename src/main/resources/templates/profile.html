@@ -21,6 +21,7 @@
     <script src="/js/profileEditMenu.js" defer></script>
     <script src="/js/avatarEditor.js" defer></script>
     <script src="/js/coverEditor.js" defer></script>
+    <script src="/js/personalInfoModal.js" defer></script>
     <script src="/js/modalScrollLock.js" defer></script>
     <script src="/js/commentThread.js" defer></script>
     <script src="/js/commentComposer.js" defer></script>
@@ -64,9 +65,9 @@
                         Cover photo
                     </button>
                     <div class="divider"></div>
-                    <button type="button" class="disabled" disabled>
+                    <button type="button" data-action="personal-info">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
-                        Personal info<span class="reserved-tag">soon</span>
+                        Personal info
                     </button>
                     <button type="button" class="disabled" disabled>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"/></svg>
@@ -127,16 +128,38 @@
             <p class="empty-hint" th:if="${#lists.isEmpty(posts)}">No posts yet.</p>
         </div>
 
+        <!-- Replies received - other people's comments on THIS profile's own posts, not comments
+             this profile wrote elsewhere (see CommentRepo.findRepliesReceivedByPostAuthor). The
+             commenter is no longer implicitly the profile owner, so their avatar/name is shown
+             here now, same avatar/username null-safety pattern fragments/commentNode.html
+             already uses for a deleted commenter account. -->
         <div class="tab-panel" data-panel="replies" hidden>
             <div th:if="${!#lists.isEmpty(comments)}">
                 <div class="reply-row" th:each="comment : ${comments}">
-                    <p class="reply-context">Commented on
-                        <a th:href="@{/post/viewPost(id=${comment.post.id})}" th:text="${comment.post.title}" th:attr="data-open-post-modal=${comment.post.id}">Post</a>
-                    </p>
+                    <div class="reply-header">
+                        <a class="avatar reply-avatar" th:if="${comment.user != null and comment.user.username != null}"
+                           th:href="@{/profile/{u}(u=${comment.user.username})}"
+                           th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(comment.user)}">
+                            <div th:replace="~{fragments/avatarContent :: content(${comment.user}, ${comment.user.name})}"></div>
+                        </a>
+                        <span class="avatar reply-avatar" th:unless="${comment.user != null and comment.user.username != null}"
+                              th:classappend="${comment.user == null} ? ' deleted' : ''"
+                              th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(comment.user)}">
+                            <div th:replace="~{fragments/avatarContent :: content(${comment.user}, ${comment.user != null ? comment.user.name : null})}"></div>
+                        </span>
+                        <p class="reply-context">
+                            <a th:if="${comment.user != null and comment.user.username != null}" class="reply-author-link"
+                               th:href="@{/profile/{u}(u=${comment.user.username})}" th:text="${comment.user.name}">Name</a>
+                            <span th:unless="${comment.user != null and comment.user.username != null}"
+                                  th:text="${comment.user != null ? comment.user.name : 'Deleted user'}">Name</span>
+                            commented on
+                            <a th:href="@{/post/viewPost(id=${comment.post.id})}" th:text="${comment.post.title}" th:attr="data-open-post-modal=${comment.post.id}">Post</a>
+                        </p>
+                    </div>
                     <p class="reply-text" th:text="${comment.content}">Comment</p>
                 </div>
             </div>
-            <p class="empty-hint" th:if="${#lists.isEmpty(comments)}">No replies yet.</p>
+            <p class="empty-hint" th:if="${#lists.isEmpty(comments)}">No replies received yet.</p>
         </div>
     </div>
 </main>
@@ -297,6 +320,160 @@
                 <button type="submit" class="btn-save">Save changes</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Personal info panel (js/personalInfoModal.js) - row-list pattern borrowed from X's own
+     Account Information screen (each field its own row, edited one at a time) rather than one
+     big form. data-mobile-otp-pending tells the JS to jump straight to the OTP-confirm panel
+     when reopened after a request-otp redirect, since that POST is a full page reload (same
+     plain-form convention avatar/cover already use, not fetch/AJAX) and would otherwise lose
+     all client-side panel state. -->
+<div class="modal-backdrop" id="personalInfoModalBackdrop" th:if="${isOwnProfile}" hidden
+     th:attr="data-mobile-otp-pending=${profileUser.pendingMobileNumber != null}">
+    <div class="modal pinfo-modal" role="dialog" aria-modal="true" aria-labelledby="pinfoModalTitle">
+        <button type="button" class="modal-close" id="pinfoModalClose" aria-label="Close">
+            <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+        </button>
+
+        <!-- ---- Row list ---- -->
+        <div class="pinfo-panel active" data-pinfo-panel="list">
+            <h2 id="pinfoModalTitle">Personal info</h2>
+            <p class="modal-sub">Manage the info used to sign in and recover your account</p>
+
+            <div class="pinfo-section-label">Profile</div>
+            <div class="pinfo-row-list">
+                <button type="button" class="pinfo-row" data-pinfo-goto="edit-username">
+                    <span class="pinfo-row-icon"><svg class="icon" aria-hidden="true"><use href="#i-user"/></svg></span>
+                    <span class="pinfo-row-text">
+                        <span class="pinfo-row-label">Username</span>
+                        <span class="pinfo-row-value" th:text="'@' + ${profileUser.username}">@handle</span>
+                    </span>
+                    <svg class="icon pinfo-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg>
+                </button>
+            </div>
+
+            <div class="pinfo-section-label">Contact info</div>
+            <div class="pinfo-row-list">
+                <button type="button" class="pinfo-row" data-pinfo-goto="reauth" data-pinfo-next="edit-email">
+                    <span class="pinfo-row-icon"><svg class="icon" aria-hidden="true"><use href="#i-mail"/></svg></span>
+                    <span class="pinfo-row-text">
+                        <span class="pinfo-row-label">Email address</span>
+                        <span class="pinfo-row-value" th:text="${profileUser.email}">email@example.com</span>
+                    </span>
+                    <span class="pinfo-status-pill" th:if="${profileUser.pendingEmail == null}"
+                          th:classappend="${profileUser.emailVerified} ? ' verified' : ' unverified'"
+                          th:text="${profileUser.emailVerified} ? 'Confirmed' : 'Unconfirmed'">Confirmed</span>
+                    <span class="pinfo-status-pill unverified" th:if="${profileUser.pendingEmail != null}">Pending</span>
+                    <svg class="icon pinfo-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg>
+                </button>
+                <button type="button" class="pinfo-row" data-pinfo-goto="reauth" data-pinfo-next="edit-mobile">
+                    <span class="pinfo-row-icon"><svg class="icon" aria-hidden="true"><use href="#i-phone"/></svg></span>
+                    <span class="pinfo-row-text">
+                        <span class="pinfo-row-label">Mobile number</span>
+                        <span class="pinfo-row-value" th:if="${profileUser.mobileNumber != null}" th:text="${profileUser.mobileNumber}">+91 00000 00000</span>
+                        <span class="pinfo-row-value placeholder" th:if="${profileUser.mobileNumber == null}">Not added</span>
+                    </span>
+                    <span class="pinfo-status-pill verified" th:if="${profileUser.mobileNumber != null and profileUser.mobileVerified}">Confirmed</span>
+                    <span class="pinfo-status-pill unverified" th:if="${profileUser.pendingMobileNumber != null}">Pending</span>
+                    <svg class="icon pinfo-chev" aria-hidden="true"><use href="#i-chevron-right"/></svg>
+                </button>
+            </div>
+            <p class="pinfo-footnote">A confirmed email and phone are the two ways you can get back into your account if you're ever locked out.</p>
+        </div>
+
+        <!-- ---- Password re-auth checkpoint (shared by Email and Mobile) ---- -->
+        <div class="pinfo-panel" data-pinfo-panel="reauth">
+            <button type="button" class="pinfo-back" data-pinfo-goto="list"><svg class="icon" aria-hidden="true"><use href="#i-chevron-left"/></svg></button>
+            <h2>Confirm it's you</h2>
+            <div class="pinfo-reauth-box">
+                <svg class="icon pinfo-lock" aria-hidden="true"><use href="#i-lock"/></svg>
+                <h3>Enter your password to continue</h3>
+                <p>Email and mobile number are also used to recover your account, so we double-check it's really you before showing or changing them.</p>
+                <input type="password" class="pinfo-input" id="pinfoReauthPassword" placeholder="Password" autocomplete="current-password">
+                <p class="pinfo-hint error" id="pinfoReauthError" hidden>Enter your password to continue.</p>
+                <div class="pinfo-footer center">
+                    <button type="button" class="btn-primary" id="pinfoReauthContinue">Continue</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ---- Edit username ---- -->
+        <div class="pinfo-panel" data-pinfo-panel="edit-username">
+            <button type="button" class="pinfo-back" data-pinfo-goto="list"><svg class="icon" aria-hidden="true"><use href="#i-chevron-left"/></svg></button>
+            <h2>Username</h2>
+            <form th:action="@{/profile/personal-info/username}" th:method="post" id="pinfoUsernameForm">
+                <input type="text" class="pinfo-input" name="username" id="pinfoUsernameInput"
+                       th:value="${profileUser.username}" maxlength="30" autocomplete="off">
+                <p class="pinfo-hint" id="pinfoUsernameHint">3-30 characters: letters, numbers, and underscores.</p>
+                <p class="pinfo-footnote">Changing your username changes your profile link. People who bookmarked your old link won't be redirected.</p>
+                <div class="pinfo-footer">
+                    <button type="button" class="btn-secondary" data-pinfo-goto="list">Cancel</button>
+                    <button type="submit" class="btn-primary" id="pinfoUsernameSave">Save</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ---- Change email (reached only after re-auth) ---- -->
+        <div class="pinfo-panel" data-pinfo-panel="edit-email">
+            <button type="button" class="pinfo-back" data-pinfo-goto="list"><svg class="icon" aria-hidden="true"><use href="#i-chevron-left"/></svg></button>
+            <h2>Email address</h2>
+            <form th:action="@{/profile/personal-info/email}" th:method="post" id="pinfoEmailForm">
+                <input type="email" class="pinfo-input" name="newEmail" id="pinfoNewEmailInput"
+                       placeholder="you@example.com" autocomplete="off">
+                <input type="hidden" name="currentPassword" id="pinfoEmailPasswordCarry">
+                <div class="pinfo-verify-panel" th:if="${profileUser.pendingEmail != null}">
+                    <p>A confirmation link is already on its way to <b th:text="${profileUser.pendingEmail}">pending@example.com</b>. Your login stays <b th:text="${profileUser.email}">current@example.com</b> until it's clicked - link expires in 5 minutes.</p>
+                </div>
+                <p class="pinfo-footnote">We'll send a confirmation link to the new address. Your login won't change until you click it.</p>
+                <div class="pinfo-footer">
+                    <button type="button" class="btn-secondary" data-pinfo-goto="list">Cancel</button>
+                    <button type="submit" class="btn-primary">Send confirmation link</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ---- Add/change mobile number (reached only after re-auth) ---- -->
+        <div class="pinfo-panel" data-pinfo-panel="edit-mobile">
+            <button type="button" class="pinfo-back" data-pinfo-goto="list"><svg class="icon" aria-hidden="true"><use href="#i-chevron-left"/></svg></button>
+            <h2>Mobile number</h2>
+            <form th:action="@{/profile/personal-info/mobile/request-otp}" th:method="post" id="pinfoMobileForm">
+                <input type="tel" class="pinfo-input" name="newMobile" id="pinfoNewMobileInput"
+                       th:value="${profileUser.mobileNumber}" placeholder="+91 98765 43210" autocomplete="off">
+                <input type="hidden" name="currentPassword" id="pinfoMobilePasswordCarry">
+                <p class="pinfo-footnote">We'll text a 6-digit code to confirm this number.</p>
+                <div class="pinfo-footer">
+                    <button type="button" class="btn-secondary" data-pinfo-goto="list">Cancel</button>
+                    <button type="submit" class="btn-primary">Send code</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ---- Confirm mobile OTP - shown directly on open when a request is already in
+             flight (see data-mobile-otp-pending above), since request-otp's own POST already
+             redirected the whole page once. ---- -->
+        <div class="pinfo-panel" data-pinfo-panel="confirm-otp">
+            <button type="button" class="pinfo-back" data-pinfo-goto="list"><svg class="icon" aria-hidden="true"><use href="#i-chevron-left"/></svg></button>
+            <h2>Mobile number</h2>
+            <form th:action="@{/profile/personal-info/mobile/confirm-otp}" th:method="post" id="pinfoOtpForm">
+                <div class="pinfo-verify-panel">
+                    <p>Enter the 6-digit code we texted to <b th:text="${profileUser.pendingMobileNumber}">+91 00000 00000</b>.</p>
+                    <div class="pinfo-otp-row">
+                        <input class="pinfo-otp-digit" maxlength="1" inputmode="numeric" autocomplete="one-time-code">
+                        <input class="pinfo-otp-digit" maxlength="1" inputmode="numeric">
+                        <input class="pinfo-otp-digit" maxlength="1" inputmode="numeric">
+                        <input class="pinfo-otp-digit" maxlength="1" inputmode="numeric">
+                        <input class="pinfo-otp-digit" maxlength="1" inputmode="numeric">
+                        <input class="pinfo-otp-digit" maxlength="1" inputmode="numeric">
+                    </div>
+                    <input type="hidden" name="code" id="pinfoOtpCode">
+                </div>
+                <div class="pinfo-footer">
+                    <button type="button" class="btn-secondary" data-pinfo-goto="list">Cancel</button>
+                    <button type="submit" class="btn-primary">Confirm</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 

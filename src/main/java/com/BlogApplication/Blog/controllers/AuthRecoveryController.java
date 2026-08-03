@@ -5,6 +5,7 @@ import com.BlogApplication.Blog.models.User;
 import com.BlogApplication.Blog.models.VerificationToken;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.EmailService;
+import com.BlogApplication.Blog.services.UserService;
 import com.BlogApplication.Blog.services.VerificationTokenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -34,6 +35,9 @@ public class AuthRecoveryController {
 
     @Autowired
     private BCryptPasswordEncoder passwordEncoder;
+
+    @Autowired
+    private UserService userService;
 
     // --- Email verification ---
 
@@ -125,5 +129,22 @@ public class AuthRecoveryController {
         verificationTokenService.markUsed(verificationToken.get());
 
         return "redirect:/login?resetSuccess";
+    }
+
+    // --- Personal info: confirm an in-flight email change ---
+
+    // Reachable without an active session on this device/browser - the link was emailed to the
+    // NEW address, which may well be opened somewhere else entirely (same reasoning verify-email
+    // and reset-password above already work logged-out). Whatever session, if any, is currently
+    // active here still has the OLD email cached as its principal until that session's next
+    // fresh login - same as any other mid-session credential change.
+    @GetMapping("/confirm-email-change")
+    public String confirmEmailChange(@RequestParam("token") String token, Model model) {
+        boolean confirmed = userService.confirmEmailChange(token);
+        if (!confirmed) {
+            model.addAttribute("error", "That confirmation link is invalid, expired, or already used.");
+            return "verifyEmailResult";
+        }
+        return "redirect:/login?emailChanged";
     }
 }

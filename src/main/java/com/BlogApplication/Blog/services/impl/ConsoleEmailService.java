@@ -28,4 +28,10 @@ public class ConsoleEmailService implements EmailService {
     public void sendPasswordResetEmail(User user, String token) {
         log.info("[DEV MAIL STUB] Password reset link for {}: {}/reset-password?token={}", user.getEmail(), baseUrl, token);
     }
+
+    @Override
+    public void sendEmailChangeConfirmation(User user, String newEmail, String token) {
+        log.info("[DEV MAIL STUB] Email change confirmation for {} (currently {}): {}/confirm-email-change?token={}",
+                newEmail, user.getEmail(), baseUrl, token);
+    }
 }

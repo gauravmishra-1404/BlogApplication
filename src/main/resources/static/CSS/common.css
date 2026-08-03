@@ -1098,6 +1098,12 @@ svg.avatar-icon {
     pointer-events: auto;
 }
 
+.toast.toast-error {
+    background: var(--color-danger);
+    border-color: var(--color-danger);
+    color: #fff;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .toast {
         transition: opacity 0.01s linear;

@@ -55,6 +55,7 @@
         <div class="auth-success" th:if="${param.resetSuccess}">Password updated. Please log in.</div>
         <div class="auth-success" th:if="${param.verified}">Email verified. You can log in now.</div>
         <div class="auth-success" th:if="${param.registered}">Account created. Check your email for a verification link before logging in.</div>
+        <div class="auth-success" th:if="${param.emailChanged}">Email updated. Please log in with your new email address.</div>
         <form th:action="@{/authenticateTheUser}" th:method="post">
             <div class="auth-field">
                 <label for="username">Email</label>

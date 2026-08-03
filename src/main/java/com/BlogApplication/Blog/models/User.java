@@ -40,6 +40,35 @@ public class User {
     @Column(name = "username", unique = true)
     private String username;
 
+    // Holds the new address while an email change is awaiting confirmation - `email` (the
+    // actual login credential) only ever gets overwritten once the confirmation link is
+    // clicked, so a typo'd new address can never lock someone out of their own account. Null
+    // the rest of the time (no change in flight).
+    @Column(name = "pending_email")
+    private String pendingEmail;
+
+    @Column(name = "mobile_number")
+    private String mobileNumber;
+
+    // Unlike emailVerified, null here means NOT verified - there's no legacy-row case to be
+    // charitable about (every account predates this column, and a null/absent mobile number
+    // was never verified in the first place).
+    @Column(name = "mobile_verified")
+    private Boolean mobileVerified;
+
+    @Column(name = "pending_mobile_number")
+    private String pendingMobileNumber;
+
+    // OTP state kept directly on the row rather than a new table - unlike VerificationToken
+    // (a long unguessable link token, reused across VERIFY_EMAIL/RESET_PASSWORD/CHANGE_EMAIL),
+    // a mobile OTP is a short numeric code with a single always-current purpose per user, so a
+    // dedicated table would just be an unused generality.
+    @Column(name = "mobile_otp_code")
+    private String mobileOtpCode;
+
+    @Column(name = "mobile_otp_expiry")
+    private LocalDateTime mobileOtpExpiry;
+
     @Column(name = "bio")
     private String bio;
 
@@ -167,6 +196,54 @@ public class User {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public String getPendingEmail() {
+        return pendingEmail;
+    }
+
+    public void setPendingEmail(String pendingEmail) {
+        this.pendingEmail = pendingEmail;
+    }
+
+    public String getMobileNumber() {
+        return mobileNumber;
+    }
+
+    public void setMobileNumber(String mobileNumber) {
+        this.mobileNumber = mobileNumber;
+    }
+
+    public boolean isMobileVerified() {
+        return mobileVerified != null && mobileVerified;
+    }
+
+    public void setMobileVerified(boolean mobileVerified) {
+        this.mobileVerified = mobileVerified;
+    }
+
+    public String getPendingMobileNumber() {
+        return pendingMobileNumber;
+    }
+
+    public void setPendingMobileNumber(String pendingMobileNumber) {
+        this.pendingMobileNumber = pendingMobileNumber;
+    }
+
+    public String getMobileOtpCode() {
+        return mobileOtpCode;
+    }
+
+    public void setMobileOtpCode(String mobileOtpCode) {
+        this.mobileOtpCode = mobileOtpCode;
+    }
+
+    public LocalDateTime getMobileOtpExpiry() {
+        return mobileOtpExpiry;
+    }
+
+    public void setMobileOtpExpiry(LocalDateTime mobileOtpExpiry) {
+        this.mobileOtpExpiry = mobileOtpExpiry;
     }
 
     public String getBio() {

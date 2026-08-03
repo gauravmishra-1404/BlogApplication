@@ -96,6 +96,31 @@ public class SendGridEmailService implements EmailService {
         send(user.getEmail(), "Reset your Bodh Sea password", plainText, html);
     }
 
+    @Override
+    public void sendEmailChangeConfirmation(User user, String newEmail, String token) {
+        String link = baseUrl + "/confirm-email-change?token=" + token;
+        String safeCurrentEmail = HtmlUtils.htmlEscape(user.getEmail());
+
+        String html = EmailTemplates.render(
+                "Confirm your new email",
+                "One more step",
+                "Click below to confirm <strong>" + HtmlUtils.htmlEscape(newEmail)
+                        + "</strong> as your new sign-in email. Your account still signs in with <strong>"
+                        + safeCurrentEmail + "</strong> until you do.",
+                "Confirm new email",
+                link,
+                "This link expires in 5 minutes. If you didn't request this change, you can safely ignore this email - nothing will change.",
+                baseUrl + "/images/brand-mark.png"
+        );
+        String plainText = "Hi " + user.getName() + ",\n\n"
+                + "Click the link below to confirm this as your new sign-in email:\n"
+                + link + "\n\n"
+                + "Your account still signs in with " + user.getEmail() + " until you do.\n"
+                + "This link expires in 5 minutes. If you didn't request this, ignore this email.";
+
+        send(newEmail, "Confirm your new Bodh Sea email", plainText, html);
+    }
+
     // Best-effort delivery: a missing/invalid API key shouldn't turn registration or password
     // reset into a 500 error for the user - the caller already shows a generic "check your
     // email" message regardless of whether sending actually succeeded, and the

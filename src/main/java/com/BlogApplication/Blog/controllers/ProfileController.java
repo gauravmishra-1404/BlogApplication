@@ -1,5 +1,8 @@
 package com.BlogApplication.Blog.controllers;
 
+import com.BlogApplication.Blog.exceptions.DuplicateEmailException;
+import com.BlogApplication.Blog.exceptions.IncorrectPasswordException;
+import com.BlogApplication.Blog.exceptions.UsernameTakenException;
 import com.BlogApplication.Blog.models.Follow;
 import com.BlogApplication.Blog.models.Post;
 import com.BlogApplication.Blog.models.User;
@@ -9,6 +12,7 @@ import com.BlogApplication.Blog.repositories.FollowRepo;
 import com.BlogApplication.Blog.repositories.PostRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.ImageStorageService;
+import com.BlogApplication.Blog.services.UserService;
 import com.BlogApplication.Blog.util.AvatarPresets;
 import com.BlogApplication.Blog.util.CoverPresets;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,6 +27,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -51,6 +56,9 @@ public class ProfileController {
     @Autowired
     private FollowRepo followRepo;
 
+    @Autowired
+    private UserService userService;
+
     @GetMapping("/profile/{username}")
     public String viewProfile(@PathVariable String username, Authentication authentication, Model model) {
         User profileUser = userRepo.findByUsername(username).orElse(null);
@@ -76,7 +84,7 @@ public class ProfileController {
         model.addAttribute("followerCount", followRepo.countByFollowedId(profileUser.getId()));
         model.addAttribute("followingCount", followRepo.countByFollowerId(profileUser.getId()));
         model.addAttribute("posts", postRepo.findVisibleByUser(profileUser));
-        model.addAttribute("comments", commentRepo.findVisibleByUser(profileUser));
+        model.addAttribute("comments", commentRepo.findRepliesReceivedByPostAuthor(profileUser));
         model.addAttribute("avatarGradients", AvatarPresets.GRADIENTS);
         model.addAttribute("coverGradients", AvatarPresets.GRADIENTS);
         model.addAttribute("coverScenes", CoverPresets.SCENES);
@@ -248,6 +256,91 @@ public class ProfileController {
 
         userRepo.save(user);
         return "redirect:/profile/" + user.getUsername();
+    }
+
+    // --- Personal info panel: username / email / mobile, each edited independently. Every
+    // endpoint below resolves the acting User from Authentication only - never from a request
+    // parameter - so there is no id/username an attacker could substitute to touch someone
+    // else's account, the same pattern /profile/avatar and /profile/cover already use. ---
+
+    @PostMapping("/profile/personal-info/username")
+    public String updateUsername(@RequestParam String username, Authentication authentication, RedirectAttributes redirectAttributes) {
+        User user = requireSelf(authentication);
+        if (user == null) {
+            return "redirect:/login";
+        }
+
+        String normalized = username.trim().toLowerCase();
+        if (!normalized.matches("[a-z0-9_]{3,30}")) {
+            redirectAttributes.addFlashAttribute("error", "Usernames can only contain letters, numbers, and underscores (3-30 characters).");
+            return "redirect:/profile/" + user.getUsername();
+        }
+
+        try {
+            userService.updateUsername(user, normalized);
+        } catch (UsernameTakenException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+            return "redirect:/profile/" + user.getUsername();
+        }
+
+        redirectAttributes.addFlashAttribute("message", "Username updated");
+        return "redirect:/profile/" + normalized;
+    }
+
+    @PostMapping("/profile/personal-info/email")
+    public String requestEmailChange(@RequestParam String newEmail, @RequestParam String currentPassword,
+                                     Authentication authentication, RedirectAttributes redirectAttributes) {
+        User user = requireSelf(authentication);
+        if (user == null) {
+            return "redirect:/login";
+        }
+
+        try {
+            userService.requestEmailChange(user, newEmail, currentPassword);
+            redirectAttributes.addFlashAttribute("message", "Confirmation link sent to " + newEmail.trim().toLowerCase());
+        } catch (IncorrectPasswordException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+        } catch (DuplicateEmailException ex) {
+            redirectAttributes.addFlashAttribute("error", "That email is already in use.");
+        }
+        return "redirect:/profile/" + user.getUsername();
+    }
+
+    @PostMapping("/profile/personal-info/mobile/request-otp")
+    public String requestMobileOtp(@RequestParam String newMobile, @RequestParam String currentPassword,
+                                   Authentication authentication, RedirectAttributes redirectAttributes) {
+        User user = requireSelf(authentication);
+        if (user == null) {
+            return "redirect:/login";
+        }
+
+        try {
+            userService.requestMobileOtp(user, newMobile, currentPassword);
+            redirectAttributes.addFlashAttribute("message", "Code sent to " + newMobile.trim());
+        } catch (IncorrectPasswordException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/profile/" + user.getUsername();
+    }
+
+    @PostMapping("/profile/personal-info/mobile/confirm-otp")
+    public String confirmMobileOtp(@RequestParam String code, Authentication authentication, RedirectAttributes redirectAttributes) {
+        User user = requireSelf(authentication);
+        if (user == null) {
+            return "redirect:/login";
+        }
+
+        boolean confirmed = userService.confirmMobileOtp(user, code);
+        redirectAttributes.addFlashAttribute(confirmed ? "message" : "error",
+                confirmed ? "Mobile number verified" : "That code is incorrect or expired.");
+        return "redirect:/profile/" + user.getUsername();
+    }
+
+    private User requireSelf(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
+        return userRepo.findByEmail(authentication.getName()).orElse(null);
     }
 
     // Shared by both /profile/avatar and /profile/cover - an oversized file, a non-image

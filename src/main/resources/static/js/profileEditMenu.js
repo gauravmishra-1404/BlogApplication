@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 var action = btn.dataset.action;
                 var target = action === 'avatar' ? document.getElementById('avatarModalBackdrop')
                         : action === 'cover' ? document.getElementById('coverModalBackdrop')
+                        : action === 'personal-info' ? document.getElementById('personalInfoModalBackdrop')
                         : null;
                 if (target) target.hidden = false;
             });

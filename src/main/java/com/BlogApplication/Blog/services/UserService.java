@@ -26,4 +26,28 @@ public interface UserService {
                      MultipartFile cover, String coverMode, String coverPreset,
                      Integer coverSwatchIndex, Integer coverHue);
     //void deleteUser(Integer userId);
+
+    // --- Personal info panel (profile page) - username/email/mobile, each edited
+    // independently. Every method here takes the User to act on directly rather than an id/
+    // username parameter - the controller always resolves that User from the caller's own
+    // Authentication, never from client input, so there is no id an attacker could substitute
+    // to touch someone else's account. ---
+
+    boolean isUsernameAvailable(String username, int currentUserId);
+
+    void updateUsername(User user, String newUsername);
+
+    // Sends a confirmation link to newEmail; the account's actual login email is untouched
+    // until confirmEmailChange succeeds.
+    void requestEmailChange(User user, String newEmail, String currentPassword);
+
+    // True if the token was valid (right purpose, unused, unexpired) and the change was
+    // applied; false otherwise. The caller can't tell WHY a token failed - same
+    // don't-leak-more-than-necessary reasoning AuthRecoveryController's own token flows use.
+    boolean confirmEmailChange(String token);
+
+    void requestMobileOtp(User user, String newMobile, String currentPassword);
+
+    // True if the code matched and wasn't expired; false otherwise.
+    boolean confirmMobileOtp(User user, String code);
 }

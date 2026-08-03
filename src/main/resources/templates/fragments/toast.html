@@ -8,6 +8,11 @@
      "message" flash attribute, but no template anywhere ever rendered it until this fragment
      existed. th:if guards the whole thing so pages that never got a flash message render
      nothing extra - not an empty hidden toast sitting in the DOM on every normal page load. -->
-<div th:if="${message != null}" th:fragment="toast" class="toast" id="flashToast" th:text="${message}" role="status"></div>
+<!-- error (if set) always wins over message - a controller only ever sets one or the other for
+     a given redirect, this just avoids needing two near-identical fragments/toast.js wirings
+     for what's visually the same "strip that appears then dismisses" component. -->
+<div th:if="${message != null or error != null}" th:fragment="toast" class="toast"
+     th:classappend="${error != null} ? ' toast-error' : ''"
+     id="flashToast" th:text="${error != null} ? ${error} : ${message}" role="status"></div>
 </body>
 </html>

@@ -16,10 +16,23 @@ public interface CommentRepo extends JpaRepository<Comment,Integer> {
 
     Comment findById(int id);
 
-    // Used by the profile page's "Replies" tab - same soft-delete visibility rule as the post
-    // page's comment thread.
-    @Query("SELECT c FROM Comment c WHERE c.user = :user AND (c.deleted IS NULL OR c.deleted = false) ORDER BY c.createdAt DESC")
-    List<Comment> findVisibleByUser(@Param("user") User user);
+    // Used by the profile page's "Replies" tab - comments OTHER people left on posts this user
+    // authored (replies received), not comments this user wrote themselves. Excludes drafts
+    // (c.post.isPublished) even though c.post.user already narrows to this profile's own posts -
+    // the profile page is publicly viewable by anyone, and a draft's comments (reachable only by
+    // its owner or an ADMIN, see PostController.canViewPost) must never leak to a random visitor
+    // just by showing up here, the same reasoning PostRepo.findVisibleByUser already applies to
+    // the Posts tab right next to this one.
+    // c.user IS NULL is included deliberately, not just c.user <> :postAuthor on its own - a
+    // comment can never literally BE its own post's author when the commenter's account is gone
+    // (SQL NULL <> x is neither true nor false, which would otherwise silently drop that row).
+    @Query("SELECT c FROM Comment c WHERE c.post.user = :postAuthor " +
+           "AND (c.user IS NULL OR c.user <> :postAuthor) " +
+           "AND (c.deleted IS NULL OR c.deleted = false) " +
+           "AND (c.post.deleted IS NULL OR c.post.deleted = false) " +
+           "AND (c.post.isPublished IS NULL OR c.post.isPublished = true) " +
+           "ORDER BY c.createdAt DESC")
+    List<Comment> findRepliesReceivedByPostAuthor(@Param("postAuthor") User postAuthor);
 
     // One query for a whole page of posts (e.g. the dashboard listing) instead of a separate
     // COUNT per row, same pattern as PostViewRepo.countGroupedByPostIds. Counts replies too, not

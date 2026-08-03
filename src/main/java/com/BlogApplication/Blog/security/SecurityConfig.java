@@ -90,6 +90,7 @@ public class SecurityConfig {
                                 "/reset-password",
                                 "/verify-email",
                                 "/resend-verification",
+                                "/confirm-email-change",
                                 "/api/users/register"
                         ).permitAll()
                         .anyRequest().authenticated()
