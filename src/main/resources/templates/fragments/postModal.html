@@ -71,6 +71,13 @@
                         <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg>
                         <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(postReaction.dislikeCount)}">0</span>
                     </button>
+                    <button type="button" class="bookmark-toggle bookmark-pill" th:if="${post.published}"
+                            th:classappend="${isBookmarked} ? ' saved' : ''"
+                            th:attr="data-post-id=${post.id}, data-logged-in=${#authorization.expression('isAuthenticated()')}">
+                        <span class="pop"></span>
+                        <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg>
+                        <span class="bookmark-pill-label" th:text="${isBookmarked} ? 'Saved' : 'Save'">Save</span>
+                    </button>
                     <div th:replace="~{fragments/shareMenu :: shareMenu(${post.id}, @{/post/viewPost(id=${post.id})}, ${post.title}, ${canEdit}, @{/posts/edit(id=${post.id})}, @{/posts/delete(id=${post.id})})}"></div>
                 </div>
             </div>

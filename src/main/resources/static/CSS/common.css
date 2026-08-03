@@ -53,6 +53,13 @@
        (.share-option-danger:hover's rgba(220, 38, 38, 0.1), for example). */
     --color-draft-bg: rgba(217, 119, 6, 0.12);
 
+    /* Bookmark accent - deliberately its own hue (violet), distinct from primary/danger/warning/
+       success, so a saved post reads as its own kind of state rather than borrowing a color
+       that already means something else (Like's blue, a warning's amber). */
+    --color-bookmark: #7c5cf5;
+    --color-bookmark-hover: #6a45e8;
+    --color-bookmark-bg: rgba(124, 92, 245, 0.1);
+
     --header-glass: rgba(255, 255, 255, 0.14);
     --header-glass-border: rgba(255, 255, 255, 0.25);
     --color-surface-translucent: rgba(255, 255, 255, 0.92);
@@ -99,6 +106,10 @@
     --shadow-sm: 0 4px 10px rgba(0, 0, 0, 0.35);
 
     --color-draft-bg: rgba(251, 191, 36, 0.14);
+
+    --color-bookmark: #a78bfa;
+    --color-bookmark-hover: #c4b5fd;
+    --color-bookmark-bg: rgba(167, 139, 250, 0.16);
 
     --header-glass: rgba(255, 255, 255, 0.05);
     --header-glass-border: rgba(255, 255, 255, 0.1);
@@ -199,6 +210,75 @@ body {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+/* Bookmark toggle base - shared here (not dashboardStyle.css) since viewPostByID.html renders
+   standalone and never loads that stylesheet, but does need this for its own reaction-bar pill.
+   Icon-only by default (postRows.html's feed-row usage); .bookmark-pill in viewPostByID.css
+   layers the bordered-pill look on top for the full post page / modal. .saved fills the outline
+   icon and tints it violet - its own accent, not borrowed from Like's blue or a warning's amber,
+   so a saved post reads as its own kind of state. The .pop pseudo-element gives the click a
+   brief radial flash (js/bookmark.js toggles .pulse to restart it) - same "immediate feedback"
+   principle the reaction buttons already follow, just without a page reload. */
+.bookmark-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    position: relative;
+    flex: 0 0 auto;
+    font-family: inherit;
+}
+
+.bookmark-toggle .icon {
+    width: 16px;
+    height: 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.bookmark-toggle:hover {
+    background: var(--color-bookmark-bg);
+    color: var(--color-bookmark);
+}
+
+.bookmark-toggle.saved {
+    color: var(--color-bookmark);
+}
+
+.bookmark-toggle.saved .icon {
+    fill: currentColor;
+}
+
+.bookmark-toggle .pop {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--color-bookmark-bg);
+    transform: scale(0);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.bookmark-toggle.pulse .pop {
+    animation: bookmarkPop 0.42s ease-out;
+}
+
+@keyframes bookmarkPop {
+    0% { transform: scale(0.3); opacity: 0.9; }
+    100% { transform: scale(2.1); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bookmark-toggle.pulse .pop {
+        animation: none;
+    }
 }
 
 /* Preset avatar icon (fragments/avatarContent.html) - sized as a share of whatever circle it's

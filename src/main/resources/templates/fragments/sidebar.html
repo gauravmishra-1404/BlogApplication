@@ -31,8 +31,8 @@
             <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span>Follow</span></a>
         <a th:href="@{/following}" class="sidebar-navitem" th:classappend="${activeItem == 'following'} ? ' active' : ''">
             <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span>Following</span></a>
-        <span class="sidebar-navitem disabled" title="Not built yet">
-            <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><span>Bookmarks</span><span class="soon-badge">Soon</span></span>
+        <a th:href="@{/bookmarks}" class="sidebar-navitem" th:classappend="${activeItem == 'bookmarks'} ? ' active' : ''">
+            <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><span>Bookmarks</span></a>
         <a th:href="@{/drafts}" class="sidebar-navitem" th:classappend="${activeItem == 'drafts'} ? ' active' : ''">
             <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg><span>Drafts</span></a>
     </div>

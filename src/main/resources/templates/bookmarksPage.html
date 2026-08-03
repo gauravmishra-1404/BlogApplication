@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Following - Bodh Sea</title>
+    <title>Bookmarks - Bodh Sea</title>
     <script src="/js/themeInit.js"></script>
     <link rel="stylesheet" href="/CSS/common.css">
     <link rel="stylesheet" href="/CSS/dashboardStyle.css">
@@ -30,29 +30,29 @@
 <div class="dashboard-shell">
 
     <!-- ============ LEFT: sidebar ============ -->
-    <div th:replace="~{fragments/sidebar :: sidebar('following')}"></div>
+    <div th:replace="~{fragments/sidebar :: sidebar('bookmarks')}"></div>
 
     <!-- ============ CENTER: feed ============ -->
     <main class="center">
         <div class="topbar">
-            <div class="crumb">Home / <b>Following</b></div>
+            <div class="crumb">Home / <b>Bookmarks</b></div>
         </div>
 
-        <div class="empty-following" th:if="${#lists.isEmpty(posts)}">
-            <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg>
-            <h3>Nothing here yet</h3>
-            <p>Follow some people and their posts (and the posts they comment on) will show up here.</p>
-            <a th:href="@{/follow}" class="cta-button">Find people to follow</a>
+        <div class="empty-bookmarks" th:if="${#lists.isEmpty(posts)}">
+            <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg>
+            <h3>No bookmarks yet</h3>
+            <p>Tap the bookmark icon on any post to save it here and read it later.</p>
+            <a th:href="@{/home}" class="cta-button">Explore posts</a>
         </div>
 
-        <div class="post-list" id="followingFeedList" data-load-more-list
+        <div class="post-list" id="bookmarksFeedList" data-load-more-list
              th:unless="${#lists.isEmpty(posts)}"
-             data-load-more-button="followingFeedLoadMore" data-load-more-url="/following/fragment"
+             data-load-more-button="bookmarksFeedLoadMore" data-load-more-url="/bookmarks/fragment"
              th:data-next-page="${currentPage + 1}">
             <div th:replace="~{fragments/postRows :: postRows}"></div>
         </div>
 
-        <button type="button" class="load-more-btn" id="followingFeedLoadMore" hidden>Load more</button>
+        <button type="button" class="load-more-btn" id="bookmarksFeedLoadMore" hidden>Load more</button>
     </main>
 
     <!-- ============ RIGHT: real-data widgets ============ -->

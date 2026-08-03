@@ -498,6 +498,42 @@ a.comment-author:hover {
     background: rgba(220, 38, 38, 0.08);
 }
 
+/* Bookmark pill - the full-page/modal reaction-bar variant of .bookmark-toggle (common.css),
+   styled to match the Like/Dislike pills it sits next to (border, radius, padding) rather than
+   the icon-only circle postRows.html uses in a feed row. */
+.bookmark-toggle.bookmark-pill {
+    width: auto;
+    height: auto;
+    border-radius: 20px;
+    border: 1px solid var(--color-border);
+    padding: 6px 14px;
+    background: var(--color-surface);
+    gap: 6px;
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+.bookmark-toggle.bookmark-pill:hover {
+    background: var(--color-surface-tint);
+    border-color: var(--color-border);
+}
+
+.bookmark-toggle.bookmark-pill.saved {
+    border-color: var(--color-bookmark);
+    background: var(--color-bookmark-bg);
+}
+
+/* The pill isn't round like the feed-row icon button, so its own click-flash follows the same
+   shape rather than common.css's circular default. */
+.bookmark-toggle.bookmark-pill .pop {
+    border-radius: 20px;
+}
+
+.bookmark-pill-label {
+    position: relative;
+    z-index: 1;
+}
+
 .comment-actions .reaction-bar {
     gap: 12px;
     margin: 0;

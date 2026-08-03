@@ -4,6 +4,7 @@ import com.BlogApplication.Blog.models.Comment;
 import com.BlogApplication.Blog.models.Post;
 import com.BlogApplication.Blog.models.User;
 import com.BlogApplication.Blog.payloads.FollowedCommentAnnotation;
+import com.BlogApplication.Blog.repositories.BookmarkRepo;
 import com.BlogApplication.Blog.repositories.CommentRepo;
 import com.BlogApplication.Blog.repositories.FollowRepo;
 import com.BlogApplication.Blog.repositories.PostRepo;
@@ -65,6 +66,9 @@ public class FollowingFeedController {
     @Autowired
     private TagService tagService;
 
+    @Autowired
+    private BookmarkRepo bookmarkRepo;
+
     @GetMapping("/following")
     public String followingFeed(@RequestParam(defaultValue = "0") int page, Authentication authentication, Model model) {
         addFeedToModel(page, authentication, model);
@@ -103,6 +107,7 @@ public class FollowingFeedController {
             model.addAttribute("postReactions", Map.of());
             model.addAttribute("commentCounts", Map.of());
             model.addAttribute("postAnnotations", Map.of());
+            model.addAttribute("bookmarkedPostIds", Set.of());
             model.addAttribute("hasNextPage", false);
             return;
         }
@@ -149,11 +154,16 @@ public class FollowingFeedController {
             }
         }
 
+        Set<Integer> bookmarkedPostIds = pagePostIds.isEmpty()
+                ? Set.of()
+                : new HashSet<>(bookmarkRepo.findBookmarkedPostIdsAmong(viewer.getId(), pagePostIds));
+
         model.addAttribute("posts", pagePosts);
         model.addAttribute("viewCounts", postViewService.countViewsForPosts(pagePostIds));
         model.addAttribute("postReactions", postReactionService.getSummaries(pagePostIds, null));
         model.addAttribute("commentCounts", commentService.countCommentsForPosts(pagePostIds));
         model.addAttribute("postAnnotations", annotations);
+        model.addAttribute("bookmarkedPostIds", bookmarkedPostIds);
         model.addAttribute("hasNextPage", toIndex < candidates.size());
     }
 }

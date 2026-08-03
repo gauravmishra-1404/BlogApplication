@@ -9,6 +9,7 @@ import com.BlogApplication.Blog.payloads.PostDto;
 import com.BlogApplication.Blog.payloads.PostListing;
 import com.BlogApplication.Blog.util.PostAuthorization;
 import com.BlogApplication.Blog.repositories.AuthorPostCount;
+import com.BlogApplication.Blog.repositories.BookmarkRepo;
 import com.BlogApplication.Blog.repositories.CommentRepo;
 import com.BlogApplication.Blog.repositories.FollowRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
@@ -70,6 +71,9 @@ public class PostController {
     @Autowired
     private FollowRepo followRepo;
 
+    @Autowired
+    private BookmarkRepo bookmarkRepo;
+
     @GetMapping("/home")
     public String getAllPosts(@RequestParam(defaultValue = "0") int page,
                               @RequestParam(defaultValue = "10") int size,
@@ -130,6 +134,7 @@ public class PostController {
         model.addAttribute("post", detail.getPost());
         model.addAttribute("postReaction", detail.getPostReaction());
         model.addAttribute("commentReactions", detail.getCommentReactions());
+        model.addAttribute("isBookmarked", isBookmarked(id, authentication));
         // currentUser is populated globally for every page by GlobalModelAttributes now.
 
         return "viewPostByID";
@@ -151,6 +156,7 @@ public class PostController {
         model.addAttribute("post", detail.getPost());
         model.addAttribute("postReaction", detail.getPostReaction());
         model.addAttribute("commentReactions", detail.getCommentReactions());
+        model.addAttribute("isBookmarked", isBookmarked(id, authentication));
 
         return "fragments/postModal :: postModal";
     }
@@ -186,6 +192,18 @@ public class PostController {
             return false;
         }
         return post.getPublished() || PostAuthorization.isOwnerOrAdmin(authentication, post.getUser());
+    }
+
+    // Single-post reaction bar's own bookmark pill (viewPostByID.html / postModal) - a plain
+    // existsBy check since there's only ever one post id to look up here, unlike the batched
+    // findBookmarkedPostIdsAmong used for a whole listing page.
+    private boolean isBookmarked(int postId, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+        return userRepo.findByEmail(authentication.getName())
+                .map(u -> bookmarkRepo.existsByUserIdAndPostId(u.getId(), postId))
+                .orElse(false);
     }
 
     // Same visibility rule as viewing the post (permitAll, missing/soft-deleted/unpublished -> 404)
@@ -406,6 +424,20 @@ public class PostController {
         model.addAttribute("activeAuthors", listing.getActiveAuthors());
         model.addAttribute("activeTags", listing.getActiveTags());
         model.addAttribute("activeOrder", listing.getActiveOrder());
+
+        // Bookmark state for postRows.html's own toggle button - same "read currentUser back
+        // off the Model" trick listPosts already uses for followedAuthorIds, so this stays one
+        // shared computation point for both the full page render and every infinite-scroll
+        // batch (postsFragment), rather than threading Authentication through all 6 callers.
+        Object currentUserAttr = model.getAttribute("currentUser");
+        Set<Integer> bookmarkedPostIds = Set.of();
+        if (currentUserAttr instanceof User viewer) {
+            List<Integer> postIds = listing.getPosts().stream().map(Post::getId).toList();
+            if (!postIds.isEmpty()) {
+                bookmarkedPostIds = new HashSet<>(bookmarkRepo.findBookmarkedPostIdsAmong(viewer.getId(), postIds));
+            }
+        }
+        model.addAttribute("bookmarkedPostIds", bookmarkedPostIds);
     }
 
     //    add comments on post by id

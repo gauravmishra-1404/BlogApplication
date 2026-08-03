@@ -50,6 +50,17 @@
                     <svg class="icon" aria-hidden="true"><use href="#i-thumbs-up"/></svg><span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.likeCount : 0)}">0</span>
                     <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg><span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.dislikeCount : 0)}">0</span>
                     <svg class="icon" aria-hidden="true"><use href="#i-comment"/></svg><span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(commentCount)}">0</span>
+                    <!-- A real <button> nested inside this row's own open <a> - confirmed safe via
+                         headless-Chrome DOM dump for the Follow feature's near-identical
+                         .follow-row button, unlike nesting another <a>/<form> which does split
+                         the parse tree (see fragments/shareMenu.html's own doc comment). -->
+                    <button type="button" class="bookmark-toggle"
+                            th:classappend="${bookmarkedPostIds != null and bookmarkedPostIds.contains(post.id)} ? ' saved' : ''"
+                            th:attr="data-post-id=${post.id}, data-logged-in=${currentUser != null}"
+                            aria-label="Save for later">
+                        <span class="pop"></span>
+                        <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg>
+                    </button>
                     <div th:replace="~{fragments/shareMenu :: shareMenu(${post.id}, @{/post/viewPost(id=${post.id})}, ${post.title}, false, null, null)}"></div>
                 </span>
             </div>

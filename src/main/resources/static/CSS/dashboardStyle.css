@@ -1519,13 +1519,15 @@
 }
 
 .empty-following,
-.empty-drafts {
+.empty-drafts,
+.empty-bookmarks {
     padding: 60px 32px;
     text-align: center;
 }
 
 .empty-following .icon,
-.empty-drafts .icon {
+.empty-drafts .icon,
+.empty-bookmarks .icon {
     width: 40px;
     height: 40px;
     color: var(--color-text-muted);
@@ -1534,14 +1536,16 @@
 }
 
 .empty-following h3,
-.empty-drafts h3 {
+.empty-drafts h3,
+.empty-bookmarks h3 {
     margin: 0 0 6px;
     font-size: var(--text-lg);
     color: var(--color-text);
 }
 
 .empty-following p,
-.empty-drafts p {
+.empty-drafts p,
+.empty-bookmarks p {
     margin: 0 0 18px;
     font-size: var(--text-sm);
     color: var(--color-text-muted);
