@@ -54,6 +54,7 @@ resource "aws_lambda_function" "worker" {
     variables = each.key == "email" ? {
       SENDGRID_API_KEY    = var.sendgrid_api_key
       SENDGRID_FROM_EMAIL = var.sendgrid_from_email
+      APP_BASE_URL        = var.app_base_url
       } : each.key == "push" ? {
       FCM_SERVICE_ACCOUNT_JSON = var.fcm_service_account_json
       } : {

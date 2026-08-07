@@ -34,6 +34,22 @@ public class EmailWorkerHandler implements RequestHandler<SQSEvent, SQSBatchResp
 
     private final String apiKey = System.getenv("SENDGRID_API_KEY");
     private final String fromEmail = System.getenv("SENDGRID_FROM_EMAIL");
+    // Used to turn targetUrl (a relative path, e.g. "/profile/priyasharma" - the same value the
+    // in-app bell's own redirect uses directly) into an absolute link a mail client can follow.
+    // Falls back to the real deployed URL if this env var is ever left unset, rather than
+    // producing a broken relative link in a sent email.
+    private final String appBaseUrl = envOrDefault("APP_BASE_URL", "https://blogapplication-2ncl.onrender.com");
+
+    // Per-type copy - eyebrow label, CTA button text, and a body-sentence template (the
+    // shell's own BODY slot, distinct from the subject/headline). Mirrors
+    // SnsNotificationPublisher's own CHANNELS_BY_TYPE pattern on the producer side: one place
+    // to add a new notification type's copy, rather than scattering per-type logic through
+    // this method. Unmapped types fall back to a generic rendering below rather than failing.
+    private static final Map<String, String> EYEBROW_BY_TYPE = Map.of("NEW_FOLLOWER", "NEW FOLLOWER");
+    private static final Map<String, String> CTA_TEXT_BY_TYPE = Map.of("NEW_FOLLOWER", "View profile");
+    private static final Map<String, String> BODY_TEMPLATE_BY_TYPE = Map.of(
+            "NEW_FOLLOWER", "{actor} just followed you on Bodh Sea. Take a look at their profile, and follow back if you like what they write."
+    );
 
     @Override
     public SQSBatchResponse handleRequest(SQSEvent event, Context context) {
@@ -70,24 +86,49 @@ public class EmailWorkerHandler implements RequestHandler<SQSEvent, SQSBatchResp
             return;
         }
 
-        // SendGrid rejects an empty content value outright ("must be a string at least one
-        // character in length") - body is null for notification types that don't need a
-        // separate body sentence (NEW_FOLLOWER's own title, e.g. "X started following you", is
-        // already a complete sentence on its own - see FollowServiceImpl's notify() call), so
-        // falling back to "" broke every one of those instead of just being redundant with the
-        // subject line. Falling back to the title first (always populated), and only to a
-        // generic line if somehow both are missing, means this can never send an empty body.
-        String bodyText = notification.getBody() != null && !notification.getBody().isBlank()
-                ? notification.getBody()
-                : notification.getTitle() != null && !notification.getTitle().isBlank()
-                        ? notification.getTitle()
-                        : "You have a new notification.";
+        String type = notification.getType() != null ? notification.getType() : "";
+        String headline = notification.getTitle() != null && !notification.getTitle().isBlank()
+                ? notification.getTitle()
+                : "New notification";
+        String actorName = notification.getActorName() != null ? notification.getActorName() : "Someone";
+
+        // Body-sentence for the shell's own BODY slot (distinct from the headline/subject) -
+        // per-type template first (fills in {actor}), falling back to notification.getBody()
+        // if a type has no template of its own, and finally to the headline itself so this can
+        // never send an empty body (SendGrid rejects that outright - "must be a string at least
+        // one character in length", the original bug this fallback chain already fixed once).
+        String bodyPlain = BODY_TEMPLATE_BY_TYPE.containsKey(type)
+                ? BODY_TEMPLATE_BY_TYPE.get(type).replace("{actor}", actorName)
+                : notification.getBody() != null && !notification.getBody().isBlank()
+                        ? notification.getBody()
+                        : headline;
+
+        String ctaUrl = notification.getTargetUrl() != null && !notification.getTargetUrl().isBlank()
+                ? appBaseUrl + notification.getTargetUrl()
+                : appBaseUrl;
+        String eyebrow = EYEBROW_BY_TYPE.getOrDefault(type, "NOTIFICATION");
+        String ctaText = CTA_TEXT_BY_TYPE.getOrDefault(type, "View on Bodh Sea");
+        String note = "You're receiving this because of activity on your Bodh Sea account.";
+
+        // {actor} in the body template is the only piece of untrusted (user-chosen display
+        // name) content reaching the HTML version - escaped before it goes into a <p> tag, same
+        // XSS-prevention reasoning the main app's own SendGridEmailService already applies to
+        // every user-supplied value it interpolates into an email.
+        String bodyHtml = BODY_TEMPLATE_BY_TYPE.containsKey(type)
+                ? BODY_TEMPLATE_BY_TYPE.get(type).replace("{actor}", "<strong>" + escapeHtml(actorName) + "</strong>")
+                : escapeHtml(bodyPlain);
+
+        String html = EmailTemplates.render(eyebrow, escapeHtml(headline), bodyHtml, ctaText, ctaUrl, note,
+                appBaseUrl + "/images/brand-mark.png");
 
         Map<String, Object> payload = Map.of(
                 "personalizations", List.of(Map.of("to", List.of(Map.of("email", notification.getRecipientEmail())))),
                 "from", Map.of("email", fromEmail, "name", "Bodh Sea"),
-                "subject", notification.getTitle() != null ? notification.getTitle() : "New notification",
-                "content", List.of(Map.of("type", "text/plain", "value", bodyText))
+                "subject", headline,
+                "content", List.of(
+                        Map.of("type", "text/plain", "value", bodyPlain + "\n\n" + ctaUrl),
+                        Map.of("type", "text/html", "value", html)
+                )
         );
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -101,5 +142,27 @@ public class EmailWorkerHandler implements RequestHandler<SQSEvent, SQSBatchResp
         if (response.statusCode() >= 300) {
             throw new RuntimeException("SendGrid returned " + response.statusCode() + ": " + response.body());
         }
+    }
+
+    private static String envOrDefault(String name, String fallback) {
+        String value = System.getenv(name);
+        return value != null && !value.isBlank() ? value : fallback;
+    }
+
+    // Minimal HTML escaping, hand-rolled rather than pulling in a library (Spring's HtmlUtils,
+    // Apache Commons Text, etc.) for one method - this module is deliberately kept dependency-
+    // light for Lambda cold-start reasons, same reasoning NotificationMessage.java's own doc
+    // comment gives for not sharing a library across the 3 worker modules. Covers the 5
+    // characters that matter for breaking out of an HTML attribute/text context.
+    private static String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 }

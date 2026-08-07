@@ -28,6 +28,16 @@ variable "sendgrid_from_email" {
   default     = "bodhsea@gmail.com"
 }
 
+# Not a secret - just needs to match the main app's own app.base-url (application.properties)
+# so email-worker's HTML emails link back to the real deployed site. Only email-worker uses
+# this (to turn a notification's relative targetUrl, e.g. "/profile/x", into an absolute link a
+# mail client can follow) - push/inapp have no equivalent need for it.
+variable "app_base_url" {
+  description = "The deployed app's own base URL, for turning a notification's relative targetUrl into an absolute link inside emails."
+  type        = string
+  default     = "https://blogapplication-2ncl.onrender.com"
+}
+
 variable "fcm_service_account_json" {
   # FCM's old "server key" HTTP API was shut down by Google in June 2024 - the only API left is
   # HTTP v1, which authenticates via a Firebase service account (a JSON key file you download
