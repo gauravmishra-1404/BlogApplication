@@ -13,7 +13,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -73,18 +73,30 @@ public class SqsNotificationPublisher implements NotificationPublisher {
         payload.put("notificationId", System.currentTimeMillis()); // correlation id for logs only - the real row id is assigned by inapp-worker's own INSERT
         payload.put("recipientUserId", event.getRecipient().getId());
         payload.put("recipientEmail", event.getRecipient().getEmail());
-        payload.put("recipientDeviceToken", null); // no device-token registration built yet - push-worker no-ops on a null token
+        payload.put("recipientDeviceToken", null); // no device-token registration built yet - see below, push is skipped entirely for now rather than sent with a token that's always null
         payload.put("type", event.getType());
         payload.put("actorName", event.getActorName());
         payload.put("title", event.getTitle());
         payload.put("body", event.getBody());
         payload.put("targetUrl", event.getTargetUrl());
-        payload.put("createdAt", LocalDateTime.now().toString());
+        // Instant, not LocalDateTime - a bare LocalDateTime.toString() has no timezone
+        // information at all, and inapp-worker (a separate JVM, running in AWS rather than on
+        // this app server) needs an unambiguous instant to parse back into a real timestamp.
+        // Matches InAppWorkerHandler's own Instant.parse() on the receiving end - keep both
+        // sides in sync if this ever changes.
+        payload.put("createdAt", Instant.now().toString());
 
         try {
             String json = MAPPER.writeValueAsString(payload);
             sendIfConfigured(emailQueueUrl, json, "email");
-            sendIfConfigured(pushQueueUrl, json, "push");
+            // Skipped, not "sent and let push-worker no-op" - recipientDeviceToken above is
+            // unconditionally null (no device-token registration feature exists yet), so a
+            // push-queue message right now can NEVER do anything but burn a Lambda invocation
+            // on an automatic no-op, for every single notification, forever. This isn't a
+            // per-notification-type routing decision - it's simply "this channel has nothing to
+            // do yet." Delete this skip (and just call sendIfConfigured(pushQueueUrl, ...) like
+            // the other two) once device tokens are a real, populated field above.
+            log.debug("Skipping push notification - no device-token registration exists yet");
             sendIfConfigured(inappQueueUrl, json, "inapp");
         } catch (Exception e) {
             // Never let a notification failure break whatever real action triggered it (a

@@ -10,7 +10,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.Timestamp;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -84,10 +84,18 @@ public class InAppWorkerHandler implements RequestHandler<SQSEvent, SQSBatchResp
             statement.setString(4, notification.getTitle());
             statement.setString(5, notification.getBody());
             statement.setString(6, notification.getTargetUrl());
-            OffsetDateTime createdAt = notification.getCreatedAt() != null
-                    ? OffsetDateTime.parse(notification.getCreatedAt())
-                    : OffsetDateTime.now();
-            statement.setTimestamp(7, Timestamp.from(createdAt.toInstant()));
+            // The producer side (SqsNotificationPublisher) sends Instant.now().toString() - an
+            // unambiguous UTC instant (trailing "Z", e.g. "2026-08-07T13:35:17.605223929Z"),
+            // not a LocalDateTime/OffsetDateTime string. This used to be parsed with
+            // OffsetDateTime.parse(), which requires an explicit zone offset in the string and
+            // fails outright on a bare LocalDateTime.toString() (no offset at all) - the actual
+            // cause of every in-app notification insert failing until this was caught. Instant
+            // is the right type for a timestamp crossing a service boundary in the first place:
+            // it has no timezone ambiguity to get wrong on either side.
+            Instant createdAt = notification.getCreatedAt() != null
+                    ? Instant.parse(notification.getCreatedAt())
+                    : Instant.now();
+            statement.setTimestamp(7, Timestamp.from(createdAt));
             statement.executeUpdate();
         }
     }

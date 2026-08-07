@@ -70,11 +70,24 @@ public class EmailWorkerHandler implements RequestHandler<SQSEvent, SQSBatchResp
             return;
         }
 
+        // SendGrid rejects an empty content value outright ("must be a string at least one
+        // character in length") - body is null for notification types that don't need a
+        // separate body sentence (NEW_FOLLOWER's own title, e.g. "X started following you", is
+        // already a complete sentence on its own - see FollowServiceImpl's notify() call), so
+        // falling back to "" broke every one of those instead of just being redundant with the
+        // subject line. Falling back to the title first (always populated), and only to a
+        // generic line if somehow both are missing, means this can never send an empty body.
+        String bodyText = notification.getBody() != null && !notification.getBody().isBlank()
+                ? notification.getBody()
+                : notification.getTitle() != null && !notification.getTitle().isBlank()
+                        ? notification.getTitle()
+                        : "You have a new notification.";
+
         Map<String, Object> payload = Map.of(
                 "personalizations", List.of(Map.of("to", List.of(Map.of("email", notification.getRecipientEmail())))),
                 "from", Map.of("email", fromEmail, "name", "Bodh Sea"),
                 "subject", notification.getTitle() != null ? notification.getTitle() : "New notification",
-                "content", List.of(Map.of("type", "text/plain", "value", notification.getBody() != null ? notification.getBody() : ""))
+                "content", List.of(Map.of("type", "text/plain", "value", bodyText))
         );
 
         HttpRequest request = HttpRequest.newBuilder()
