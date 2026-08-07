@@ -100,10 +100,33 @@
 		<!-- AWS SDK v2 - only the SQS client is needed here, this app only ever PUBLISHES to
 			 the notification queues (NotificationServiceImpl); the actual consumers are the
 			 separate Lambda workers under infra/lambdas, which have their own independent
-			 dependency trees (not this pom) since they're deployed as separate artifacts. -->
+			 dependency trees (not this pom) since they're deployed as separate artifacts.
+
+			 apache-client (sqs's default sync HTTP client) is excluded here - its own POM
+			 depends on org.apache.httpcomponents:httpclient with NO version pinned, expecting
+			 AWS's own BOM to supply one. This project doesn't import that BOM, so Maven falls
+			 back to whatever httpclient version is already on the classpath - which is
+			 cloudinary-http44's httpclient:4.4 (from 2015), a version too old for AWS SDK
+			 2.29.29's Apache client code, causing a NoSuchMethodError at runtime (an Error, not
+			 an Exception - it isn't caught by SqsNotificationPublisher's own try/catch, so it
+			 escapes and 500s the whole request instead of just skipping the notification).
+			 url-connection-client sidesteps the whole fight: it's a much lighter HTTP client
+			 built on plain java.net.HttpURLConnection with zero Apache HttpComponents
+			 dependency, which is all SQS's simple, low-volume SendMessage calls need anyway. -->
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
 			<artifactId>sqs</artifactId>
+			<version>2.29.29</version>
+			<exclusions>
+				<exclusion>
+					<groupId>software.amazon.awssdk</groupId>
+					<artifactId>apache-client</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>url-connection-client</artifactId>
 			<version>2.29.29</version>
 		</dependency>
 

@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
@@ -53,7 +54,15 @@ public class SqsNotificationPublisher implements NotificationPublisher {
 
     private SqsClient client() {
         if (sqsClient == null) {
-            sqsClient = SqsClient.builder().region(Region.of(region)).build();
+            // Explicit httpClientBuilder - without this, the SDK falls back to its default sync
+            // client (Apache HttpClient), which is deliberately excluded from this project's
+            // pom.xml (see that dependency's own comment: a classpath version conflict with
+            // cloudinary-http44's own bundled httpclient causes a NoSuchMethodError at runtime).
+            // UrlConnectionHttpClient needs no Apache HttpComponents at all.
+            sqsClient = SqsClient.builder()
+                    .region(Region.of(region))
+                    .httpClientBuilder(UrlConnectionHttpClient.builder())
+                    .build();
         }
         return sqsClient;
     }
