@@ -18,18 +18,18 @@ resource "aws_iam_group_policy" "app_send_only" {
   name  = "${var.project}-send-only"
   group = aws_iam_group.app_group.id
 
-  # SendMessage ONLY, scoped to exactly these 3 queue ARNs - the app produces notifications, it
-  # never needs to receive/delete/consume from these queues (that's the Lambda workers' job,
-  # via their own separate execution roles below), so it gets none of those permissions. This
-  # is the actual point of doing this instead of attaching AmazonSQSFullAccess: a leaked app
-  # credential can spam these 3 queues at worst, not read/drain/delete them or touch any other
-  # queue in the account.
+  # Publish ONLY, scoped to exactly this one SNS topic - the app no longer talks to any of the
+  # 3 SQS queues directly (see sns.tf: it publishes once to the topic, and each queue's own
+  # subscription filter policy decides whether that message reaches it), so the app's own
+  # credential doesn't need sqs:SendMessage/GetQueueUrl at all anymore. Same "leaked credential
+  # can spam this ONE thing at worst" reasoning this policy already had when it was scoped to
+  # the 3 queues directly - just one topic instead of three queues now.
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect   = "Allow"
-      Action   = ["sqs:SendMessage", "sqs:GetQueueUrl"]
-      Resource = [for q in aws_sqs_queue.main : q.arn]
+      Action   = ["sns:Publish"]
+      Resource = [aws_sns_topic.notifications.arn]
     }]
   })
 }

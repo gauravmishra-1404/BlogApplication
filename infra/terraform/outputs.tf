@@ -1,5 +1,10 @@
+output "sns_topic_arn" {
+  description = "The one thing the Spring Boot app now needs (AWS_SNS_TOPIC_ARN on Render) - it publishes here once per notification, and each queue's own subscription filter policy (sns.tf) decides which of the 3 actually receive it. The app no longer talks to any queue URL directly."
+  value       = aws_sns_topic.notifications.arn
+}
+
 output "queue_urls" {
-  description = "SQS queue URLs the Spring Boot app publishes to - copy these into Render's environment variables (SQS_EMAIL_QUEUE_URL / SQS_PUSH_QUEUE_URL / SQS_INAPP_QUEUE_URL)."
+  description = "SQS queue URLs - informational/debugging only now (checking queue depth, DLQ contents, etc.) - the app itself no longer publishes to these directly, see sns_topic_arn."
   value       = { for c, q in aws_sqs_queue.main : c => q.id }
 }
 
