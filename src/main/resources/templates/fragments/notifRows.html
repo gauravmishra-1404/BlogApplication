@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- The repeated notification-row markup, shared between NotificationPageController's initial
+     render and its /notifications/fragment "load more" batch (js/loadMoreFeed.js) - same
+     one-fragment-two-callers shape as fragments/postRows.html, so the two paths can't drift
+     apart. data-has-next-page on the root lets the client read "is there another page" straight
+     off the fetched fragment, same contract postRows.html already established. -->
+<th:block th:fragment="notifRows">
+    <div style="display:contents" th:attr="data-has-next-page=${hasNextPage}">
+        <a th:each="notification : ${notifications}"
+           th:href="@{/notifications/{id}/open(id=${notification.id})}"
+           class="notif-row" th:classappend="${!notification.read} ? ' unread' : ''">
+
+            <span class="avatar-wrap">
+                <span class="avatar"
+                      th:style="'background:' + ${T(com.BlogApplication.Blog.util.AvatarPresets).gradientForHue(notification.actorName != null ? notification.actorName.hashCode() : 0)} + ';'"
+                      th:text="${notification.actorName != null and !#strings.isEmpty(notification.actorName)} ? ${#strings.toUpperCase(#strings.substring(notification.actorName, 0, 1))} : '?'">A</span>
+                <span class="notif-icon-badge" th:switch="${notification.type}">
+                    <svg th:case="'NEW_FOLLOWER'" aria-hidden="true" class="follow"><use href="#i-users"/></svg>
+                    <svg th:case="'NEW_COMMENT'" aria-hidden="true"><use href="#i-comment"/></svg>
+                    <svg th:case="'REACTION_LIKE'" aria-hidden="true"><use href="#i-thumbs-up"/></svg>
+                    <svg th:case="'REACTION_DISLIKE'" aria-hidden="true"><use href="#i-thumbs-down"/></svg>
+                    <svg th:case="*" aria-hidden="true"><use href="#i-bell"/></svg>
+                </span>
+            </span>
+
+            <div class="notif-body">
+                <p class="notif-text">
+                    <!-- title is a pre-rendered sentence built server-side (e.g. "X started
+                         following you") - when it starts with the actor's own name we split
+                         that prefix out to bold it, same look the design mockup used; any title
+                         shape that DOESN'T start with the actor name (a future notification type
+                         with a different phrasing) just falls back to plain text instead of
+                         mis-splitting it. -->
+                    <th:block th:if="${notification.actorName != null and #strings.startsWith(notification.title, notification.actorName)}">
+                        <b th:text="${notification.actorName}">Actor</b><span th:text="${#strings.substring(notification.title, #strings.length(notification.actorName), #strings.length(notification.title))}"></span>
+                    </th:block>
+                    <th:block th:unless="${notification.actorName != null and #strings.startsWith(notification.title, notification.actorName)}">
+                        <span th:text="${notification.title}">Notification</span>
+                    </th:block>
+                </p>
+                <span class="notif-time" th:text="${T(com.BlogApplication.Blog.util.TimeFormatter).relative(notification.createdAt)}">time ago</span>
+            </div>
+        </a>
+    </div>
+</th:block>
+</body>
+</html>

@@ -1,6 +1,7 @@
 package com.BlogApplication.Blog.controllers;
 
 import com.BlogApplication.Blog.models.User;
+import com.BlogApplication.Blog.repositories.NotificationRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,9 @@ public class GlobalModelAttributes {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private NotificationRepo notificationRepo;
+
     @ModelAttribute("currentUser")
     public User currentUser(Authentication authentication) {
         boolean isLoggedIn = authentication != null && !(authentication instanceof AnonymousAuthenticationToken);
@@ -33,5 +37,19 @@ public class GlobalModelAttributes {
         return userRepo.findByEmail(authentication.getName())
                 .map(userService::ensureUsername)
                 .orElse(null);
+    }
+
+    // Backs the sidebar bell's badge (fragments/sidebar.html) on every page that includes it, so
+    // the count is right on first paint without an extra fetch - a plain indexed COUNT query,
+    // the same "one cheap lookup per request" cost currentUser() above already pays.
+    @ModelAttribute("unreadNotificationCount")
+    public long unreadNotificationCount(Authentication authentication) {
+        boolean isLoggedIn = authentication != null && !(authentication instanceof AnonymousAuthenticationToken);
+        if (!isLoggedIn) {
+            return 0;
+        }
+        return userRepo.findByEmail(authentication.getName())
+                .map(u -> notificationRepo.countByRecipientIdAndReadFalse(u.getId()))
+                .orElse(0L);
     }
 }

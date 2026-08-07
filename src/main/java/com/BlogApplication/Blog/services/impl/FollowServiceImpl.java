@@ -7,6 +7,7 @@ import com.BlogApplication.Blog.payloads.FollowSummary;
 import com.BlogApplication.Blog.repositories.FollowRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.FollowService;
+import com.BlogApplication.Blog.services.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -23,6 +24,9 @@ public class FollowServiceImpl implements FollowService {
 
     @Autowired
     private UserRepo userRepo;
+
+    @Autowired
+    private NotificationService notificationService;
 
     @Override
     public FollowSummary toggle(String followerEmail, String followedUsername) {
@@ -53,6 +57,11 @@ public class FollowServiceImpl implements FollowService {
                 // end state is "following", same as PostReactionServiceImpl's own race handling.
             }
             following = true;
+            // Only on an actual new follow, never on unfollow - "X unfollowed you" isn't a
+            // notification anyone wants. First real caller of NotificationService end-to-end.
+            notificationService.notify(followed, "NEW_FOLLOWER", follower.getName(),
+                    follower.getName() + " started following you", null,
+                    follower.getUsername() != null ? "/profile/" + follower.getUsername() : null);
         }
 
         long followerCount = followRepo.countByFollowedId(followed.getId());

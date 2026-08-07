@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications - Bodh Sea</title>
+    <script src="/js/themeInit.js"></script>
+    <link rel="stylesheet" href="/CSS/common.css">
+    <link rel="stylesheet" href="/CSS/dashboardStyle.css">
+    <script src="/js/theme.js" defer></script>
+    <script src="/js/navProfileMenu.js" defer></script>
+    <script src="/js/loadMoreFeed.js" defer></script>
+    <script src="/js/notifBadge.js" defer></script>
+</head>
+<body>
+<div th:replace="~{fragments/icons :: defs}"></div>
+<div th:replace="~{fragments/presetIcons :: defs}"></div>
+
+<div class="dashboard-shell">
+
+    <!-- ============ LEFT: sidebar ============ -->
+    <div th:replace="~{fragments/sidebar :: sidebar('notifications')}"></div>
+
+    <!-- ============ CENTER: notification list ============ -->
+    <main class="center">
+        <div class="topbar">
+            <div class="crumb">Home / <b>Notifications</b></div>
+            <button type="button" class="mark-all-btn" id="markAllReadBtn" th:if="${!#lists.isEmpty(notifications)}">Mark all as read</button>
+        </div>
+
+        <div class="empty-notifications" th:if="${#lists.isEmpty(notifications)}">
+            <svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg>
+            <h3>Nothing yet</h3>
+            <p>When someone follows you, comments, or reacts to your posts, it'll show up here.</p>
+        </div>
+
+        <div class="notif-list" id="notifList" data-load-more-list
+             th:unless="${#lists.isEmpty(notifications)}"
+             data-load-more-button="notifLoadMore" data-load-more-url="/notifications/fragment"
+             th:data-next-page="${currentPage + 1}">
+            <div th:replace="~{fragments/notifRows :: notifRows}"></div>
+        </div>
+
+        <button type="button" class="load-more-btn" id="notifLoadMore" hidden th:unless="${#lists.isEmpty(notifications)}">Load more</button>
+    </main>
+
+    <!-- ============ RIGHT: real-data widgets ============ -->
+    <div th:replace="~{fragments/rightSidebar :: rightSidebar}"></div>
+
+</div>
+
+</body>
+</html>

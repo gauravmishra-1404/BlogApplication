@@ -27,6 +27,9 @@
         <div class="sidebar-group-label">Library</div>
         <a th:href="@{/home}" class="sidebar-navitem" th:classappend="${activeItem == 'home'} ? ' active' : ''">
             <svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span>For you</span></a>
+        <a th:href="@{/notifications}" class="sidebar-navitem" th:classappend="${activeItem == 'notifications'} ? ' active' : ''">
+            <svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg><span>Notifications</span>
+            <span class="notif-badge" id="sidebarNotifBadge" th:if="${unreadNotificationCount != null and unreadNotificationCount > 0}" th:text="${unreadNotificationCount}">3</span></a>
         <a th:href="@{/follow}" class="sidebar-navitem" th:classappend="${activeItem == 'follow'} ? ' active' : ''">
             <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span>Follow</span></a>
         <a th:href="@{/following}" class="sidebar-navitem" th:classappend="${activeItem == 'following'} ? ' active' : ''">
