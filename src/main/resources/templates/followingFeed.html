@@ -11,6 +11,7 @@
     <script src="/js/theme.js" defer></script>
     <script src="/js/navProfileMenu.js" defer></script>
     <script src="/js/profileLinks.js" defer></script>
+    <script src="/js/discoverToggle.js" defer></script>
     <script src="/js/share.js" defer></script>
     <script src="/js/commentThread.js" defer></script>
     <script src="/js/commentComposer.js" defer></script>
@@ -38,6 +39,14 @@
     <main class="center">
         <div class="topbar">
             <div class="crumb">Home / <b>Following</b></div>
+            <div class="topbar-spacer"></div>
+            <!-- Mobile-only - see .discover-toggle-btn's own comment in dashboardStyle.css. -->
+            <button type="button" class="chip-btn discover-toggle-btn" id="discoverToggleBtn" aria-expanded="false" aria-controls="discoverPanel">
+                <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg>Discover</button>
+        </div>
+
+        <div class="discover-panel-row" id="discoverPanel" hidden>
+            <div th:replace="~{fragments/rightSidebar :: rightSidebar}"></div>
         </div>
 
         <div class="empty-following" th:if="${#lists.isEmpty(posts)}">

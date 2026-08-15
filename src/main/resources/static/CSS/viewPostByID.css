@@ -181,12 +181,14 @@ a.post-author-chip:hover {
    easy-to-miss dots), opening js/mediaGallery.js's full-screen lightbox on click rather than
    scrolling a carousel in place - see the approved design artifact.
    .gallery-single/.gallery-grid/.g-item mechanics themselves live in common.css (shared with
-   the feed-card collage) - these are just the bigger, post-detail-specific dimensions,
-   replacing the compact 130px-min-height feed thumbnails with something worth looking at. ---------- */
+   the feed-card collage) - these are just the bigger, post-detail-specific dimensions. Both
+   trimmed down from their original values (single/video 480->420, grid 420->280, per-tile
+   min-height 220->140) alongside common.css's own single-image natural-ratio fix - a smaller,
+   less dominant gallery block, not just an uncropped one (see the approved design artifact). ---------- */
 .post-view-media { margin: 18px 0; }
-.post-view-media .gallery-single img, .post-view-media .gallery-single video { max-height: 480px; }
-.post-view-media .gallery-grid { max-height: 420px; }
-.post-view-media .g-item img, .post-view-media .g-item video { min-height: 220px; }
+.post-view-media .gallery-single img, .post-view-media .gallery-single video { max-height: 420px; }
+.post-view-media .gallery-grid { max-height: 280px; }
+.post-view-media .g-item img, .post-view-media .g-item video { min-height: 140px; }
 
 /* Comment Section - kept compact since it's just the entry point into the comments below */
 .comment-section {
@@ -662,8 +664,8 @@ a.comment-author:hover {
     }
 
     .post-view-media .gallery-single img, .post-view-media .gallery-single video {
-        max-height: 280px;
+        max-height: 240px;
     }
-    .post-view-media .gallery-grid { max-height: 260px; }
-    .post-view-media .g-item img, .post-view-media .g-item video { min-height: 110px; }
+    .post-view-media .gallery-grid { max-height: 180px; }
+    .post-view-media .g-item img, .post-view-media .g-item video { min-height: 90px; }
 }

@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="/CSS/dashboardStyle.css">
     <script src="/js/theme.js" defer></script>
     <script src="/js/navProfileMenu.js" defer></script>
+    <script src="/js/discoverToggle.js" defer></script>
     <script src="/js/loadMoreFeed.js" defer></script>
     <script src="/js/notifBadge.js" defer></script>
 </head>
@@ -25,7 +26,15 @@
     <main class="center">
         <div class="topbar">
             <div class="crumb">Home / <b>Notifications</b></div>
+            <div class="topbar-spacer"></div>
+            <!-- Mobile-only - see .discover-toggle-btn's own comment in dashboardStyle.css. -->
+            <button type="button" class="chip-btn discover-toggle-btn" id="discoverToggleBtn" aria-expanded="false" aria-controls="discoverPanel">
+                <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg>Discover</button>
             <button type="button" class="mark-all-btn" id="markAllReadBtn" th:if="${!#lists.isEmpty(notifications)}">Mark all as read</button>
+        </div>
+
+        <div class="discover-panel-row" id="discoverPanel" hidden>
+            <div th:replace="~{fragments/rightSidebar :: rightSidebar}"></div>
         </div>
 
         <div class="empty-notifications" th:if="${#lists.isEmpty(notifications)}">
