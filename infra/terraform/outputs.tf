@@ -20,3 +20,13 @@ output "dlq_urls" {
 output "lambda_function_names" {
   value = { for c, f in aws_lambda_function.worker : c => f.function_name }
 }
+
+output "media_bucket_regional_domain_name" {
+  description = "S3's own endpoint for this bucket - what to point Cloudflare's DNS record at as the proxied origin (see media.tf's file comment: CloudFront was refused on this AWS account, Cloudflare is the CDN instead, and it isn't managed by this Terraform config - set it up directly in the Cloudflare dashboard). Once that DNS record exists, AWS_MEDIA_CDN_DOMAIN on Render is just the Cloudflare hostname itself (e.g. media.bodhsea.in), not this value - the app never talks to S3's domain directly."
+  value       = aws_s3_bucket.post_media.bucket_regional_domain_name
+}
+
+output "media_bucket_name" {
+  description = "The app's AWS_MEDIA_BUCKET env var - the presign endpoint needs this to know which bucket to sign a PUT URL against."
+  value       = aws_s3_bucket.post_media.bucket
+}

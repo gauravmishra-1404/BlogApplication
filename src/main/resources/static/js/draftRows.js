@@ -8,11 +8,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function openRow(row) {
         var tags = (row.dataset.postTags || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+        var media = [];
+        if (row.dataset.postMedia) {
+            try { media = JSON.parse(row.dataset.postMedia); } catch (e) { media = []; }
+        }
         window.BodhSeaCompose.openForEdit({
             id: row.dataset.postId,
             title: row.dataset.postTitle || '',
             content: row.dataset.postContent || '',
             tags: tags,
+            media: media,
             isDraft: true
         });
     }

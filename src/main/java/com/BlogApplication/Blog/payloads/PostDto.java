@@ -1,6 +1,7 @@
 package com.BlogApplication.Blog.payloads;
 
 import com.BlogApplication.Blog.models.Comment;
+import com.BlogApplication.Blog.models.PostMedia;
 import com.BlogApplication.Blog.models.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -18,6 +19,22 @@ public class PostDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String tags;
+    // Write direction: raw JSON array from the compose form's hidden "media" field (e.g.
+    // [{"url":"https://cdn.../posts/5/abc.jpg","type":"IMAGE"}]) - parsed by
+    // PostServiceImpl.resolveMedia(), same "plain string on the DTO, resolved into real
+    // entities in the service layer" pattern this class's own `tags` field already uses.
+    private String mediaJson;
+    // Read direction: the post's actual media rows, populated by PostServiceImpl.getPostById()
+    // straight from Post.getMedia(), for viewPostByID.html/postModal.html to render (those bind
+    // to PostDto via PostDetail, unlike postRows.html's feed cards which use the Post entity
+    // directly and read post.media there instead - hence the different field name here).
+    //
+    // Neither this field nor mediaJson above is named plain "media" - Post.media is itself a
+    // List<PostMedia>, and dtoToPost() maps PostDto -> Post by reflection (ModelMapper); a
+    // same-named field pair (whether matching or mismatched in type) is exactly the kind of
+    // silent-surprise risk worth naming around rather than trusting ModelMapper to do the right
+    // thing automatically.
+    private List<PostMedia> mediaList;
     private List<Comment> comments;
     private User user;
     private String role;
@@ -54,6 +71,22 @@ public class PostDto {
 
     public void setTags(String tags) {
         this.tags = tags;
+    }
+
+    public String getMediaJson() {
+        return mediaJson;
+    }
+
+    public void setMediaJson(String mediaJson) {
+        this.mediaJson = mediaJson;
+    }
+
+    public List<PostMedia> getMediaList() {
+        return mediaList;
+    }
+
+    public void setMediaList(List<PostMedia> mediaList) {
+        this.mediaList = mediaList;
     }
 
     public String getTitle() {

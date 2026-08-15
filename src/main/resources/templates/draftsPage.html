@@ -49,7 +49,8 @@
                  th:attr="data-post-id=${draft.id},
                         data-post-title=${draft.title},
                         data-post-content=${draft.content},
-                        data-post-tags=${#strings.listJoin(draft.tagList.![name], ',')}">
+                        data-post-tags=${#strings.listJoin(draft.tagList.![name], ',')},
+                        data-post-media=${T(com.BlogApplication.Blog.util.MediaJsonUtil).toJson(draft.media)}">
                 <span class="draft-icon">
                     <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>
                 </span>

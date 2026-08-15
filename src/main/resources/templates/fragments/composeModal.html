@@ -11,12 +11,12 @@
      DOM (fragments/postModal.html) rather than a second fetch - see js/composeModal.js's
      openForEdit().
 
-     Media (photo/video/voice) and Poll/Schedule/Location are shown disabled with a "Soon" badge,
-     same convention as the sidebar's Following/Bookmarks/Drafts - no PostMedia schema exists yet,
-     so wiring these up for real (including showing/removing a post's *existing* attached media
-     in edit mode) is a separate, explicitly deferred piece of work. There is no GIF option here
-     (unlike the design artifact) since real GIF search needs a Giphy/Tenor API key and a
-     server-side proxy - faking it with local placeholders would ship non-functional UI. -->
+     Photo/video attachments are real (js/composeModal.js: presign -> direct-to-S3 upload -> the
+     resulting CloudFront URLs ride along as a hidden JSON field, see PostDto.mediaJson /
+     PostServiceImpl.resolveMedia). Poll/Schedule/Location are still shown disabled with a
+     "Soon" badge, same convention as the sidebar's Following/Bookmarks/Drafts. There is no GIF
+     or voice-note option here (unlike the design artifact's own mockup) since neither is wired
+     to anything real yet - faking either with local placeholders would ship non-functional UI. -->
 <div th:fragment="composeModal" class="compose-modal-backdrop" id="composeModalBackdrop" hidden>
     <div class="compose-modal-frame">
         <div class="compose-modal-head">
@@ -70,11 +70,19 @@
             <textarea name="content" id="composeContent" class="compose-content"
                       placeholder="Share your story, thoughts, or drop a meme..." rows="3"></textarea>
 
-            <div class="media-dropzone disabled" title="Photo, video, and voice attachments - coming soon">
+            <!-- media: JSON array of {url, type} pairs, built up client-side as each file
+                 finishes uploading (see js/composeModal.js) - never a raw file input, the
+                 upload itself already happened by the time this form is submitted. -->
+            <input type="hidden" name="mediaJson" id="composeMediaHidden" value="">
+
+            <div class="media-preview-grid" id="composeMediaPreviewGrid" hidden></div>
+
+            <div class="media-dropzone" id="composeMediaDropzone">
                 <svg class="icon" aria-hidden="true"><use href="#i-image"/></svg>
-                <div class="dz-title">Photo, video &amp; voice attachments</div>
-                <div class="dz-sub">Coming soon</div>
+                <div class="dz-title" id="composeMediaDzTitle">Drop photos or a video, or click to browse</div>
+                <div class="dz-sub">Up to 4 images (1&ndash;3MB each), or 1 video (5&ndash;100MB)</div>
             </div>
+            <input type="file" id="composeMediaFileInput" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" multiple hidden>
 
             <div class="composer-section-label">Tags (at least one required)</div>
             <div class="tag-input-wrap" id="composeTagWrap">
@@ -83,9 +91,8 @@
             <input type="hidden" name="tags" id="composeTagsHidden">
 
             <div class="composer-toolbar">
-                <button type="button" class="tool-btn disabled" title="Photo, video &amp; voice - coming soon" disabled>
+                <button type="button" class="tool-btn" id="composeMediaBtn" title="Photo &amp; video">
                     <svg class="icon" aria-hidden="true"><use href="#i-image"/></svg>
-                    <span class="tt-soon">Soon</span>
                 </button>
                 <div class="tool-btn-wrap">
                     <button type="button" class="tool-btn" id="composeEmojiBtn" aria-haspopup="true" aria-expanded="false" title="Emoji">

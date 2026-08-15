@@ -128,6 +128,24 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
+		<!-- S3Presigner (services/impl/S3MediaUploadService.java) generates presigned upload URLs
+			 for post images/video - a local SigV4 signing operation with no network call of its
+			 own, so it doesn't strictly need an HTTP client at all. Excluding apache-client here
+			 anyway, same defensive move as sns above (this exact classpath conflict with
+			 cloudinary-http44's old httpclient has already broken this app twice) - in case a
+			 real S3Client (not just the presigner) ever gets used from this dependency later,
+			 e.g. to delete an old file's object when a post's media changes. -->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>s3</artifactId>
+			<version>2.29.29</version>
+			<exclusions>
+				<exclusion>
+					<groupId>software.amazon.awssdk</groupId>
+					<artifactId>apache-client</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
 			<artifactId>url-connection-client</artifactId>

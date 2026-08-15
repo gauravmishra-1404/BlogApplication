@@ -1075,7 +1075,7 @@
 }
 .compose-content::placeholder { color: var(--color-text-muted); }
 
-/* ---------- Media dropzone (disabled - no PostMedia schema yet) ---------- */
+/* ---------- Media dropzone (composeModal.html/js) ---------- */
 .media-dropzone {
     border: 1.5px dashed var(--color-border);
     border-radius: var(--radius-md);
@@ -1086,11 +1086,47 @@
     gap: 6px;
     text-align: center;
     margin: 6px 0 14px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
 }
+.media-dropzone:hover, .media-dropzone.drag-over { border-color: var(--color-primary); background: var(--color-surface-tint); }
 .media-dropzone.disabled { opacity: 0.5; cursor: not-allowed; }
-.media-dropzone .icon { width: 22px; height: 22px; color: var(--color-text-muted); }
+.media-dropzone .icon { width: 22px; height: 22px; color: var(--color-primary); }
 .media-dropzone .dz-title { font-size: var(--text-sm); font-weight: 600; }
 .media-dropzone .dz-sub { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+/* Once at least one file is selected, the dropzone shrinks to a slim "add more" row above the
+   preview grid instead of the full idle invitation - same states the approved design artifact
+   showed (compose: empty vs compose: uploading). */
+.media-dropzone.compact { flex-direction: row; padding: 8px 12px; gap: 8px; margin-bottom: 10px; }
+.media-dropzone.compact .icon { width: 15px; height: 15px; }
+.media-dropzone.compact .dz-title { font-size: var(--text-xs); }
+.media-dropzone.compact .dz-sub { display: none; }
+
+.media-preview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 4px; }
+.media-preview-grid[hidden] { display: none; }
+.media-preview-item { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: var(--color-surface-tint); }
+.media-preview-item img, .media-preview-item video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.media-preview-remove {
+    position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; border-radius: 50%;
+    background: rgba(15, 20, 35, 0.65); color: #fff; border: none; display: flex; align-items: center;
+    justify-content: center; cursor: pointer; padding: 0;
+}
+.media-preview-remove .icon { width: 11px; height: 11px; }
+/* Per-file upload progress - a thin bar along the bottom edge of its own thumbnail, not one
+   vague spinner for the whole batch (see this project's own "feedback" UI principle). */
+.media-upload-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255, 255, 255, 0.35); }
+.media-upload-bar-fill { height: 100%; background: var(--color-primary); width: 0; transition: width .2s linear; }
+.media-preview-item.upload-failed { outline: 2px solid var(--color-danger); }
+.media-preview-item .g-play { width: 26px; height: 26px; }
+.media-preview-item .g-play .icon { width: 11px; height: 11px; }
+
+/* ---------- Feed-card gallery (fragments/postRows.html) ---------- */
+/* .gallery-single/.gallery-grid/.g-item/.g-play themselves moved to common.css - both this
+   feed-card usage AND fragments/postMediaGallery.html's post-detail collage need them, and
+   viewPostByID.html (the standalone page) never loads this stylesheet at all. Only the
+   feed-card-specific spacing stays here. */
+.feed-gallery { margin: 2px 0 10px; }
 
 /* ---------- Tags ---------- */
 .composer-section-label {

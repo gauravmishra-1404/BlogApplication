@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Full post view's media collage - shared by postModal.html (dashboard's modal post view)
+     and viewPostByID.html (the standalone page), same "one fragment, two callers can't drift
+     apart" reasoning as postRows.html. Same .gallery-single/.gallery-grid/.g-item markup the
+     feed cards use (see fragments/postRows.html, common.css), not a separate component -
+     clicking any tile opens js/mediaGallery.js's full-screen lightbox rather than scrolling a
+     carousel in place, so it's obvious at a glance there's more than one item to see (the old
+     carousel's dots were easy to miss entirely) - see the approved design artifact.
+
+     data-media-url/data-media-type on every tile (including ones past the 4th, hidden by CSS
+     rather than left out of the DOM - see common.css's ".gallery-grid .g-item:nth-child(n+5)")
+     exist for two readers: js/mediaGallery.js builds the lightbox's item list straight from
+     them, and js/share.js's edit-button handler reads them back out the same "scrape the
+     already-rendered DOM, no second fetch" way it already does for title/content/tags. -->
+<div th:fragment="postMediaGallery" class="post-view-media" th:if="${post.mediaList != null and !post.mediaList.isEmpty()}" th:attr="data-post-id=${post.id}">
+
+    <button type="button" class="gallery-single" th:if="${post.mediaList.size() == 1}" th:with="m=${post.mediaList[0]}"
+            th:attr="data-media-url=${m.mediaUrl},data-media-type=${m.mediaType}">
+        <img th:if="${m.mediaType == 'IMAGE'}" th:src="${m.mediaUrl}" alt="">
+        <span th:if="${m.mediaType == 'VIDEO'}" class="gallery-video-wrap">
+            <video th:src="${m.mediaUrl}" muted preload="metadata"></video>
+            <span class="g-play"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg></span>
+        </span>
+    </button>
+
+    <div class="gallery-grid" th:if="${post.mediaList.size() > 1}"
+         th:classappend="'count-' + ${post.mediaList.size() > 4 ? 4 : post.mediaList.size()}">
+        <button type="button" class="g-item" th:each="m, iter : ${post.mediaList}"
+                th:classappend="${iter.index == 3 and post.mediaList.size() > 4} ? ' more' : ''"
+                th:attr="data-more=${iter.index == 3 and post.mediaList.size() > 4} ? ('+' + (${post.mediaList.size()} - 4)) : null,
+                         data-media-url=${m.mediaUrl},data-media-type=${m.mediaType}">
+            <img th:if="${m.mediaType == 'IMAGE'}" th:src="${m.mediaUrl}" alt="">
+            <span th:if="${m.mediaType == 'VIDEO'}" class="gallery-video-wrap">
+                <video th:src="${m.mediaUrl}" muted preload="metadata"></video>
+                <span class="g-play"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg></span>
+            </span>
+        </button>
+    </div>
+</div>
+</body>
+</html>

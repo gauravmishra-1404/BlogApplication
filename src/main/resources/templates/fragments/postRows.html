@@ -65,6 +65,34 @@
                 </span>
             </div>
             <p class="post-excerpt" th:text="${post.excerpt}">Post content excerpt...</p>
+
+            <!-- Compact feed-card gallery - single image full-width, 2-4 images as a mosaic
+                 grid with a "+N" overlay past 4 (defensive - the compose dropzone caps uploads
+                 at 4 images client-side, this just doesn't break if that's ever bypassed), or a
+                 video's own poster frame with a play badge. Only ever ONE of these three
+                 branches renders, matching composeModal.js's own "images OR one video, never
+                 mixed" rule - post.media.size()==1 covers both "exactly one image" and "the one
+                 video a post can have" in a single branch, since a poster-frame overlay is the
+                 only thing that needs to tell those two apart. -->
+            <div class="feed-gallery" th:if="${post.media != null and !post.media.isEmpty()}">
+                <div class="gallery-single" th:if="${post.media.size() == 1}">
+                    <img th:if="${post.media[0].mediaType == 'IMAGE'}" th:src="${post.media[0].mediaUrl}" alt="">
+                    <span th:if="${post.media[0].mediaType == 'VIDEO'}" class="gallery-video-wrap">
+                        <video th:src="${post.media[0].mediaUrl}" muted preload="metadata"></video>
+                        <span class="g-play"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg></span>
+                    </span>
+                </div>
+                <div class="gallery-grid" th:if="${post.media.size() > 1}"
+                     th:classappend="'count-' + ${post.media.size() > 4 ? 4 : post.media.size()}">
+                    <div class="g-item" th:each="m, iter : ${post.media}" th:if="${iter.index < 4}"
+                         th:classappend="${iter.index == 3 and post.media.size() > 4} ? ' more' : ''"
+                         th:attr="data-more=${iter.index == 3 and post.media.size() > 4} ? ('+' + (${post.media.size()} - 4)) : null">
+                        <img th:if="${m.mediaType == 'IMAGE'}" th:src="${m.mediaUrl}" alt="">
+                        <video th:if="${m.mediaType == 'VIDEO'}" th:src="${m.mediaUrl}" muted preload="metadata"></video>
+                    </div>
+                </div>
+            </div>
+
             <div class="post-tags">
                 <span th:each="tag : ${post.tagList}" th:text="${tag.name}">Tag</span>
             </div>

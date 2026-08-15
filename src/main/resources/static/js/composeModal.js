@@ -38,6 +38,13 @@ document.addEventListener('DOMContentLoaded', function () {
     var tagsHidden = document.getElementById('composeTagsHidden');
     var tagBtn = document.getElementById('composeTagBtn');
 
+    var mediaHidden = document.getElementById('composeMediaHidden');
+    var mediaPreviewGrid = document.getElementById('composeMediaPreviewGrid');
+    var mediaDropzone = document.getElementById('composeMediaDropzone');
+    var mediaDzTitle = document.getElementById('composeMediaDzTitle');
+    var mediaFileInput = document.getElementById('composeMediaFileInput');
+    var mediaBtn = document.getElementById('composeMediaBtn');
+
     var emojiBtn = document.getElementById('composeEmojiBtn');
     var emojiPopover = document.getElementById('composeEmojiPopover');
     var emojiCategories = document.getElementById('composeEmojiCategories');
@@ -78,6 +85,7 @@ document.addEventListener('DOMContentLoaded', function () {
         titleInput.value = '';
         contentInput.value = '';
         clearTagChips();
+        resetMedia();
         modalTitleText.textContent = 'Create post';
         postBtnLabel.textContent = 'Publish';
         draftBtn.hidden = false;
@@ -87,9 +95,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Called by js/share.js when Edit is clicked in the post-view modal's kebab menu, and by
     // js/draftRows.js when a row on the Drafts page is clicked. data: { id, title, content,
-    // tags: string[], isDraft (optional, default false) }. Save Draft only ever shows for a
-    // brand-new post or one that's still a draft - an already-published post edited this way
-    // only ever gets "Save changes", since Publish is a one-way door (see
+    // tags: string[], media: [{url, type}] (optional - draftRows.js's own drafts list has no
+    // gallery DOM to scrape, so this arrives undefined there and existingMedia just stays
+    // empty), isDraft (optional, default false) }. Save Draft only ever shows for a brand-new
+    // post or one that's still a draft - an already-published post edited this way only ever
+    // gets "Save changes", since Publish is a one-way door (see
     // PostServiceImpl.updatePostByID's own comment) and there's nothing left to "draft" back to.
     window.BodhSeaCompose = {
         openForEdit: function (data) {
@@ -100,6 +110,8 @@ document.addEventListener('DOMContentLoaded', function () {
             contentInput.value = data.content;
             clearTagChips();
             data.tags.forEach(function (tag) { addTag(tag); });
+            resetMedia();
+            (data.media || []).forEach(function (m) { addExistingMedia(m.url, m.type); });
             if (data.isDraft) {
                 modalTitleText.textContent = 'Edit draft';
                 postBtnLabel.textContent = 'Publish';
@@ -161,7 +173,11 @@ document.addEventListener('DOMContentLoaded', function () {
         // Tags are required the same as title/content - see PostServiceImpl.save()'s
         // server-side check, which is the one that actually matters; this is just the UX
         // so the button reflects that before a submit round-trip finds out the hard way.
-        postBtn.disabled = !(titleInput.value.trim() && contentInput.value.trim() && tagsHidden.value.trim());
+        // anyMediaUploading() (declared below, safe to call here - function declarations are
+        // hoisted) also gates both buttons: submitting while a file is still mid-upload would
+        // publish a post missing whatever hadn't finished yet.
+        postBtn.disabled = !(titleInput.value.trim() && contentInput.value.trim() && tagsHidden.value.trim()) || anyMediaUploading();
+        draftBtn.disabled = anyMediaUploading();
     }
     contentInput.addEventListener('input', function () { autosize(); updateCounts(); });
     titleInput.addEventListener('input', updatePostState);
@@ -202,6 +218,263 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
     tagBtn.addEventListener('click', function () { tagInput.focus(); });
+
+    // ---------- media (photo/video upload) ----------
+    // Client-side mirror of S3MediaUploadService's own allowlist/limits (server is still the
+    // real authority - this is just fast feedback before ever making a network call). One
+    // upload happens per file: POST /api/media/presign gets a short-lived S3 PUT URL back, the
+    // browser PUTs the raw file straight to S3 (never through this app's own server), and only
+    // the resulting CloudFront URL gets kept - in mediaItems, then in the hidden "mediaJson"
+    // field the real form submit carries.
+    var MEDIA_MAX_IMAGES = 4;
+    // A MIN as well as a MAX for both - not just a ceiling like most upload limits. Enforced
+    // client-side only: the browser uploads straight to S3 via a presigned URL (see
+    // S3MediaUploadService), so this app's server never sees the file's bytes at all and can't
+    // check size server-side the way it checks content-type. A presigned POST with a policy
+    // document could enforce this at the S3 level too; presigned PUT (what's used here, simpler
+    // to implement) can't.
+    var MEDIA_MIN_IMAGE_BYTES = 1 * 1024 * 1024;
+    var MEDIA_MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+    var MEDIA_MIN_VIDEO_BYTES = 5 * 1024 * 1024;
+    var MEDIA_MAX_VIDEO_BYTES = 100 * 1024 * 1024;
+    var MEDIA_ALLOWED_TYPES = {
+        'image/jpeg': 'IMAGE', 'image/png': 'IMAGE', 'image/webp': 'IMAGE', 'image/gif': 'IMAGE',
+        'video/mp4': 'VIDEO', 'video/webm': 'VIDEO', 'video/quicktime': 'VIDEO'
+    };
+    var mediaItems = [];
+    var mediaLocalIdSeq = 0;
+
+    function mb(bytes) {
+        return (bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '');
+    }
+
+    // window.showToast (js/toast.js) - the same toast component the rest of the app already
+    // uses for server-driven confirmations ("Post published" etc.), made callable from plain
+    // JS since rejecting a file happens entirely client-side, no redirect to hang a flash
+    // attribute off of.
+    function showMediaError(message) {
+        window.showToast(message, true);
+    }
+
+    function resetMedia() {
+        mediaItems.forEach(function (item) {
+            if (item.xhr && item.uploading) item.xhr.abort();
+            if (item.previewUrl && item.previewUrl.indexOf('blob:') === 0) URL.revokeObjectURL(item.previewUrl);
+        });
+        mediaItems = [];
+        renderMedia();
+    }
+
+    // Edit mode only - a post's already-uploaded media, read out of the post-view modal's DOM
+    // by js/share.js (same "scrape the DOM, no second fetch" pattern already used for
+    // title/content/tags). Nothing to upload here, remoteUrl is already the real CloudFront URL.
+    function addExistingMedia(url, type) {
+        mediaItems.push({ localId: ++mediaLocalIdSeq, kind: type, previewUrl: url, remoteUrl: url, uploading: false, failed: false, progress: 0, xhr: null });
+        renderMedia();
+    }
+
+    function currentMediaKind() {
+        var live = mediaItems.filter(function (i) { return !i.failed; });
+        return live.length ? live[0].kind : null;
+    }
+
+    // Images OR one video, never mixed - a new file that doesn't match what's already selected
+    // (or a second video, or a 5th image) is rejected with a visible reason, same "immediate
+    // feedback on every interaction" principle this project applies everywhere else - a
+    // min-size floor especially needs this, since a silently-ignored file that LOOKED fine
+    // (a clean, well-compressed image) would otherwise be genuinely confusing.
+    function addFiles(fileList) {
+        Array.prototype.forEach.call(fileList, function (file) {
+            var kind = MEDIA_ALLOWED_TYPES[file.type];
+            if (!kind) {
+                showMediaError('"' + file.name + '" isn\'t a supported photo or video format.');
+                return;
+            }
+            var existingKind = currentMediaKind();
+            if (existingKind && existingKind !== kind) {
+                showMediaError(existingKind === 'VIDEO' ? 'This post already has a video - remove it first to add photos.' : 'This post already has photos - remove them first to add a video.');
+                return;
+            }
+            var liveCount = mediaItems.filter(function (i) { return !i.failed; }).length;
+            if (kind === 'VIDEO' && liveCount >= 1) {
+                showMediaError('Only one video per post.');
+                return;
+            }
+            if (kind === 'IMAGE' && liveCount >= MEDIA_MAX_IMAGES) {
+                showMediaError('Up to ' + MEDIA_MAX_IMAGES + ' photos per post.');
+                return;
+            }
+            var minBytes = kind === 'VIDEO' ? MEDIA_MIN_VIDEO_BYTES : MEDIA_MIN_IMAGE_BYTES;
+            var maxBytes = kind === 'VIDEO' ? MEDIA_MAX_VIDEO_BYTES : MEDIA_MAX_IMAGE_BYTES;
+            if (file.size < minBytes) {
+                showMediaError('"' + file.name + '" is too small - ' + kind.toLowerCase() + 's need to be at least ' + mb(minBytes) + 'MB.');
+                return;
+            }
+            if (file.size > maxBytes) {
+                showMediaError('"' + file.name + '" is too large - ' + kind.toLowerCase() + 's can be at most ' + mb(maxBytes) + 'MB.');
+                return;
+            }
+
+            var item = {
+                localId: ++mediaLocalIdSeq, kind: kind, previewUrl: URL.createObjectURL(file),
+                remoteUrl: null, uploading: true, failed: false, progress: 0, xhr: null
+            };
+            mediaItems.push(item);
+            renderMedia();
+            uploadFile(file, item);
+        });
+    }
+
+    function uploadFile(file, item) {
+        fetch('/api/media/presign?contentType=' + encodeURIComponent(file.type), {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(function (response) {
+                // 503 = RestMediaController's own MediaUploadUnavailableException - AWS media
+                // storage isn't configured on this environment yet (still true today, pending
+                // CloudFront account verification), not a problem with this specific file.
+                if (response.status === 503) {
+                    showMediaError('Photo/video upload isn\'t available yet - check back soon.');
+                    throw new Error('media upload unavailable');
+                }
+                if (!response.ok) throw new Error('presign failed: ' + response.status);
+                return response.json();
+            })
+            .then(function (presigned) {
+                var xhr = new XMLHttpRequest();
+                item.xhr = xhr;
+                xhr.open('PUT', presigned.uploadUrl);
+                xhr.setRequestHeader('Content-Type', file.type);
+                xhr.upload.onprogress = function (e) {
+                    if (!e.lengthComputable) return;
+                    item.progress = Math.round((e.loaded / e.total) * 100);
+                    var fill = mediaPreviewGrid.querySelector('[data-media-id="' + item.localId + '"] .media-upload-bar-fill');
+                    if (fill) fill.style.width = item.progress + '%';
+                };
+                xhr.onload = function () {
+                    item.uploading = false;
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        item.remoteUrl = presigned.publicUrl;
+                    } else {
+                        item.failed = true;
+                    }
+                    renderMedia();
+                };
+                xhr.onerror = function () {
+                    item.uploading = false;
+                    item.failed = true;
+                    renderMedia();
+                };
+                xhr.send(file);
+            })
+            .catch(function () {
+                item.uploading = false;
+                item.failed = true;
+                renderMedia();
+            });
+    }
+
+    // Removing a still-uploading file aborts that specific request rather than letting it
+    // finish just to discard the result - matches the approved design's own annotation for
+    // this exact interaction.
+    function removeMediaItem(localId) {
+        var idx = mediaItems.findIndex(function (i) { return i.localId === localId; });
+        if (idx === -1) return;
+        var item = mediaItems[idx];
+        if (item.xhr && item.uploading) item.xhr.abort();
+        if (item.previewUrl && item.previewUrl.indexOf('blob:') === 0) URL.revokeObjectURL(item.previewUrl);
+        mediaItems.splice(idx, 1);
+        renderMedia();
+    }
+
+    function renderMedia() {
+        mediaPreviewGrid.innerHTML = '';
+        mediaPreviewGrid.hidden = mediaItems.length === 0;
+
+        mediaItems.forEach(function (item) {
+            var cell = document.createElement('div');
+            cell.className = 'media-preview-item' + (item.failed ? ' upload-failed' : '');
+            cell.setAttribute('data-media-id', item.localId);
+
+            if (item.kind === 'IMAGE') {
+                var img = document.createElement('img');
+                img.src = item.previewUrl;
+                cell.appendChild(img);
+            } else {
+                var video = document.createElement('video');
+                video.src = item.previewUrl;
+                video.muted = true;
+                cell.appendChild(video);
+                var play = document.createElement('span');
+                play.className = 'g-play';
+                play.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>';
+                cell.appendChild(play);
+            }
+
+            if (item.uploading) {
+                var bar = document.createElement('div');
+                bar.className = 'media-upload-bar';
+                var fill = document.createElement('div');
+                fill.className = 'media-upload-bar-fill';
+                fill.style.width = (item.progress || 0) + '%';
+                bar.appendChild(fill);
+                cell.appendChild(bar);
+            }
+
+            var removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'media-preview-remove';
+            removeBtn.setAttribute('aria-label', 'Remove');
+            removeBtn.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-close"/></svg>';
+            removeBtn.addEventListener('click', function () { removeMediaItem(item.localId); });
+            cell.appendChild(removeBtn);
+
+            mediaPreviewGrid.appendChild(cell);
+        });
+
+        var kind = currentMediaKind();
+        var liveCount = mediaItems.filter(function (i) { return !i.failed; }).length;
+        mediaDropzone.classList.toggle('compact', mediaItems.length > 0);
+        if (liveCount === 0) {
+            mediaDzTitle.textContent = 'Drop photos or a video, or click to browse';
+            mediaDropzone.hidden = false;
+        } else if (kind === 'VIDEO' || liveCount >= MEDIA_MAX_IMAGES) {
+            mediaDropzone.hidden = true; // nothing more can be added right now
+        } else {
+            mediaDropzone.hidden = false;
+            var remaining = MEDIA_MAX_IMAGES - liveCount;
+            mediaDzTitle.textContent = 'Add up to ' + remaining + ' more photo' + (remaining === 1 ? '' : 's');
+        }
+
+        syncMediaHidden();
+        updatePostState();
+    }
+
+    function syncMediaHidden() {
+        var payload = mediaItems
+            .filter(function (i) { return !i.failed && i.remoteUrl; })
+            .map(function (i) { return { url: i.remoteUrl, type: i.kind }; });
+        mediaHidden.value = payload.length ? JSON.stringify(payload) : '';
+    }
+
+    function anyMediaUploading() {
+        return mediaItems.some(function (i) { return i.uploading; });
+    }
+
+    mediaDropzone.addEventListener('click', function () { mediaFileInput.click(); });
+    mediaBtn.addEventListener('click', function () { mediaFileInput.click(); });
+    mediaFileInput.addEventListener('change', function () {
+        addFiles(this.files);
+        this.value = '';
+    });
+    mediaDropzone.addEventListener('dragover', function (e) { e.preventDefault(); mediaDropzone.classList.add('drag-over'); });
+    mediaDropzone.addEventListener('dragleave', function () { mediaDropzone.classList.remove('drag-over'); });
+    mediaDropzone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        mediaDropzone.classList.remove('drag-over');
+        if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+    });
 
     // ---------- emoji picker ----------
     // Full Unicode emoji rendered natively by the browser/OS font - no library needed. Keyword

@@ -174,6 +174,20 @@ a.post-author-chip:hover {
     background-color: var(--color-border);
     cursor: pointer;
 }
+
+/* ---------- Media gallery (fragments/postMediaGallery.html) - shared by this page and the
+   dashboard's modal post view, since postModal.html reuses this stylesheet wholesale. A collage
+   grid inline (tiles it visually obvious there's more than one item, unlike the old carousel's
+   easy-to-miss dots), opening js/mediaGallery.js's full-screen lightbox on click rather than
+   scrolling a carousel in place - see the approved design artifact.
+   .gallery-single/.gallery-grid/.g-item mechanics themselves live in common.css (shared with
+   the feed-card collage) - these are just the bigger, post-detail-specific dimensions,
+   replacing the compact 130px-min-height feed thumbnails with something worth looking at. ---------- */
+.post-view-media { margin: 18px 0; }
+.post-view-media .gallery-single img, .post-view-media .gallery-single video { max-height: 480px; }
+.post-view-media .gallery-grid { max-height: 420px; }
+.post-view-media .g-item img, .post-view-media .g-item video { min-height: 220px; }
+
 /* Comment Section - kept compact since it's just the entry point into the comments below */
 .comment-section {
     margin-top: 40px;
@@ -646,4 +660,10 @@ a.comment-author:hover {
         margin-left: 10px;
         padding-left: 12px;
     }
+
+    .post-view-media .gallery-single img, .post-view-media .gallery-single video {
+        max-height: 280px;
+    }
+    .post-view-media .gallery-grid { max-height: 260px; }
+    .post-view-media .g-item img, .post-view-media .g-item video { min-height: 110px; }
 }

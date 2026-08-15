@@ -2,6 +2,7 @@ package com.BlogApplication.Blog.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,7 +54,13 @@ public class Comment {
     @JoinColumn(name = "parent_id")
     private Comment parent;
 
+    // Same N+1 shape as Post.tagList/comments/media (see that file's own comment for the full
+    // explanation) - one extra query PER COMMENT for its own replies, and since replies are
+    // Comments too, it recurses down every nesting level. This is the bigger multiplier of the
+    // two: Post.comments already costs one query per post, and THIS was then costing one
+    // query per comment on top of that, for every post on the page at once.
     @OneToMany(mappedBy = "parent", fetch = FetchType.EAGER)
+    @BatchSize(size = 20)
     private List<Comment> replies = new ArrayList<>();
 
     public Comment getParent() {

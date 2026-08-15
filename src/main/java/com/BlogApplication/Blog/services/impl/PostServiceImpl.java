@@ -3,8 +3,10 @@ package com.BlogApplication.Blog.services.impl;
 import com.BlogApplication.Blog.exceptions.InvalidPostException;
 import com.BlogApplication.Blog.models.Comment;
 import com.BlogApplication.Blog.models.Post;
+import com.BlogApplication.Blog.models.PostMedia;
 import com.BlogApplication.Blog.models.Tags;
 import com.BlogApplication.Blog.models.User;
+import com.BlogApplication.Blog.payloads.MediaAttachment;
 import com.BlogApplication.Blog.payloads.PostDetail;
 import com.BlogApplication.Blog.payloads.PostDto;
 import com.BlogApplication.Blog.payloads.PostListing;
@@ -19,6 +21,7 @@ import com.BlogApplication.Blog.services.PostReactionService;
 import com.BlogApplication.Blog.services.PostService;
 import com.BlogApplication.Blog.services.PostViewService;
 import com.BlogApplication.Blog.services.TagService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import org.modelmapper.ModelMapper;
@@ -62,6 +65,12 @@ public class PostServiceImpl implements PostService {
 
     @Autowired
     private TagService tagService;
+
+    // Spring Boot's own auto-configured Jackson bean (JacksonAutoConfiguration) - reused here
+    // rather than `new ObjectMapper()`, same instance the rest of the app's JSON (de)serializes
+    // through, and it's genuinely thread-safe to share.
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Autowired
     private ModelMapper modelMapper;
@@ -116,6 +125,7 @@ public class PostServiceImpl implements PostService {
         post.setExcerpt(buildExcerpt(post.getContent()));
 
         post.setTagList(resolveTags(postDto.getTags()));
+        post.setMedia(resolveMedia(postDto.getMediaJson(), post));
         currentUser.getPosts().add(post);
         postRepo.save(post);
     }
@@ -173,6 +183,13 @@ public class PostServiceImpl implements PostService {
         postByID.setExcerpt(buildExcerpt(post.getContent()));
 
         postByID.setTagList(resolveTags(postDto.getTags()));
+        // clear()+addAll() on the SAME managed collection instance, not
+        // postByID.setMedia(newList) - Hibernate's orphanRemoval only tracks mutations to the
+        // persistent collection object it already knows about; replacing the field with a
+        // brand-new List reference doesn't reliably trigger the DELETE of whatever rows were
+        // removed. This is what actually makes "remove this image, keep that one" work on edit.
+        postByID.getMedia().clear();
+        postByID.getMedia().addAll(resolveMedia(postDto.getMediaJson(), postByID));
         postRepo.save(postByID);
     }
 
@@ -216,6 +233,42 @@ public class PostServiceImpl implements PostService {
                 .collect(Collectors.toList());
     }
 
+    // Parses PostDto.mediaJson (the compose form's hidden "media" field - a JSON array of
+    // {url, type} pairs already uploaded to S3 via the presign flow, see composeModal.js) into
+    // real PostMedia rows, in submission order. Deliberately tolerant of bad input the same way
+    // resolveTags() is of a blank tags string - malformed JSON here can only come from a
+    // direct/tampered POST (composeModal.js always emits well-formed output), and the right
+    // response to that is "this post just has no media," not a 500.
+    private List<PostMedia> resolveMedia(String mediaJson, Post post) {
+        if (mediaJson == null || mediaJson.isBlank()) {
+            return new ArrayList<>();
+        }
+        List<MediaAttachment> attachments;
+        try {
+            attachments = objectMapper.readValue(mediaJson, new com.fasterxml.jackson.core.type.TypeReference<List<MediaAttachment>>() {
+            });
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+
+        List<PostMedia> media = new ArrayList<>();
+        int position = 0;
+        for (MediaAttachment attachment : attachments) {
+            if (attachment.getUrl() == null || attachment.getUrl().isBlank()
+                    || !(PostMedia.IMAGE.equals(attachment.getType()) || PostMedia.VIDEO.equals(attachment.getType()))) {
+                continue;
+            }
+            media.add(PostMedia.builder()
+                    .post(post)
+                    .mediaUrl(attachment.getUrl())
+                    .mediaType(attachment.getType())
+                    .position(position++)
+                    .createdAt(LocalDateTime.now())
+                    .build());
+        }
+        return media;
+    }
+
     // Returns null (not a thrown exception) for both a genuinely missing id and a soft-deleted
     // one - PostController.viewPostByID checks for null and redirects to /posts, so a deleted
     // or nonexistent post lands there cleanly instead of a 500.
@@ -246,6 +299,7 @@ public class PostServiceImpl implements PostService {
             constructTagList.append(tag.getName()).append(",");
         }
         postDtoByID.setTags(constructTagList.toString());
+        postDtoByID.setMediaList(postByID.getMedia());
         postDtoByID.setViewCount(postViewRepo.countByPostId(id));
         return postDtoByID;
     }
@@ -274,11 +328,17 @@ public class PostServiceImpl implements PostService {
                 .build();
     }
 
-    // "Delete" is a soft delete: the row (and its comments/tags) stay in the database, just
-    // hidden from listing/search/direct view. A hard delete here used to crash - Post/Tags had
-    // a bidirectional CascadeType.ALL that reached into every other post sharing a tag - and
+    // "Delete" is a soft delete: the row (and its comments/tags/media) stay in the database,
+    // just hidden from listing/search/direct view. A hard delete here used to crash - Post/Tags
+    // had a bidirectional CascadeType.ALL that reached into every other post sharing a tag - and
     // even fixed, this table's FK graph (shared with another app's comment threads) makes
-    // physical deletion risky enough that soft delete is the safer permanent choice.
+    // physical deletion risky enough that soft delete is the safer permanent choice. This is
+    // exactly why Post.media's own CascadeType.ALL/orphanRemoval is safe despite that history:
+    // those only fire when the media LIST ITSELF changes (an item added/removed in Java), never
+    // from flipping the deleted flag on an otherwise-untouched Post - this method never touches
+    // post.getMedia() at all, so no PostMedia row (or its S3/CloudFront object) is ever deleted
+    // by a post "deletion." Don't add a media.clear() here thinking it's cleanup - it isn't;
+    // the whole point of soft delete is that nothing related gets touched.
     @Override
     public void isDeleted(int id) {
         Post post = postRepo.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));

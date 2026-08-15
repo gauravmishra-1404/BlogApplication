@@ -2,8 +2,10 @@ package com.BlogApplication.Blog.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -51,19 +53,52 @@ public class Post {
     @Column(name = "deleted")
     private Boolean deleted;
 
+    // @BatchSize (Hibernate, not JPA-standard) - without it, an EAGER collection gets loaded
+    // with ONE SEPARATE QUERY PER PARENT ROW: rendering a 15-post feed page fires 15 queries
+    // just for tagList, another 15 for comments, another 15 for media - 45+ extra round-trips
+    // for one page, and it gets worse as the amount of content grows (exactly the "gets slower
+    // over time" symptom this was added to fix). @BatchSize(size = 20) tells Hibernate to
+    // instead batch up to 20 parent ids into ONE query per collection type
+    // ("...WHERE post_id IN (?,?,?,...)") - same EAGER data, same everywhere it's already used,
+    // just fetched in a handful of queries instead of dozens. Doesn't fix the N+1 shape itself
+    // (still separate per collection type), but the size of the win here is large for a
+    // one-line, zero-behavior-change annotation - the properly-fixed version (fetch-joined or
+    // paginated projections tailored per query) is a bigger, riskier change for another day.
+    //
     // No cascade: tags are looked up/created manually in PostServiceImpl.resolveTags(), and
     // CascadeType.ALL here (specifically REMOVE) was the cause of a serious bug - deleting a
     // post cascaded a remove onto its tags, and since Tags.postList cascades ALL right back,
     // it reached into every *other* post sharing that tag too, corrupting unrelated posts.
     @ManyToMany(fetch = FetchType.EAGER)
+    @BatchSize(size = 20)
     List<Tags> tagList;
 
     @OneToMany(mappedBy = "post", fetch = FetchType.EAGER)
+    @BatchSize(size = 20)
     private List<Comment> comments;
+
+    // Fully cascaded (unlike tagList above) - a PostMedia row belongs to exactly one post and
+    // has no meaning outside it, so ALL + orphanRemoval is correct here (deleting/replacing the
+    // list deletes the orphaned rows too), where the same cascade on tagList would be the bug
+    // tagList's own comment describes. PostServiceImpl replaces this list wholesale on
+    // save/update (media.clear() + media.addAll(...)) rather than diffing individual entries -
+    // simpler, and cheap at gallery-sized counts (a handful of rows per post).
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @BatchSize(size = 20)
+    @OrderBy("position ASC")
+    private List<PostMedia> media = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
+
+    public List<PostMedia> getMedia() {
+        return media;
+    }
+
+    public void setMedia(List<PostMedia> media) {
+        this.media = media;
+    }
 
     @JsonIgnore
     public User getUser() {
