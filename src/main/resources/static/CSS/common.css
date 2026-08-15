@@ -1065,6 +1065,14 @@ svg.avatar-icon {
     .nav-profile-dropdown {
         max-width: calc(100vw - 24px);
     }
+
+    /* Media lightbox's fixed side arrows leave little headroom at narrow widths - shrink them
+       so the media itself keeps most of the screen rather than the chrome around it. */
+    .media-lightbox-arrow { width: 38px; height: 38px; }
+    .media-lightbox-arrow .icon { width: 16px; height: 16px; }
+    .media-lightbox-prev { left: 6px; }
+    .media-lightbox-next { right: 6px; }
+    .media-lightbox-stage { width: min(94vw, 900px); }
 }
 
 /* Flash-message toast (fragments/toast.html + js/toast.js) - "Saved as draft"/"Post
@@ -1109,4 +1117,87 @@ svg.avatar-icon {
         transition: opacity 0.01s linear;
         transform: translate(-50%, 0);
     }
+}
+
+/* ---------- Post media collage (shared by fragments/postRows.html's feed cards AND
+   fragments/postMediaGallery.html's post-detail view) - moved here from dashboardStyle.css
+   because viewPostByID.html (the standalone post page) never loads that stylesheet, only
+   common.css + viewPostByID.css. One set of rules, both callers, no drift between them. ---------- */
+.gallery-single img, .gallery-single video { width: 100%; max-height: 360px; object-fit: cover; border-radius: 12px; display: block; }
+.gallery-video-wrap { position: relative; display: block; }
+/* Centered play badge over a video's own poster/first frame - no autoplay in-feed or in the
+   collage, matches this project's existing "no motion unless the user asks for it" stance
+   (see the leaf loader's own prefers-reduced-motion handling). */
+.g-play {
+    position: absolute; inset: 0; margin: auto; width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(15, 20, 35, 0.6); display: flex; align-items: center; justify-content: center;
+}
+.g-play .icon { width: 18px; height: 18px; color: #fff; }
+
+.gallery-grid { display: grid; gap: 4px; border-radius: 12px; overflow: hidden; }
+.gallery-grid.count-2 { grid-template-columns: 1fr 1fr; }
+.gallery-grid.count-3 { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; }
+.gallery-grid.count-3 .g-item:first-child { grid-row: 1 / 3; }
+.gallery-grid.count-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.g-item { position: relative; overflow: hidden; background: var(--color-surface-tint); border: 0; padding: 0; display: block; cursor: pointer; }
+.g-item img, .g-item video { width: 100%; height: 100%; object-fit: cover; display: block; min-height: 130px; }
+/* The 5th+ image never gets its own cell - the 4th tile gets a "+N" scrim instead, so a big
+   gallery still reads clearly at feed-card size rather than shrinking every cell to nothing.
+   Items past the 4th are still rendered in the DOM (postMediaGallery.html renders the full
+   list, not just the first 4) so the lightbox below can page through all of them - this rule
+   is what keeps them out of the visible grid without deleting them. */
+.g-item.more::after {
+    content: attr(data-more); position: absolute; inset: 0; background: rgba(10, 15, 30, 0.55);
+    color: #fff; font-size: var(--text-xl); font-weight: 700; display: flex; align-items: center; justify-content: center;
+}
+.gallery-grid .g-item:nth-child(n+5) { display: none; }
+/* .gallery-single and .g-item are real buttons (js/mediaGallery.js opens the lightbox on
+   click) - reset the button chrome a plain <img>/<video> tile shouldn't visibly have. */
+.gallery-single, .g-item { font: inherit; text-align: left; }
+.gallery-single:focus-visible, .g-item:focus-visible { outline: 3px solid var(--color-primary); outline-offset: -3px; }
+
+/* ---------- Media lightbox (js/mediaGallery.js) - one overlay, built once and reused, opened
+   by clicking any tile in a .post-view-media collage (post-detail view only, not the feed-card
+   grid - that still opens the post itself, unchanged). Fixed/full-viewport by design so it
+   can't be pushed off-screen by whatever layout it was opened from, same reasoning this
+   project's other fixed-position UI (modals, toasts) already follows. ---------- */
+.media-lightbox {
+    position: fixed; inset: 0; background: rgba(4, 6, 12, 0.92); z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.15s ease;
+}
+.media-lightbox.open { opacity: 1; pointer-events: auto; }
+.media-lightbox-close {
+    position: absolute; top: 18px; right: 18px; width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16); color: #fff;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.media-lightbox-close:hover { background: rgba(255, 255, 255, 0.16); }
+.media-lightbox-close .icon { width: 18px; height: 18px; }
+.media-lightbox-counter {
+    position: absolute; top: 22px; left: 50%; transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.85); font-size: var(--text-sm); font-weight: 700;
+    font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+}
+.media-lightbox-arrow {
+    position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16); color: #fff;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.media-lightbox-arrow:hover { background: rgba(255, 255, 255, 0.18); }
+.media-lightbox-arrow .icon { width: 20px; height: 20px; }
+.media-lightbox-prev { left: 18px; }
+.media-lightbox-next { right: 18px; }
+.media-lightbox-arrow[hidden] { display: none; }
+.media-lightbox-stage { width: min(92vw, 900px); max-height: 84vh; display: flex; align-items: center; justify-content: center; }
+.media-lightbox-stage img, .media-lightbox-stage video { max-width: 100%; max-height: 84vh; border-radius: 10px; display: block; object-fit: contain; }
+.media-lightbox-dots { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
+.media-lightbox-dots button {
+    width: 7px; height: 7px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, 0.3); cursor: pointer; padding: 0;
+}
+.media-lightbox-dots button.active { background: #fff; width: 18px; border-radius: 4px; }
+.media-lightbox-dots[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    .media-lightbox { transition: none; }
 }

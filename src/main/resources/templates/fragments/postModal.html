@@ -38,6 +38,7 @@
                         th:text="${tag}">Tag Name</li>
                 </ul>
             </div>
+            <div th:replace="~{fragments/postMediaGallery :: postMediaGallery}"></div>
             <div class="blog-content-wrap">
                 <div class="blog-content" th:text="${post.content != null ? post.content : 'No content available.'}">
                     Blog content goes here...

@@ -98,6 +98,14 @@ document.addEventListener('click', function (event) {
             postModal.querySelectorAll('.blog-tags li'),
             function (li) { return li.textContent.trim(); }
         ).filter(Boolean);
+        // Same DOM-scraping approach as tags above - fragments/postMediaGallery.html already
+        // renders every tile (.gallery-single for a single item, .g-item for 2+, including ones
+        // past the 4th that common.css hides but never removes) with data-media-url/
+        // data-media-type for exactly this purpose.
+        var media = Array.prototype.map.call(
+            postModal.querySelectorAll('.gallery-single[data-media-url], .g-item[data-media-url]'),
+            function (tile) { return { url: tile.dataset.mediaUrl, type: tile.dataset.mediaType }; }
+        );
         closeAllMenus();
         var postModalBackdrop = document.getElementById('postModalBackdrop');
         if (postModalBackdrop) postModalBackdrop.hidden = true;
@@ -105,7 +113,8 @@ document.addEventListener('click', function (event) {
             id: postModal.dataset.postId,
             title: postModal.querySelector('.blog-title').textContent.trim(),
             content: postModal.querySelector('.blog-content').textContent.trim(),
-            tags: tags
+            tags: tags,
+            media: media
         });
         return;
     }
