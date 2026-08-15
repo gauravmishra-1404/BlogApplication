@@ -233,7 +233,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // check size server-side the way it checks content-type. A presigned POST with a policy
     // document could enforce this at the S3 level too; presigned PUT (what's used here, simpler
     // to implement) can't.
-    var MEDIA_MIN_IMAGE_BYTES = 1 * 1024 * 1024;
+    var MEDIA_MIN_IMAGE_BYTES = 10 * 1024;
     var MEDIA_MAX_IMAGE_BYTES = 3 * 1024 * 1024;
     var MEDIA_MIN_VIDEO_BYTES = 5 * 1024 * 1024;
     var MEDIA_MAX_VIDEO_BYTES = 100 * 1024 * 1024;
@@ -244,8 +244,15 @@ document.addEventListener('DOMContentLoaded', function () {
     var mediaItems = [];
     var mediaLocalIdSeq = 0;
 
-    function mb(bytes) {
-        return (bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '');
+    // Includes its own unit rather than a hardcoded "MB" at the call site - MEDIA_MIN_IMAGE_BYTES
+    // dropping to 10KB meant a plain mb() (always dividing by 1024*1024) would round that all the
+    // way down to "0MB", a genuinely confusing rejection message ("images need to be at least
+    // 0MB"). Anything under 1MB shows in KB instead.
+    function formatBytes(bytes) {
+        if (bytes < 1024 * 1024) {
+            return Math.round(bytes / 1024) + 'KB';
+        }
+        return (bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '') + 'MB';
     }
 
     // window.showToast (js/toast.js) - the same toast component the rest of the app already
@@ -307,11 +314,11 @@ document.addEventListener('DOMContentLoaded', function () {
             var minBytes = kind === 'VIDEO' ? MEDIA_MIN_VIDEO_BYTES : MEDIA_MIN_IMAGE_BYTES;
             var maxBytes = kind === 'VIDEO' ? MEDIA_MAX_VIDEO_BYTES : MEDIA_MAX_IMAGE_BYTES;
             if (file.size < minBytes) {
-                showMediaError('"' + file.name + '" is too small - ' + kind.toLowerCase() + 's need to be at least ' + mb(minBytes) + 'MB.');
+                showMediaError('"' + file.name + '" is too small - ' + kind.toLowerCase() + 's need to be at least ' + formatBytes(minBytes) + '.');
                 return;
             }
             if (file.size > maxBytes) {
-                showMediaError('"' + file.name + '" is too large - ' + kind.toLowerCase() + 's can be at most ' + mb(maxBytes) + 'MB.');
+                showMediaError('"' + file.name + '" is too large - ' + kind.toLowerCase() + 's can be at most ' + formatBytes(maxBytes) + '.');
                 return;
             }
 

@@ -375,10 +375,24 @@
 }
 
 /* ---------- Left: sidebar ---------- */
+/* z-index: 40 - without this, the profile dropdown nested inside (.nav-profile-dropdown,
+   z-index:30) painted BEHIND .topbar (z-index:5) wherever their boxes overlapped, despite the
+   dropdown's own higher z-index. That's because z-index only has meaning within the nearest
+   ancestor stacking context, and .sidebar (position:sticky, no z-index of its own) doesn't
+   establish one - the dropdown's z-index:30 was being compared against .topbar/.filter-panel
+   at the .dashboard-shell grid level instead, where .topbar's stacking context (it HAS an
+   explicit z-index) won outright. fragments/nav.html's .app-header sidesteps this same class of
+   bug with its own z-index:50 for exactly this reason - this sidebar needed the equivalent.
+   40 clears .topbar(5)/.filter-panel(20)/.fab(30) while staying below the real full-page
+   overlays (.post-modal-backdrop:100, .compose-modal-backdrop:110), which must still cover the
+   sidebar when open. Confirmed via document.elementFromPoint() at the dropdown's own
+   coordinates before/after this fix, not just visual inspection - z-index bugs are exactly the
+   kind of thing that BOTH look fine at a glance AND aren't, or vice versa. */
 .sidebar {
     grid-area: sidebar;
     position: sticky;
     top: 0;
+    z-index: 40;
     height: 100vh;
     overflow-y: auto;
     display: flex;
@@ -615,6 +629,20 @@
     padding: 18px;
 }
 
+/* Mobile-only "Discover" toggle + inline panel (postDashboard.html, followingFeed.html,
+   notificationsPage.html, bookmarksPage.html - every page that includes .side). Hidden here
+   at desktop width - .side above already gives this same content (fragments/rightSidebar.html,
+   rendered a second time inside the panel) its own dedicated column, no toggle needed there.
+   js/discoverToggle.js does the actual open/close, mirroring js/dashboardFilterToggle.js's
+   exact pattern - same shape as the Filter chip sitting right next to it. */
+.discover-toggle-btn {
+    display: none;
+}
+
+.discover-panel-row {
+    display: none;
+}
+
 .widget {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -719,6 +747,15 @@
         position: relative;
         top: auto;
         height: auto;
+        /* The desktop rule's overflow-y:auto (for the tall 100vh column's own internal scroll)
+           makes no sense once the sidebar collapses to a short horizontal bar here - worse,
+           it actively clips the profile dropdown nested inside, which intentionally extends
+           BELOW this short bar's own box (see .sidebar-dropdown's top: calc(100% + 8px)).
+           Without this reset, the dropdown's own lower portion is invisible/unclickable even
+           though its z-index is correct - a real bug caught via document.elementFromPoint()
+           at the dropdown's own coordinates, not visible at a casual glance since the clipped
+           region happened to be mostly empty space. */
+        overflow-y: visible;
         flex-direction: row;
         flex-wrap: wrap;
         align-items: center;
@@ -800,16 +837,52 @@
         border-right: none;
     }
 
+    /* The right rail used to just fall in line here, under every post in the feed - buried
+       deep enough to be effectively unreachable on a real feed, and defeating the point of
+       "trending" content in the first place. Replaced by .discover-toggle-btn +
+       .discover-panel-row below (a second render of the same fragments/rightSidebar.html
+       fragment, positioned right in the topbar instead) - see the approved design artifact.
+       This copy is hidden outright rather than left to reflow, so the two don't both show. */
     .side {
-        position: relative;
-        top: auto;
-        height: auto;
-        border-top: 1px solid var(--color-border);
+        display: none;
     }
 
     .topbar {
         flex-wrap: wrap;
         padding: 12px 16px;
+    }
+
+    /* Un-hides the two base rules above (display:none there) - .side is hidden at this same
+       width instead (a few rules up), so exactly one copy of the widgets is ever visible. */
+    .discover-toggle-btn {
+        display: inline-flex;
+    }
+
+    .discover-panel-row {
+        display: block;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--color-border);
+        background: var(--color-surface);
+    }
+
+    .discover-panel-row[hidden] {
+        display: none;
+    }
+
+    /* Reset the desktop .side/.widget spacing (grid-area/sticky/100vh height don't mean
+       anything nested in a plain panel row, and the panel's own padding above already
+       handles the outer gap) - only .widget's own card chrome (background/border/padding)
+       still applies, unchanged. */
+    .discover-panel-row .side {
+        display: block;
+        position: static;
+        height: auto;
+        padding: 0;
+        overflow: visible;
+    }
+
+    .discover-panel-row .widget:last-child {
+        margin-bottom: 0;
     }
 
     .filter-panel-row {

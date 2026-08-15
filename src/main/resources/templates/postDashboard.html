@@ -16,6 +16,7 @@
     <script src="/js/navProfileMenu.js" defer></script>
     <script src="/js/profileLinks.js" defer></script>
     <script src="/js/dashboardFilterToggle.js" defer></script>
+    <script src="/js/discoverToggle.js" defer></script>
     <script src="/js/infiniteScroll.js" defer></script>
     <script src="/js/commentThread.js" defer></script>
     <script src="/js/commentComposer.js" defer></script>
@@ -44,8 +45,17 @@
         <div class="topbar">
             <div class="crumb">Home / <b>For you</b></div>
             <div class="topbar-spacer"></div>
+            <!-- Mobile-only - see .discover-toggle-btn's own comment in dashboardStyle.css.
+                 Same fragments/rightSidebar.html content .side (below) already shows in its own
+                 column on desktop, just reachable here instead of buried under every post. -->
+            <button type="button" class="chip-btn discover-toggle-btn" id="discoverToggleBtn" aria-expanded="false" aria-controls="discoverPanel">
+                <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg>Discover</button>
             <button type="button" class="chip-btn" id="filterToggleBtn" aria-expanded="false" aria-controls="filterPanel">
                 <svg class="icon" aria-hidden="true"><use href="#i-filter"/></svg>Filter</button>
+        </div>
+
+        <div class="discover-panel-row" id="discoverPanel" hidden>
+            <div th:replace="~{fragments/rightSidebar :: rightSidebar}"></div>
         </div>
 
         <div class="filter-panel-row" id="filterPanel" hidden>
