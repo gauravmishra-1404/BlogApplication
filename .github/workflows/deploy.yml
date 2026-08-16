@@ -67,7 +67,15 @@ jobs:
           # Content-hash key (same convention Terraform uses) so a re-deploy of identical code
           # overwrites the same S3 object instead of piling up duplicates; the version LABEL
           # below is what has to be unique per run, not the object key.
-          VERSION_LABEL="gha-${GITHUB_SHA::7}-${GITHUB_RUN_NUMBER}"
+          #
+          # GITHUB_RUN_ATTEMPT is required, not just RUN_NUMBER - a real failure on this
+          # workflow's first run showed why: CreateApplicationVersion registers the version
+          # label BEFORE it validates the S3 bundle, so a run that fails after that point (e.g.
+          # the earlier missing-s3:GetObject bug) leaves that label permanently claimed in AWS.
+          # "Re-run failed jobs" reuses the same RUN_NUMBER, so without RUN_ATTEMPT the retry
+          # collides with its own failed predecessor's stale version record
+          # ("Application Version ... already exists") instead of trying again cleanly.
+          VERSION_LABEL="gha-${GITHUB_SHA::7}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
 
           aws s3 cp "$ZIP" "s3://${DEPLOY_BUCKET}/${KEY}"
 
