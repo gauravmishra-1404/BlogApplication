@@ -63,8 +63,13 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = ["s3:PutObject"]
+        Effect = "Allow"
+        # GetObject alongside PutObject is not redundant here: `aws s3 cp` (the upload) only
+        # needs PutObject, but elasticbeanstalk:CreateApplicationVersion has AWS's own Beanstalk
+        # service fetch the object back out of S3 using THIS role's credentials to register it -
+        # without GetObject too, that step fails with "Unable to download from S3 location ...
+        # Forbidden", which is exactly what happened on this workflow's first real run.
+        Action   = ["s3:PutObject", "s3:GetObject"]
         Resource = "${aws_s3_bucket.lambda_artifacts.arn}/beanstalk/*"
       },
       {
