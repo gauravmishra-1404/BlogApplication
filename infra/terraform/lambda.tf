@@ -1,8 +1,20 @@
-# No VPC config on any of these three - deliberately. All three need plain internet egress
-# (SendGrid's API, FCM's API, and Render's public Postgres endpoint are all reached over the
-# open internet, none of them live inside this AWS account's network), and a Lambda with no
-# VPC attached gets that for free. Putting these in a VPC would need a NAT gateway just to
-# reach the same public internet - real recurring cost for zero benefit here.
+# email/push stay outside any VPC - deliberately. Both need plain internet egress (SendGrid's API,
+# FCM's API), neither talks to the database, and a Lambda with no VPC attached gets that internet
+# access for free. inapp-worker is the one exception: it writes directly to Postgres, which is now
+# RDS (rds.tf) sitting inside the default VPC with publicly_accessible=false - so unlike when this
+# was Render's public endpoint, inapp-worker now genuinely needs to be inside that same VPC to
+# reach it at all (see aws_security_group.lambda_inapp and its vpc_config block below). email/push
+# staying VPC-free avoids paying for a NAT gateway they'd otherwise need to keep their own internet
+# access once inside a VPC - only inapp-worker's traffic (SQS trigger + RDS, both reachable without
+# a NAT/internet route) needs that trade-off.
+#
+# One real cost of that trade-off: a VPC-attached Lambda's outbound traffic - including its OWN
+# CloudWatch Logs delivery - goes through its VPC ENI, not some separate out-of-band channel. With
+# no NAT gateway and no VPC interface endpoint for `logs` here (both are real recurring cost, ~$7-
+# 45/month depending which), inapp-worker's own execution logs won't reach CloudWatch while this
+# stays as-is. Its actual job (insert into notifications) is unaffected - SQS invokes it and RDS
+# writes both stay reachable purely via the VPC - this only costs observability into ITS OWN logs,
+# not function correctness. Add a VPC interface endpoint for `logs` later if that gap matters.
 #
 # Each worker is a Java 21 Lambda, packaged as a shaded (fat) jar by its own Maven build - run
 # `mvn -f infra/lambdas/<channel>-worker/pom.xml package` for each BEFORE `terraform apply`,
@@ -18,6 +30,23 @@ locals {
     email = "com.bodhsea.notifications.email.EmailWorkerHandler::handleRequest"
     push  = "com.bodhsea.notifications.push.PushWorkerHandler::handleRequest"
     inapp = "com.bodhsea.notifications.inapp.InAppWorkerHandler::handleRequest"
+  }
+}
+
+# No ingress - nothing ever needs to initiate a connection INTO this Lambda's ENI, only out to
+# RDS. Egress wide open (not scoped to just the db SG/5432) since AWS's own default egress rule
+# would otherwise be replaced with nothing at all the moment this security group is attached -
+# rds.tf's aws_security_group.db is what actually restricts what inapp-worker can reach on 5432.
+resource "aws_security_group" "lambda_inapp" {
+  name        = "${var.project}-lambda-inapp"
+  description = "VPC attachment for the inapp-worker Lambda, so it can reach RDS"
+  vpc_id      = data.aws_vpc.default.id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
@@ -50,17 +79,30 @@ resource "aws_lambda_function" "worker" {
   # genuinely usage-based; add aws_lambda_provisioned_concurrency_config later, per-function, if
   # notification latency ever actually becomes a problem worth that trade-off.
 
+  dynamic "vpc_config" {
+    for_each = each.key == "inapp" ? [1] : []
+    content {
+      subnet_ids         = data.aws_subnets.default.ids
+      security_group_ids = [aws_security_group.lambda_inapp.id]
+    }
+  }
+
   environment {
     variables = each.key == "email" ? {
       SENDGRID_API_KEY    = var.sendgrid_api_key
       SENDGRID_FROM_EMAIL = var.sendgrid_from_email
-      APP_BASE_URL        = var.app_base_url
+      APP_BASE_URL        = local.beanstalk_app_base_url
       } : each.key == "push" ? {
       FCM_SERVICE_ACCOUNT_JSON = var.fcm_service_account_json
       } : {
-      DATABASE_URL      = var.database_url
-      DATABASE_USERNAME = var.database_username
-      DATABASE_PASSWORD = var.database_password
+      # Points at the new RDS instance directly (same source-of-truth resources beanstalk.tf's
+      # app env vars use) rather than the old var.database_url/username/password trio, which
+      # pointed at Render's now-superseded Postgres - this Lambda's DB target and the main app's
+      # DB target are the same database again, just both referencing aws_db_instance.main instead
+      # of one of them lagging behind on a stale variable.
+      DATABASE_URL      = "jdbc:postgresql://${aws_db_instance.main.endpoint}/bodhsea"
+      DATABASE_USERNAME = aws_db_instance.main.username
+      DATABASE_PASSWORD = random_password.db_master.result
     }
   }
 }

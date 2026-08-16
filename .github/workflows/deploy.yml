@@ -1,0 +1,90 @@
+# Auto-deploys the Spring Boot app to Elastic Beanstalk on every push to master - the AWS-native
+# replacement for the auto-deploy Render did for free on every push. This workflow does NOT touch
+# infrastructure (RDS, IAM, security groups, env vars, etc.) - that's still infra/terraform/, run
+# by hand. This only ever builds the app bundle and points the existing Beanstalk environment at
+# it, matching exactly what infra/terraform/package-beanstalk.sh + terraform apply used to do for
+# a routine code-only change, minus the "someone has to remember to run it" part.
+#
+# Skips itself on changes that are only infra/docs (paths-ignore below) - those don't need a new
+# app build, and re-running this workflow for them would just deploy byte-identical app code
+# under a new version label for no reason.
+#
+# Authenticates via OIDC (infra/terraform/github-actions.tf) - no AWS access keys stored in this
+# repo at all. The assumed role can only ever create app versions and update THIS ONE Beanstalk
+# environment; it cannot touch RDS, IAM, or any other AWS resource.
+
+name: Deploy to Elastic Beanstalk
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - "infra/terraform/**"
+      - "infra/lambdas/**"
+      - "**.md"
+
+permissions:
+  id-token: write # required for OIDC's AssumeRoleWithWebIdentity
+  contents: read
+
+concurrency:
+  # A second push while a deploy is still rolling out cancels the first, rather than the two
+  # racing to update the same environment out of order.
+  group: beanstalk-deploy
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ap-south-1
+  DEPLOY_ROLE_ARN: arn:aws:iam::201333676681:role/bodhsea-notifications-github-deploy
+  DEPLOY_BUCKET: bodhsea-notifications-lambda-artifacts-201333676681
+  APP_NAME: bodhsea-notifications-app
+  ENV_NAME: bodhsea-notifications-app-env
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build deploy bundle
+        # Same script Terraform's own manual deploy path uses (infra/terraform/beanstalk.tf) -
+        # one definition of "what actually ships", not a second copy of this logic living here.
+        run: infra/terraform/package-beanstalk.sh
+
+      - name: Deploy to Elastic Beanstalk
+        run: |
+          set -euo pipefail
+
+          ZIP="infra/terraform/build/beanstalk-app.zip"
+          MD5=$(md5sum "$ZIP" | cut -d' ' -f1)
+          KEY="beanstalk/bodhsea-app-${MD5}.zip"
+          # Content-hash key (same convention Terraform uses) so a re-deploy of identical code
+          # overwrites the same S3 object instead of piling up duplicates; the version LABEL
+          # below is what has to be unique per run, not the object key.
+          VERSION_LABEL="gha-${GITHUB_SHA::7}-${GITHUB_RUN_NUMBER}"
+
+          aws s3 cp "$ZIP" "s3://${DEPLOY_BUCKET}/${KEY}"
+
+          aws elasticbeanstalk create-application-version \
+            --application-name "$APP_NAME" \
+            --version-label "$VERSION_LABEL" \
+            --source-bundle "S3Bucket=${DEPLOY_BUCKET},S3Key=${KEY}"
+
+          aws elasticbeanstalk update-environment \
+            --environment-name "$ENV_NAME" \
+            --version-label "$VERSION_LABEL"
+
+          echo "Deployed $VERSION_LABEL - waiting for environment to finish rolling out..."
+          aws elasticbeanstalk wait environment-updated \
+            --environment-name "$ENV_NAME"
+
+          STATUS=$(aws elasticbeanstalk describe-environments \
+            --environment-names "$ENV_NAME" \
+            --query "Environments[0].[Status,Health]" --output text)
+          echo "Environment status: $STATUS"
