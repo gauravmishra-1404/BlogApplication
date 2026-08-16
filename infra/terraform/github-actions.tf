@@ -125,6 +125,23 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
       },
       {
         Effect = "Allow"
+        # Beanstalk suspends the environment's own Auto Scaling group's processes for the
+        # duration of a rolling deploy (stops the ASG from fighting the deployment by replacing
+        # instances mid-rollout on its own), then resumes them once done. A real deploy failed
+        # here with "not authorized to perform: autoscaling:SuspendProcesses" - the workflow
+        # itself still reported success (aws elasticbeanstalk wait environment-updated only waits
+        # for the environment to leave "Updating" status, not for the deploy to have actually
+        # succeeded), and the environment silently stayed on the old app version. AWS's own
+        # bundled policy grants "autoscaling:*" on this resource pattern; scoped down here to
+        # just the two actions this role's actual job (routine deploys) needs.
+        Action = [
+          "autoscaling:SuspendProcesses",
+          "autoscaling:ResumeProcesses"
+        ]
+        Resource = "arn:aws:autoscaling:${var.aws_region}:${data.aws_caller_identity.current.account_id}:autoScalingGroup:*:autoScalingGroupName/awseb-e-*"
+      },
+      {
+        Effect = "Allow"
         # Read-only Describe/Get/List/Estimate/Validate calls across the services Beanstalk
         # orchestrates under the hood (autoscaling, cloudformation, cloudwatch, ec2, elb, logs,
         # rds, ...) - copied verbatim from AWS's own AdministratorAccess-AWSElasticBeanstalk

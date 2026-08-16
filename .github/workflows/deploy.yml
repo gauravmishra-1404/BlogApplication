@@ -91,8 +91,23 @@ jobs:
           echo "Deployed $VERSION_LABEL - waiting for environment to finish rolling out..."
           aws elasticbeanstalk wait environment-updated \
             --environment-name "$ENV_NAME"
+          # IMPORTANT: this wait only blocks until the environment leaves "Updating" status - it
+          # does NOT mean the deploy succeeded. A failed rollout (e.g. a mid-deploy permissions
+          # error) still leaves the environment in a terminal "Ready" state, just still pointed
+          # at whatever version was live before - a real run did exactly this and the job's exit
+          # code was 0 even though nothing had actually deployed. The explicit VersionLabel check
+          # below is what actually catches that; wait alone is not a success signal.
 
-          STATUS=$(aws elasticbeanstalk describe-environments \
+          read -r LIVE_VERSION LIVE_HEALTH <<< "$(aws elasticbeanstalk describe-environments \
             --environment-names "$ENV_NAME" \
-            --query "Environments[0].[Status,Health]" --output text)
-          echo "Environment status: $STATUS"
+            --query "Environments[0].[VersionLabel,Health]" --output text)"
+          echo "Environment is now running version '$LIVE_VERSION', health: $LIVE_HEALTH"
+
+          if [ "$LIVE_VERSION" != "$VERSION_LABEL" ]; then
+            echo "::error::Deploy did not take effect - environment is running '$LIVE_VERSION', expected '$VERSION_LABEL'. Check environment events for the real failure (aws elasticbeanstalk describe-events)."
+            exit 1
+          fi
+
+          if [ "$LIVE_HEALTH" != "Green" ]; then
+            echo "::warning::Deployed successfully but environment health is '$LIVE_HEALTH', not Green - worth checking manually."
+          fi
