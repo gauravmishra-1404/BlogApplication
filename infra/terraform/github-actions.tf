@@ -77,22 +77,29 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
         # AWS's own account/region-level Beanstalk storage bucket (elasticbeanstalk-<region>-
         # <account>), auto-provisioned the first time anything uses Elastic Beanstalk in this
         # account - already exists here, but elasticbeanstalk:UpdateEnvironment unconditionally
-        # attempts s3:CreateBucket as an internal "ensure it exists" step regardless, and IAM
-        # evaluates that permission before AWS discovers the bucket's already there. A real
-        # UpdateEnvironment call failed with InsufficientPrivilegesException on exactly this
-        # until this statement was added - not a hypothetical, confirmed live.
+        # runs a whole sequence of idempotent "ensure this bucket is configured right" S3 calls
+        # regardless (CreateBucket, then bucket-ownership/public-access-block settings, ...), and
+        # IAM evaluates each one before AWS discovers there's nothing to actually change. Two real
+        # UpdateEnvironment failures (s3:CreateBucket, then s3:PutBucketOwnershipControls) came
+        # from exactly this, one action at a time - rather than keep whack-a-moling each one as it
+        # surfaces, this action list is copied verbatim from AWS's own current
+        # AdministratorAccess-AWSElasticBeanstalk managed policy's elasticbeanstalk-* bucket
+        # statement (pulled live via `aws iam get-policy-version`), just re-scoped to this one
+        # specific bucket ARN instead of AWS's own wildcard elasticbeanstalk-*.
         Action = [
           "s3:CreateBucket",
-          "s3:GetBucketPolicy",
-          "s3:PutBucketPolicy",
+          "s3:GetBucket*",
           "s3:ListBucket",
-          "s3:GetObject",
-          "s3:PutObject"
+          "s3:PutBucketPolicy",
+          "s3:PutBucketPublicAccessBlock",
+          "s3:PutBucketOwnershipControls"
         ]
-        Resource = [
-          "arn:aws:s3:::elasticbeanstalk-${var.aws_region}-${data.aws_caller_identity.current.account_id}",
-          "arn:aws:s3:::elasticbeanstalk-${var.aws_region}-${data.aws_caller_identity.current.account_id}/*"
-        ]
+        Resource = "arn:aws:s3:::elasticbeanstalk-${var.aws_region}-${data.aws_caller_identity.current.account_id}"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:Delete*", "s3:Get*", "s3:Put*"]
+        Resource = "arn:aws:s3:::elasticbeanstalk-${var.aws_region}-${data.aws_caller_identity.current.account_id}/*"
       },
       {
         Effect = "Allow"
