@@ -74,6 +74,28 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
       },
       {
         Effect = "Allow"
+        # AWS's own account/region-level Beanstalk storage bucket (elasticbeanstalk-<region>-
+        # <account>), auto-provisioned the first time anything uses Elastic Beanstalk in this
+        # account - already exists here, but elasticbeanstalk:UpdateEnvironment unconditionally
+        # attempts s3:CreateBucket as an internal "ensure it exists" step regardless, and IAM
+        # evaluates that permission before AWS discovers the bucket's already there. A real
+        # UpdateEnvironment call failed with InsufficientPrivilegesException on exactly this
+        # until this statement was added - not a hypothetical, confirmed live.
+        Action = [
+          "s3:CreateBucket",
+          "s3:GetBucketPolicy",
+          "s3:PutBucketPolicy",
+          "s3:ListBucket",
+          "s3:GetObject",
+          "s3:PutObject"
+        ]
+        Resource = [
+          "arn:aws:s3:::elasticbeanstalk-${var.aws_region}-${data.aws_caller_identity.current.account_id}",
+          "arn:aws:s3:::elasticbeanstalk-${var.aws_region}-${data.aws_caller_identity.current.account_id}/*"
+        ]
+      },
+      {
+        Effect = "Allow"
         Action = [
           "elasticbeanstalk:CreateApplicationVersion",
           "elasticbeanstalk:UpdateEnvironment",
