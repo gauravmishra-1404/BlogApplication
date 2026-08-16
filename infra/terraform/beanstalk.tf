@@ -17,11 +17,12 @@ locals {
   beanstalk_app_base_url = "http://${local.beanstalk_cname_prefix}.${var.aws_region}.elasticbeanstalk.com"
 
   # Same "Terraform uploads an already-built artifact, doesn't build it itself" convention
-  # lambda.tf already uses for the worker jars - run infra/terraform/package-beanstalk.sh
-  # (stages Dockerfile + pom.xml + mvnw + .mvn + src into a clean zip, nothing else - no .git,
-  # no target/, no infra/) before `terraform apply`. Beanstalk's own Docker platform runs the
-  # same multi-stage Maven build the Dockerfile already does, so this only ships source, not a
-  # pre-built jar.
+  # lambda.tf already uses for the worker jars - run infra/terraform/package-beanstalk.sh before
+  # `terraform apply`. It runs the Maven build itself (on whatever machine runs the script) and
+  # stages only a pre-built jar + a lean runtime-only Dockerfile.deploy - deliberately NOT the
+  # repo's own root Dockerfile's multi-stage approach (which compiles ON the target instance): a
+  # real deploy did that and overwhelmed the target t3.micro (1GB RAM) badly enough to make it
+  # stop responding entirely mid-build. See package-beanstalk.sh's own comment for the full story.
   beanstalk_bundle = "${path.module}/build/beanstalk-app.zip"
 }
 
