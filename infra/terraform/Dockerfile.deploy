@@ -1,0 +1,19 @@
+# Runtime-only half of the repo's own root Dockerfile - deliberately skips the builder stage
+# (maven:3.9-eclipse-temurin-21 running the actual `mvn package` compile) that lives there,
+# because that compile step is what overwhelmed the target t3.micro instance (1GB RAM) badly
+# enough to make it stop responding entirely during a real deploy - confirmed via
+# describe-instances-health showing "No data received from the instance" mid-build.
+#
+# package-beanstalk.sh now runs that same Maven build itself BEFORE staging this file, on
+# whatever machine is doing the deploy (a GitHub Actions runner with ~7GB RAM, or a developer's
+# own machine) - by the time this Dockerfile runs on the actual EC2 instance, there's nothing
+# left to compile, just a jar to copy in. Same base image/WORKDIR/entrypoint as the root
+# Dockerfile's runtime stage, so the deployed container is otherwise identical either way.
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+
+COPY app.jar app.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

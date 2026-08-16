@@ -46,6 +46,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up JDK 21
+        # package-beanstalk.sh now runs the actual Maven build itself, here on the runner - not
+        # on the target Beanstalk instance. A real deploy compiling on-instance (t3.micro, 1GB
+        # RAM) overwhelmed it badly enough that its health agent stopped responding mid-build;
+        # this runner has ~7GB RAM and exists for exactly this kind of work.
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
