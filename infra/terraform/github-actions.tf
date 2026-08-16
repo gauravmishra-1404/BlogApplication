@@ -103,6 +103,54 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
       },
       {
         Effect = "Allow"
+        # elasticbeanstalk:UpdateEnvironment on an EXISTING environment doesn't touch EC2/ASG/ELB
+        # directly - it drives them all through the CloudFormation stack Beanstalk itself creates
+        # per environment (awseb-e-<env-id>-stack), reading/updating that stack's template as part
+        # of rolling out a new app version. A real UpdateEnvironment call failed on GetTemplate
+        # here. CreateStack/DeleteStack deliberately excluded even though AWS's own bundled policy
+        # (AdministratorAccess-AWSElasticBeanstalk, pulled live) includes them - this role only
+        # ever deploys a new version to an environment that already exists, never creates or tears
+        # one down, so granting those two would be privilege this role has no legitimate use for.
+        Action = [
+          "cloudformation:CancelUpdateStack",
+          "cloudformation:ContinueUpdateRollback",
+          "cloudformation:GetTemplate",
+          "cloudformation:ListStackResources",
+          "cloudformation:SignalResource",
+          "cloudformation:TagResource",
+          "cloudformation:UntagResource",
+          "cloudformation:UpdateStack"
+        ]
+        Resource = "arn:aws:cloudformation:${var.aws_region}:${data.aws_caller_identity.current.account_id}:stack/awseb-*"
+      },
+      {
+        Effect = "Allow"
+        # Read-only Describe/Get/List/Estimate/Validate calls across the services Beanstalk
+        # orchestrates under the hood (autoscaling, cloudformation, cloudwatch, ec2, elb, logs,
+        # rds, ...) - copied verbatim from AWS's own AdministratorAccess-AWSElasticBeanstalk
+        # policy's first statement. Granted account-wide (Resource: *) same as AWS's own policy
+        # does, because most of these Describe/List-style actions don't support resource-level
+        # ARN scoping in the first place - but every action here is purely informational (no
+        # Create/Put/Delete/Update), so the blast radius is "can read metadata", not "can change
+        # anything". Added proactively rather than one-Describe-call-at-a-time, after 3 rounds of
+        # exactly that for CreateBucket/PutBucketOwnershipControls/GetTemplate already.
+        Action = [
+          "autoscaling:Describe*",
+          "cloudformation:Describe*",
+          "cloudformation:Get*",
+          "cloudformation:List*",
+          "cloudwatch:DescribeAlarms",
+          "cloudwatch:GetMetricStatistics",
+          "cloudwatch:ListMetrics",
+          "ec2:Describe*",
+          "elasticloadbalancing:Describe*",
+          "logs:Describe*",
+          "rds:Describe*"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
         Action = [
           "elasticbeanstalk:CreateApplicationVersion",
           "elasticbeanstalk:UpdateEnvironment",
