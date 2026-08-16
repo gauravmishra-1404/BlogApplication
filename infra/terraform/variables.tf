@@ -51,23 +51,3 @@ variable "fcm_service_account_json" {
   sensitive   = true
   default     = ""
 }
-
-# Split into 3, mirroring exactly how the main app already receives them (DATASOURCE_URL /
-# DATASOURCE_USERNAME / DATASOURCE_PASSWORD in application.properties) - copy the SAME 3 values
-# straight out of Render's environment settings rather than reassembling them into some other
-# combined-URL format. url is the jdbc:postgresql://host:port/dbname form (no embedded
-# credentials).
-variable "database_url" {
-  type      = string
-  sensitive = true
-}
-
-variable "database_username" {
-  type      = string
-  sensitive = true
-}
-
-variable "database_password" {
-  type      = string
-  sensitive = true
-}

@@ -45,7 +45,10 @@ resource "aws_s3_bucket_cors_configuration" "post_media" {
 
   cors_rule {
     allowed_methods = ["PUT"]
-    allowed_origins = [var.app_base_url, "http://localhost:8080"]
+    # Beanstalk's origin (the new live app) plus var.app_base_url (Render's - kept until Render's
+    # web service is actually decommissioned, so an upload from whichever one is currently
+    # fronting real traffic isn't CORS-blocked mid-transition) plus localhost for local testing.
+    allowed_origins = [local.beanstalk_app_base_url, var.app_base_url, "http://localhost:8080"]
     allowed_headers = ["*"]
     max_age_seconds = 3000
   }

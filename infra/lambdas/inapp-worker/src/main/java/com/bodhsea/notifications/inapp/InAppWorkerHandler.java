@@ -47,8 +47,9 @@ public class InAppWorkerHandler implements RequestHandler<SQSEvent, SQSBatchResp
         Properties props = new Properties();
         props.setProperty("user", DB_USERNAME);
         props.setProperty("password", DB_PASSWORD);
-        // Render's managed Postgres requires TLS - without this, connecting from outside
-        // Render's own network (which is exactly what this Lambda is doing) gets rejected.
+        // RDS Postgres accepts TLS by default (AWS-issued cert, no extra setup needed) - keeping
+        // this required rather than optional costs nothing and means a future config slip
+        // (e.g. rds.force_ssl getting flipped on) can't silently start rejecting this connection.
         props.setProperty("sslmode", "require");
 
         try (Connection connection = DriverManager.getConnection(DB_URL, props)) {

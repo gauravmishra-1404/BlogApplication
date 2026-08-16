@@ -69,6 +69,16 @@ resource "aws_iam_role_policy_attachment" "worker_logs" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+# inapp-worker only - it's the one channel VPC-attached (lambda.tf, to reach RDS), and a
+# VPC-attached Lambda needs ec2:CreateNetworkInterface/DescribeNetworkInterfaces/
+# DeleteNetworkInterface to manage its own ENI in that VPC, which AWSLambdaBasicExecutionRole
+# above doesn't grant. This managed policy is a superset of that one (same log permissions plus
+# the ENI ones) - both attached is redundant on the logs half, not conflicting.
+resource "aws_iam_role_policy_attachment" "worker_vpc_access" {
+  role       = aws_iam_role.worker["inapp"].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
 resource "aws_iam_role_policy" "worker_sqs" {
   for_each = toset(local.channels)
 
