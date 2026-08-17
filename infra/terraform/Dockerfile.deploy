@@ -16,4 +16,13 @@ COPY app.jar app.jar
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+# Explicit heap cap, not left to the JVM's own default ergonomics - this box is always exactly a
+# t3.micro (1GB total RAM), a fixed and known size, so an absolute -Xmx is clearer here than a
+# percentage-based one. Without this, the JVM's default (a quarter of whatever RAM it detects,
+# and it may see the HOST's full 1GB rather than any container limit, since Beanstalk's
+# single-container Docker platform doesn't set one) leaves too little margin once the OS, the
+# Docker daemon, and the EB/SSM agents are accounted for - confirmed live via
+# describe-instances-health reporting "94% of memory is in use" under exactly this default.
+# -Xmx400m leaves ~600MB for JVM non-heap overhead (metaspace, thread stacks, direct buffers) plus
+# the OS/daemons; -Xms128m avoids reserving the full max up front on a box this small.
+ENTRYPOINT ["java", "-Xms128m", "-Xmx400m", "-jar", "/app/app.jar"]

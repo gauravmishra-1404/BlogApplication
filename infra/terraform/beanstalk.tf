@@ -125,6 +125,16 @@ resource "aws_iam_role_policy_attachment" "beanstalk_ec2_webtier" {
   policy_arn = "arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier"
 }
 
+# Amazon Linux 2023 ships the SSM agent already installed - this policy is the only missing piece
+# for `aws ssm start-session` shell access. This is the "SSM Session Manager if shell access is
+# ever needed" alternative referenced in the app_instance security group's own comment above (no
+# inbound SSH port needed either way - Session Manager tunnels over the agent's own outbound
+# connection to the SSM service, nothing to open in the security group).
+resource "aws_iam_role_policy_attachment" "beanstalk_ec2_ssm" {
+  role       = aws_iam_role.beanstalk_ec2.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 # Same two scoped permissions the bodhsea-notification-service IAM user already has (iam.tf's
 # app_send_only, media.tf's app_media_upload) - given directly to the EC2 instance's OWN role
 # instead. The app's AWS SDK clients (SnsNotificationPublisher, S3MediaUploadService) both build
