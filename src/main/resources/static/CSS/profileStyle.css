@@ -307,6 +307,21 @@
 #avatarFileInput,
 #coverFileInput { display: none; }
 
+/* Upload-in-progress/error status line under either dropzone (js/profileImageUpload.js) - one
+   shared rule for both .avatar-panel and .cover-panel rather than duplicating it the way
+   .avatar-dropzone/.cover-dropzone themselves are, since this one has no visual differences
+   between the two surfaces worth keeping separate. */
+.dz-status {
+    margin: 8px 0 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+.dz-status.dz-status-error {
+    color: var(--color-danger);
+}
+
 .avatar-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -778,6 +793,70 @@
 
 .profile-stats .stat.clickable:hover {
     background: var(--color-surface-tint);
+}
+
+/* "Add a profile photo" nudge (js/photoNudge.js) - only ever rendered on the owner's own profile
+   when avatarType isn't "photo" yet. flex-wrap so a long translated string or a narrow viewport
+   wraps the text onto its own line above the buttons instead of overflowing - checked at 375px,
+   not just a shrunk desktop window, per this project's own responsive-design policy. */
+.photo-nudge {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+    padding: 10px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-tint);
+}
+
+.photo-nudge > svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--color-primary);
+}
+
+.photo-nudge-text {
+    flex: 1 1 200px;
+    font-size: var(--text-sm);
+    color: var(--color-text);
+}
+
+.photo-nudge-cta {
+    flex: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 6px 14px;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: #fff;
+    background: var(--color-primary);
+    cursor: pointer;
+}
+
+.photo-nudge-cta:hover {
+    background: var(--color-primary-hover);
+}
+
+.photo-nudge-dismiss {
+    flex: none;
+    display: flex;
+    border: none;
+    background: none;
+    padding: 4px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+}
+
+.photo-nudge-dismiss svg {
+    width: 16px;
+    height: 16px;
+}
+
+.photo-nudge-dismiss:hover {
+    color: var(--color-text);
 }
 
 .reserved-tag {

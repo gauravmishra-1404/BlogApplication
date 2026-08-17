@@ -3,6 +3,10 @@
 // the circular avatar. The first scene is pre-selected in the markup itself (coverPresetInput's
 // th:value + coverMode defaulting to "preset"), so an untouched signup still submits a valid
 // cover rather than none at all.
+//
+// Presets and Color only - no Photo tab here, same reasoning registerAvatarPicker.js documents:
+// no session yet to presign an S3 upload against. A real cover photo is offered right after,
+// from the profile page.
 document.addEventListener('DOMContentLoaded', function () {
     var trigger = document.getElementById('identityBanner');
     var backdrop = document.getElementById('coverModalBackdrop');
@@ -54,18 +58,6 @@ document.addEventListener('DOMContentLoaded', function () {
             tab.classList.add('active');
             backdrop.querySelector('.avatar-panel[data-panel="' + tab.dataset.panel + '"]').classList.add('active');
         });
-    });
-
-    // ---- Photo ----
-    document.getElementById('coverFileInput').addEventListener('change', function (e) {
-        var file = e.target.files[0];
-        if (!file) return;
-        modeInput.value = 'photo';
-        var reader = new FileReader();
-        reader.onload = function (ev) {
-            setPreview('<img src="' + ev.target.result + '" alt="">', 'none');
-        };
-        reader.readAsDataURL(file);
     });
 
     // ---- Scene presets ----

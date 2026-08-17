@@ -54,10 +54,12 @@ resource "aws_s3_bucket_cors_configuration" "post_media" {
   }
 }
 
-# Anyone can GET anything under posts/* - deliberate, see the file-level comment above. Nothing
-# else in the bucket is covered by this statement, and PutObject is still locked down to the
-# app's own IAM identity only (aws_iam_group_policy.app_media_upload below) - this policy only
-# ever grants read.
+# Anyone can GET anything under posts/* or profiles/* - deliberate, see the file-level comment
+# above (post media is public by definition; same reasoning applies to avatars/covers, visible
+# on every profile/post byline regardless of who's viewing). Nothing else in the bucket is
+# covered by this statement, and PutObject is still locked down to the app's own IAM identity
+# only (aws_iam_group_policy.app_media_upload / beanstalk.tf's beanstalk_ec2_media_upload below)
+# - this policy only ever grants read.
 resource "aws_s3_bucket_policy" "post_media_public_read" {
   bucket = aws_s3_bucket.post_media.id
 
@@ -68,7 +70,10 @@ resource "aws_s3_bucket_policy" "post_media_public_read" {
       Effect    = "Allow"
       Principal = "*"
       Action    = "s3:GetObject"
-      Resource  = "${aws_s3_bucket.post_media.arn}/posts/*"
+      Resource = [
+        "${aws_s3_bucket.post_media.arn}/posts/*",
+        "${aws_s3_bucket.post_media.arn}/profiles/*",
+      ]
     }]
   })
 
@@ -80,8 +85,8 @@ resource "aws_s3_bucket_policy" "post_media_public_read" {
 # a second scoped policy attached to the same group rather than a whole separate IAM user/second
 # credential pair to manage for no real benefit. Presigning a PUT URL is a local signing
 # operation (no network call), but the resulting URL's authorization is based on THIS identity's
-# own permissions - it needs real s3:PutObject on the prefix posts/* to generate a URL that
-# actually works when the browser uses it.
+# own permissions - it needs real s3:PutObject on posts/* (post media) and profiles/* (avatar/
+# cover images) to generate a URL that actually works when the browser uses it.
 resource "aws_iam_group_policy" "app_media_upload" {
   name  = "${var.project}-media-upload"
   group = aws_iam_group.app_group.id
@@ -89,9 +94,12 @@ resource "aws_iam_group_policy" "app_media_upload" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
-      Action   = ["s3:PutObject"]
-      Resource = "${aws_s3_bucket.post_media.arn}/posts/*"
+      Effect = "Allow"
+      Action = ["s3:PutObject"]
+      Resource = [
+        "${aws_s3_bucket.post_media.arn}/posts/*",
+        "${aws_s3_bucket.post_media.arn}/profiles/*",
+      ]
     }]
   })
 }

@@ -19,8 +19,10 @@
     <script src="/js/navProfileMenu.js" defer></script>
     <script src="/js/profileTabs.js" defer></script>
     <script src="/js/profileEditMenu.js" defer></script>
+    <script src="/js/profileImageUpload.js" defer></script>
     <script src="/js/avatarEditor.js" defer></script>
     <script src="/js/coverEditor.js" defer></script>
+    <script src="/js/photoNudge.js" defer></script>
     <script src="/js/personalInfoModal.js" defer></script>
     <script src="/js/modalScrollLock.js" defer></script>
     <script src="/js/commentThread.js" defer></script>
@@ -108,6 +110,22 @@
                     <b th:id="${isOwnProfile} ? 'followingCountValue' : null" th:text="${followingCount}">0</b> Following
                 </span>
             </div>
+
+            <!-- Registration only offers presets/color (see register.html) - a real photo upload
+                 needs a logged-in session to presign against, so it's offered here instead, the
+                 first time this profile's owner sees their own page with no uploaded photo set.
+                 Dismissible and never reappears once dismissed (js/photoNudge.js, localStorage) -
+                 the gradient/preset avatar is a completely fine permanent choice, not a defect to
+                 keep nagging about. -->
+            <div class="photo-nudge" id="photoNudge" th:if="${isOwnProfile and profileUser.avatarType != 'photo'}"
+                 th:attr="data-dismiss-key='photoNudgeDismissed:' + ${profileUser.username}" hidden>
+                <svg class="icon" aria-hidden="true"><use href="#i-image"/></svg>
+                <span class="photo-nudge-text">Add a profile photo so people recognize you</span>
+                <button type="button" class="photo-nudge-cta" id="photoNudgeOpen">Add photo</button>
+                <button type="button" class="photo-nudge-dismiss" id="photoNudgeDismiss" aria-label="Dismiss">
+                    <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+                </button>
+            </div>
         </div>
 
         <div class="tab-bar">
@@ -188,11 +206,16 @@
             <button type="button" class="avatar-tab" data-panel="color">Color</button>
         </div>
 
-        <form id="avatarForm" th:action="@{/profile/avatar}" th:method="post" enctype="multipart/form-data">
+        <form id="avatarForm" th:action="@{/profile/avatar}" th:method="post">
             <input type="hidden" name="mode" id="avatarMode" value="photo">
             <input type="hidden" name="preset" id="avatarPresetInput" value="">
             <input type="hidden" name="swatchIndex" id="avatarSwatchInput" value="">
             <input type="hidden" name="hue" id="avatarHueInput" value="">
+            <!-- Set by js/profileImageUpload.js once the file picked below has already finished
+                 uploading straight to S3 - by the time this form submits, avatarFileInput's own
+                 raw bytes have never touched this app's server at all. Submit is disabled while
+                 an upload is still in flight (see the same file). -->
+            <input type="hidden" name="photoUrl" id="avatarPhotoUrlInput" value="">
 
             <div class="avatar-panel active" data-panel="photo">
                 <label class="avatar-dropzone" for="avatarFileInput">
@@ -200,9 +223,10 @@
                         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/>
                     </svg>
                     <span class="dz-title">Upload a photo</span>
-                    <span class="dz-desc">PNG or JPG, any size &mdash; cropped to a circle</span>
+                    <span class="dz-desc">PNG or JPG, up to 2MB &mdash; cropped to a circle</span>
                 </label>
-                <input type="file" id="avatarFileInput" name="avatar" accept="image/*">
+                <input type="file" id="avatarFileInput" accept="image/*">
+                <p class="dz-status" id="avatarUploadStatus" hidden></p>
             </div>
 
             <div class="avatar-panel" data-panel="presets">
@@ -272,11 +296,13 @@
             <button type="button" class="cover-tab" data-panel="c-color">Color</button>
         </div>
 
-        <form id="coverForm" th:action="@{/profile/cover}" th:method="post" enctype="multipart/form-data">
+        <form id="coverForm" th:action="@{/profile/cover}" th:method="post">
             <input type="hidden" name="mode" id="coverMode" value="photo">
             <input type="hidden" name="preset" id="coverPresetInput" value="">
             <input type="hidden" name="swatchIndex" id="coverSwatchInput" value="">
             <input type="hidden" name="hue" id="coverHueInput" value="">
+            <!-- Same already-uploaded-URL handoff as avatarPhotoUrlInput above. -->
+            <input type="hidden" name="photoUrl" id="coverPhotoUrlInput" value="">
 
             <div class="cover-panel active" data-panel="c-photo">
                 <label class="cover-dropzone" for="coverFileInput">
@@ -284,9 +310,10 @@
                         <path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
                     </svg>
                     <span class="dz-title">Upload a cover image</span>
-                    <span class="dz-desc">Wide images work best (3:1) &mdash; cropped to fit</span>
+                    <span class="dz-desc">Wide images work best (3:1), up to 2MB &mdash; cropped to fit</span>
                 </label>
-                <input type="file" id="coverFileInput" name="cover" accept="image/*">
+                <input type="file" id="coverFileInput" accept="image/*">
+                <p class="dz-status" id="coverUploadStatus" hidden></p>
             </div>
 
             <div class="cover-panel" data-panel="c-presets">

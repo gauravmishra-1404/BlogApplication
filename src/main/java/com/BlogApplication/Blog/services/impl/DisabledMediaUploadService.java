@@ -23,4 +23,9 @@ public class DisabledMediaUploadService implements MediaUploadService {
     public PresignedUpload presign(String contentType, int ownerId) {
         throw new MediaUploadUnavailableException("Photo/video upload isn't available on this environment yet.");
     }
+
+    @Override
+    public PresignedUpload presignProfileImage(String contentType, int ownerId, String kind) {
+        throw new MediaUploadUnavailableException("Photo upload isn't available on this environment yet.");
+    }
 }

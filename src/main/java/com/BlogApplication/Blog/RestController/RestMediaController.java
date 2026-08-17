@@ -47,4 +47,25 @@ public class RestMediaController {
             return ResponseEntity.status(503).build();
         }
     }
+
+    // Same mechanism as /presign, called from the profile page's avatar/cover editors
+    // (js/profileImageUpload.js) instead of composeModal.js - never from register.html, which
+    // offers presets/color only (no upload) since there's no session yet to authenticate this
+    // call with. kind is "avatar" or "cover", validated in S3MediaUploadService.
+    @PostMapping("/presign-profile-image")
+    public ResponseEntity<PresignedUpload> presignProfileImage(@RequestParam String contentType,
+                                                                 @RequestParam String kind,
+                                                                 Authentication authentication) {
+        User user = userRepo.findByEmail(authentication.getName()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(401).build();
+        }
+        try {
+            return ResponseEntity.ok(mediaUploadService.presignProfileImage(contentType, user.getId(), kind));
+        } catch (UnsupportedMediaTypeException | IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (MediaUploadUnavailableException e) {
+            return ResponseEntity.status(503).build();
+        }
+    }
 }
