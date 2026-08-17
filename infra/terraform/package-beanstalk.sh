@@ -34,6 +34,8 @@ mkdir -p "$STAGE_DIR"
 
 cp "$SCRIPT_DIR/Dockerfile.deploy" "$STAGE_DIR/Dockerfile"
 cp "$JAR_PATH" "$STAGE_DIR/app.jar"
+mkdir -p "$STAGE_DIR/.ebextensions"
+cp "$SCRIPT_DIR/ebextensions/"*.config "$STAGE_DIR/.ebextensions/"
 
 rm -f "$BUILD_DIR/beanstalk-app.zip"
 (cd "$STAGE_DIR" && zip -q -r "$BUILD_DIR/beanstalk-app.zip" .)
