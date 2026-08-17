@@ -11,13 +11,10 @@ import com.BlogApplication.Blog.repositories.CommentRepo;
 import com.BlogApplication.Blog.repositories.FollowRepo;
 import com.BlogApplication.Blog.repositories.PostRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
-import com.BlogApplication.Blog.services.ImageStorageService;
 import com.BlogApplication.Blog.services.UserService;
 import com.BlogApplication.Blog.util.AvatarPresets;
 import com.BlogApplication.Blog.util.CoverPresets;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -26,10 +23,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -37,9 +32,6 @@ import java.util.Set;
 
 @Controller
 public class ProfileController {
-
-    private static final Logger log = LoggerFactory.getLogger(ProfileController.class);
-    private static final long MAX_AVATAR_BYTES = 2L * 1024 * 1024; // 2MB - matches registration's limit
 
     @Autowired
     private UserRepo userRepo;
@@ -49,9 +41,6 @@ public class ProfileController {
 
     @Autowired
     private CommentRepo commentRepo;
-
-    @Autowired
-    private ImageStorageService imageStorageService;
 
     @Autowired
     private FollowRepo followRepo;
@@ -158,7 +147,7 @@ public class ProfileController {
     // key/index/hue, matching the interactive mockup the user approved.
     @PostMapping("/profile/avatar")
     public String updateAvatar(@RequestParam String mode,
-                                @RequestParam(value = "avatar", required = false) MultipartFile avatar,
+                                @RequestParam(value = "photoUrl", required = false) String photoUrl,
                                 @RequestParam(value = "preset", required = false) String preset,
                                 @RequestParam(value = "swatchIndex", required = false) Integer swatchIndex,
                                 @RequestParam(value = "hue", required = false) Integer hue,
@@ -172,12 +161,15 @@ public class ProfileController {
         }
 
         switch (mode) {
+            // photoUrl is already-uploaded (js/profileImageUpload.js presigned it straight to S3
+            // before this form ever submitted, see RestMediaController.presignProfileImage) -
+            // this endpoint just records the URL, same trust model PostController.publishPost
+            // already has for post media's own client-submitted URLs.
             case "photo" -> {
-                String url = storeImage(avatar, "avatar-" + user.getEmail());
-                if (url == null) {
+                if (photoUrl == null || photoUrl.isBlank()) {
                     return "redirect:/profile/" + user.getUsername();
                 }
-                user.setProfilePic(url);
+                user.setProfilePic(photoUrl);
                 user.setAvatarType("photo");
             }
             case "preset" -> {
@@ -211,7 +203,7 @@ public class ProfileController {
     // AvatarPresets.resolveGradient - the color-mixing math is identical for both surfaces.
     @PostMapping("/profile/cover")
     public String updateCover(@RequestParam String mode,
-                               @RequestParam(value = "cover", required = false) MultipartFile cover,
+                               @RequestParam(value = "photoUrl", required = false) String photoUrl,
                                @RequestParam(value = "preset", required = false) String preset,
                                @RequestParam(value = "swatchIndex", required = false) Integer swatchIndex,
                                @RequestParam(value = "hue", required = false) Integer hue,
@@ -225,12 +217,12 @@ public class ProfileController {
         }
 
         switch (mode) {
+            // Same already-uploaded-URL trust model as updateAvatar above.
             case "photo" -> {
-                String url = storeImage(cover, "cover-" + user.getEmail());
-                if (url == null) {
+                if (photoUrl == null || photoUrl.isBlank()) {
                     return "redirect:/profile/" + user.getUsername();
                 }
-                user.setCoverImage(url);
+                user.setCoverImage(photoUrl);
                 user.setCoverType("photo");
             }
             case "preset" -> {
@@ -341,29 +333,5 @@ public class ProfileController {
             return null;
         }
         return userRepo.findByEmail(authentication.getName()).orElse(null);
-    }
-
-    // Shared by both /profile/avatar and /profile/cover - an oversized file, a non-image
-    // upload, or a storage-provider failure just means "keep whatever avatar/cover was already
-    // set" (logged, never a hard error), the same tolerance registration's upload already has.
-    private String storeImage(MultipartFile file, String keyHint) {
-        if (file == null || file.isEmpty()) {
-            return null;
-        }
-        if (file.getSize() > MAX_AVATAR_BYTES) {
-            log.warn("Skipped image upload for {}: file exceeds {} bytes", keyHint, MAX_AVATAR_BYTES);
-            return null;
-        }
-        String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            log.warn("Skipped image upload for {}: not an image ({})", keyHint, contentType);
-            return null;
-        }
-        try {
-            return imageStorageService.store(file, keyHint);
-        } catch (IOException e) {
-            log.warn("Image upload failed for {}", keyHint, e);
-            return null;
-        }
     }
 }

@@ -165,9 +165,12 @@ resource "aws_iam_role_policy" "beanstalk_ec2_media_upload" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
-      Action   = ["s3:PutObject"]
-      Resource = "${aws_s3_bucket.post_media.arn}/posts/*"
+      Effect = "Allow"
+      Action = ["s3:PutObject"]
+      Resource = [
+        "${aws_s3_bucket.post_media.arn}/posts/*",
+        "${aws_s3_bucket.post_media.arn}/profiles/*", # avatar/cover uploads - see media.tf
+      ]
     }]
   })
 }

@@ -15,6 +15,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 // Active once AWS media storage is configured (aws.media.enabled=true) - see
@@ -40,6 +41,19 @@ public class S3MediaUploadService implements MediaUploadService {
             "video/webm", new String[]{PostMedia.VIDEO, "webm"},
             "video/quicktime", new String[]{PostMedia.VIDEO, "mov"}
     );
+
+    // contentType -> extension only, no PostMedia type needed here - profile images are always
+    // images, never video. A separate, narrower map from ALLOWED_CONTENT_TYPES above rather than
+    // filtering it at call time, so this list can drift independently (e.g. if post media ever
+    // adds a format that isn't a sane avatar/cover choice, or vice versa).
+    private static final Map<String, String> ALLOWED_IMAGE_CONTENT_TYPES = Map.of(
+            "image/jpeg", "jpg",
+            "image/png", "png",
+            "image/webp", "webp",
+            "image/gif", "gif"
+    );
+
+    private static final Set<String> ALLOWED_PROFILE_IMAGE_KINDS = Set.of("avatar", "cover");
 
     // Presigned PUT URLs (unlike a presigned POST with a policy document) can't carry an
     // enforced size condition - S3 will accept whatever the signed PUT request sends up to this
@@ -103,6 +117,42 @@ public class S3MediaUploadService implements MediaUploadService {
                 .uploadUrl(presigned.url().toString())
                 .publicUrl("https://" + cdnDomain + "/" + key)
                 .mediaType(mediaType)
+                .build();
+    }
+
+    @Override
+    public PresignedUpload presignProfileImage(String contentType, int ownerId, String kind) {
+        if (!ALLOWED_PROFILE_IMAGE_KINDS.contains(kind)) {
+            throw new IllegalArgumentException("Unsupported profile image kind: " + kind);
+        }
+        String extension = ALLOWED_IMAGE_CONTENT_TYPES.get(contentType);
+        if (extension == null) {
+            throw new UnsupportedMediaTypeException("Unsupported file type: " + contentType);
+        }
+
+        // profiles/{ownerId}/{avatar|cover}/{uuid}.{ext} - a sibling prefix to posts/{ownerId}/...,
+        // never overlapping with it (separate public-read statement, separate IAM resource in
+        // media.tf/beanstalk.tf) and with avatar/cover keyed apart from each other so replacing
+        // one can never accidentally clobber the other.
+        String key = "profiles/" + ownerId + "/" + kind + "/" + UUID.randomUUID() + "." + extension;
+
+        PutObjectRequest objectRequest = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .contentType(contentType)
+                .build();
+
+        PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
+                .signatureDuration(URL_EXPIRY)
+                .putObjectRequest(objectRequest)
+                .build();
+
+        PresignedPutObjectRequest presigned = presigner().presignPutObject(presignRequest);
+
+        return PresignedUpload.builder()
+                .uploadUrl(presigned.url().toString())
+                .publicUrl("https://" + cdnDomain + "/" + key)
+                .mediaType(PostMedia.IMAGE)
                 .build();
     }
 }

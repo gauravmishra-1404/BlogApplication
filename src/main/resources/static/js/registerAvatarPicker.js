@@ -1,8 +1,15 @@
 // Drives the "Customize your avatar" modal on the register page. Unlike the profile page's
 // version, there's no account yet to POST to - every selection just updates 4 hidden inputs
-// (avatarMode/avatarPreset/avatarSwatchIndex/avatarHue) plus the visible avatar-input file, and
-// rides along with the rest of the registration form on submit. UserServiceImpl.applyAvatar
-// resolves the same way ProfileController.updateAvatar does.
+// (avatarMode/avatarPreset/avatarSwatchIndex/avatarHue) and rides along with the rest of the
+// registration form on submit. UserServiceImpl.applyAvatar resolves the same way
+// ProfileController.updateAvatar does.
+//
+// Presets and Color only - no Photo tab here. Presigning an S3 upload needs a real logged-in
+// session to scope the key to a userId, and there is no account yet at this point in the flow;
+// a real photo upload is offered right after, from the profile page, through
+// js/profileImageUpload.js instead. The register form's own hidden inputs already default to
+// "preset" + the first gradient (see register.html), so an untouched signup still gets a real,
+// intentional-looking avatar rather than a blank one.
 document.addEventListener('DOMContentLoaded', function () {
     var trigger = document.getElementById('avatar-circle');
     var backdrop = document.getElementById('avatarModalBackdrop');
@@ -66,18 +73,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ---- Photo ----
-    document.getElementById('avatarFileInput').addEventListener('change', function (e) {
-        var file = e.target.files[0];
-        if (!file) return;
-        modeInput.value = 'photo';
-        var reader = new FileReader();
-        reader.onload = function (ev) {
-            setPreview('<img src="' + ev.target.result + '" alt="">', 'none');
-        };
-        reader.readAsDataURL(file);
-    });
-
     // ---- Presets ----
     backdrop.querySelectorAll('.avatar-preset-option').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -115,4 +110,17 @@ document.addEventListener('DOMContentLoaded', function () {
         hueInput.value = h;
         setPreview('<span>' + currentInitial() + '</span>', gradient);
     });
+
+    // ---- Default preview ----
+    // The hidden inputs already default to "preset" + the first gradient (register.html), and
+    // that same button already renders .selected server-side - this just makes the visible
+    // trigger circle (and the still-closed modal's own preview) match that on first paint,
+    // instead of showing the plain person-icon placeholder until the modal is opened once.
+    var defaultPreset = backdrop.querySelector('.avatar-preset-option.selected');
+    if (defaultPreset) {
+        setPreview(
+            '<svg class="icon avatar-icon" aria-hidden="true"><use href="#i-av-' + defaultPreset.dataset.key + '"></use></svg>',
+            defaultPreset.dataset.gradient
+        );
+    }
 });

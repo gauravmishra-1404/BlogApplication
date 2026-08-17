@@ -83,17 +83,21 @@
                 </div>
             </div>
 
-            <input type="hidden" name="avatarMode" id="avatarMode" value="">
-            <input type="hidden" name="avatarPreset" id="avatarPresetInput" value="">
+            <!-- Photo upload isn't offered at signup - presigning needs a real logged-in session
+                 to scope the S3 key to a userId, and there is no account yet at this point in the
+                 flow (see RestMediaController.presignProfileImage). Presets/color need no upload
+                 at all, so both default to a real, pre-selected look (not empty) the moment the
+                 form loads - a real photo becomes available right after, from the profile page,
+                 through the exact same upload path any later edit uses. -->
+            <input type="hidden" name="avatarMode" id="avatarMode" value="preset">
+            <input type="hidden" name="avatarPreset" id="avatarPresetInput" th:value="${avatarGradients[0].presetKey()}">
             <input type="hidden" name="avatarSwatchIndex" id="avatarSwatchInput" value="">
             <input type="hidden" name="avatarHue" id="avatarHueInput" value="">
-            <input type="file" id="avatarFileInput" name="avatar" accept="image/*" style="display:none">
 
             <input type="hidden" name="coverMode" id="coverMode" value="preset">
             <input type="hidden" name="coverPreset" id="coverPresetInput" th:value="${coverScenes[0].key()}">
             <input type="hidden" name="coverSwatchIndex" id="coverSwatchInput" value="">
             <input type="hidden" name="coverHue" id="coverHueInput" value="">
-            <input type="file" id="coverFileInput" name="cover" accept="image/*" style="display:none">
 
             <div class="auth-field">
                 <label for="name">Name</label>
@@ -140,7 +144,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
         <h2 id="avatarModalTitle">Customize your avatar</h2>
-        <p class="modal-sub">Upload a photo, pick a Bodh Sea icon, or choose your own colors</p>
+        <p class="modal-sub">Pick a Bodh Sea icon or choose your own colors &mdash; upload a real photo any time after signing up</p>
 
         <div class="avatar-modal-preview">
             <div class="avatar-circle-preview" id="avatarModalPreview">
@@ -151,25 +155,15 @@
         </div>
 
         <div class="avatar-tabs">
-            <button type="button" class="avatar-tab active" data-panel="photo">Photo</button>
-            <button type="button" class="avatar-tab" data-panel="presets">Presets</button>
+            <button type="button" class="avatar-tab active" data-panel="presets">Presets</button>
             <button type="button" class="avatar-tab" data-panel="color">Color</button>
         </div>
 
-        <div class="avatar-panel active" data-panel="photo">
-            <label class="avatar-dropzone" for="avatarFileInput">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
-                </svg>
-                <span class="dz-title">Upload a photo</span>
-                <span class="dz-desc">PNG or JPG, any size &mdash; cropped to a circle</span>
-            </label>
-        </div>
-
-        <div class="avatar-panel" data-panel="presets">
+        <div class="avatar-panel active" data-panel="presets">
             <div class="avatar-grid" id="avatarPresetGrid">
-                <button type="button" class="avatar-preset-option" th:each="g : ${avatarGradients}"
-                        th:attr="data-key=${g.presetKey()},data-gradient=${g.css()}">
+                <button type="button" class="avatar-preset-option" th:each="g,iter : ${avatarGradients}"
+                        th:attr="data-key=${g.presetKey()},data-gradient=${g.css()}"
+                        th:classappend="${iter.index == 0} ? ' selected' : ''">
                     <span class="preset-swatch" th:style="'background:' + ${g.css()} + ';'">
                         <svg class="icon" aria-hidden="true"><use th:attr="href='#i-av-' + ${g.presetKey()}"/></svg>
                     </span>
@@ -202,7 +196,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
         <h2 id="coverModalTitle">Cover photo</h2>
-        <p class="modal-sub">Upload an image, pick a Bodh Sea scene, or set a gradient</p>
+        <p class="modal-sub">Pick a Bodh Sea scene or set a gradient &mdash; upload a real photo any time after signing up</p>
 
         <div class="avatar-modal-preview">
             <div class="cover-modal-preview" id="coverModalPreview">
@@ -213,22 +207,11 @@
         </div>
 
         <div class="avatar-tabs">
-            <button type="button" class="avatar-tab active" data-panel="c-photo">Upload</button>
-            <button type="button" class="avatar-tab" data-panel="c-presets">Presets</button>
+            <button type="button" class="avatar-tab active" data-panel="c-presets">Presets</button>
             <button type="button" class="avatar-tab" data-panel="c-color">Color</button>
         </div>
 
-        <div class="avatar-panel active" data-panel="c-photo">
-            <label class="avatar-dropzone" for="coverFileInput">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
-                </svg>
-                <span class="dz-title">Upload a cover image</span>
-                <span class="dz-desc">Wide images work best (3:1) &mdash; cropped to fit</span>
-            </label>
-        </div>
-
-        <div class="avatar-panel" data-panel="c-presets">
+        <div class="avatar-panel active" data-panel="c-presets">
             <div class="cover-grid" id="coverPresetGrid">
                 <button type="button" class="cover-preset-option" th:each="scene,iter : ${coverScenes}"
                         th:attr="data-key=${scene.key()}"

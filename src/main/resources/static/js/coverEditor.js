@@ -14,6 +14,9 @@ document.addEventListener('DOMContentLoaded', function () {
     var presetInput = document.getElementById('coverPresetInput');
     var swatchInput = document.getElementById('coverSwatchInput');
     var hueInput = document.getElementById('coverHueInput');
+    var photoUrlInput = document.getElementById('coverPhotoUrlInput');
+    var uploadStatus = document.getElementById('coverUploadStatus');
+    var saveBtn = backdrop.querySelector('.btn-save');
 
     closeBtn.addEventListener('click', function () { backdrop.hidden = true; });
     cancelBtn.addEventListener('click', function () { backdrop.hidden = true; });
@@ -39,16 +42,42 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ---- Photo ----
+    // Same shape as avatarEditor.js's own photo handler - see its comment for the full reasoning.
     var fileInput = document.getElementById('coverFileInput');
     fileInput.addEventListener('change', function (e) {
         var file = e.target.files[0];
         if (!file) return;
         modeInput.value = 'photo';
+        photoUrlInput.value = '';
+
         var reader = new FileReader();
         reader.onload = function (ev) {
             setPreview('<img src="' + ev.target.result + '" alt="">', 'none');
         };
         reader.readAsDataURL(file);
+
+        window.profileImageUpload.upload(file, 'cover', {
+            onStart: function () {
+                saveBtn.disabled = true;
+                uploadStatus.hidden = false;
+                uploadStatus.textContent = 'Uploading...';
+                uploadStatus.classList.remove('dz-status-error');
+            },
+            onProgress: function (pct) {
+                uploadStatus.textContent = 'Uploading... ' + pct + '%';
+            },
+            onSuccess: function (publicUrl) {
+                photoUrlInput.value = publicUrl;
+                saveBtn.disabled = false;
+                uploadStatus.hidden = true;
+            },
+            onError: function (message) {
+                saveBtn.disabled = false;
+                uploadStatus.hidden = false;
+                uploadStatus.textContent = message;
+                uploadStatus.classList.add('dz-status-error');
+            }
+        });
     });
 
     // ---- Scene presets ----
