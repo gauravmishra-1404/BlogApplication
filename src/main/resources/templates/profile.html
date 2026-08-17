@@ -22,7 +22,6 @@
     <script src="/js/profileImageUpload.js" defer></script>
     <script src="/js/avatarEditor.js" defer></script>
     <script src="/js/coverEditor.js" defer></script>
-    <script src="/js/photoNudge.js" defer></script>
     <script src="/js/personalInfoModal.js" defer></script>
     <script src="/js/modalScrollLock.js" defer></script>
     <script src="/js/commentThread.js" defer></script>
@@ -109,22 +108,6 @@
                 <span class="stat clickable" data-open-follow-list="following">
                     <b th:id="${isOwnProfile} ? 'followingCountValue' : null" th:text="${followingCount}">0</b> Following
                 </span>
-            </div>
-
-            <!-- Registration only offers presets/color (see register.html) - a real photo upload
-                 needs a logged-in session to presign against, so it's offered here instead, the
-                 first time this profile's owner sees their own page with no uploaded photo set.
-                 Dismissible and never reappears once dismissed (js/photoNudge.js, localStorage) -
-                 the gradient/preset avatar is a completely fine permanent choice, not a defect to
-                 keep nagging about. -->
-            <div class="photo-nudge" id="photoNudge" th:if="${isOwnProfile and profileUser.avatarType != 'photo'}"
-                 th:attr="data-dismiss-key='photoNudgeDismissed:' + ${profileUser.username}" hidden>
-                <svg class="icon" aria-hidden="true"><use href="#i-image"/></svg>
-                <span class="photo-nudge-text">Add a profile photo so people recognize you</span>
-                <button type="button" class="photo-nudge-cta" id="photoNudgeOpen">Add photo</button>
-                <button type="button" class="photo-nudge-dismiss" id="photoNudgeDismiss" aria-label="Dismiss">
-                    <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
-                </button>
             </div>
         </div>
 
