@@ -14,7 +14,11 @@
 
 locals {
   beanstalk_cname_prefix = "bodhsea-app"
-  beanstalk_app_base_url = "http://${local.beanstalk_cname_prefix}.${var.aws_region}.elasticbeanstalk.com"
+  # Switches to the real HTTPS domain automatically once var.domain_name is set (https.tf) -
+  # every place this local feeds (APP_BASE_URL below, email-worker's own copy in lambda.tf,
+  # media.tf's CORS allowed_origins) picks up the upgrade in the same apply, nothing left
+  # pointing at the old raw http:// elasticbeanstalk.com URL by hand afterward.
+  beanstalk_app_base_url = local.https_enabled ? "https://${var.domain_name}" : "http://${local.beanstalk_cname_prefix}.${var.aws_region}.elasticbeanstalk.com"
 
   # Same "Terraform uploads an already-built artifact, doesn't build it itself" convention
   # lambda.tf already uses for the worker jars - run infra/terraform/package-beanstalk.sh before
@@ -199,10 +203,27 @@ resource "aws_elastic_beanstalk_environment" "main" {
   # update-environment --version-label ...` if CI is ever unavailable) - they just no longer
   # auto-attach to the environment themselves.
 
+  # SingleInstance until var.domain_name is set (see https.tf) - LoadBalanced the moment it is,
+  # since an ALB is what actually gives this environment a place to terminate HTTPS (a
+  # SingleInstance environment has no load balancer at all, just the raw EC2 instance's own
+  # public IP - there's nothing to attach a TLS listener to). The ALB itself has its own 12-month
+  # free tier, same one this environment originally skipped on purpose for cost - now outweighed
+  # by mobile browsers force-upgrading to https:// against a port nothing was listening on
+  # (confirmed via a direct TLS handshake timing out), which is a real reachability bug, not a
+  # nice-to-have.
   setting {
     namespace = "aws:elasticbeanstalk:environment"
     name      = "EnvironmentType"
-    value     = "SingleInstance"
+    value     = local.https_enabled ? "LoadBalanced" : "SingleInstance"
+  }
+
+  # Ignored by Beanstalk when EnvironmentType=SingleInstance, so safe to always set rather than
+  # conditionalize - specifically the v2 Application Load Balancer, not the legacy Classic one,
+  # which is what makes the aws:elbv2:listener:* settings below meaningful once LoadBalanced.
+  setting {
+    namespace = "aws:elasticbeanstalk:environment"
+    name      = "LoadBalancerType"
+    value     = "application"
   }
 
   setting {
@@ -325,5 +346,27 @@ resource "aws_elastic_beanstalk_environment" "main" {
     # exists in front of the bucket.
     name  = "AWS_MEDIA_CDN_DOMAIN"
     value = aws_s3_bucket.post_media.bucket_regional_domain_name
+  }
+
+  # HTTPS listener on the ALB - only meaningful once LoadBalanced above, and only buildable once
+  # a validated cert exists (https.tf), hence both gates. Port 80 is left exactly as it already
+  # was, deliberately no forced redirect to 443 yet - existing http:// links/bookmarks (including
+  # every screenshot/link shared this whole build) keep working unchanged; a redirect is a
+  # reasonable follow-up once the domain's been live a while, not bundled into the urgent fix.
+  dynamic "setting" {
+    for_each = local.https_enabled ? {
+      "enabled"  = "true"
+      "protocol" = "HTTPS"
+      "cert"     = aws_acm_certificate_validation.main[0].certificate_arn
+    } : {}
+    content {
+      namespace = "aws:elbv2:listener:443"
+      name = (
+        setting.key == "enabled" ? "ListenerEnabled" :
+        setting.key == "protocol" ? "Protocol" :
+        "SSLCertificateArns"
+      )
+      value = setting.value
+    }
   }
 }

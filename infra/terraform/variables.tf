@@ -38,6 +38,24 @@ variable "app_base_url" {
   default     = "https://blogapplication-2ncl.onrender.com"
 }
 
+# Empty by default on purpose - everything HTTPS-related in https.tf and beanstalk.tf's listener
+# settings is gated on `var.domain_name != ""`, so this whole feature stays a zero-diff no-op
+# (EnvironmentType stays SingleInstance, no Route53 zone, no ACM cert) until a real domain is set.
+# ACM/any CA won't issue a certificate for someone else's *.elasticbeanstalk.com domain - a real
+# domain is the one piece that can't be worked around, which is why this was deferred until now
+# and is the one manual step (buying it, then setting this var) nothing here can automate.
+#
+# Once purchased: set via TF_VAR_domain_name=yourdomain.tld or terraform.tfvars, matching the
+# existing convention for sendgrid_api_key etc. If the registrar isn't Route53 itself, point the
+# domain's nameservers at the values `terraform output route53_name_servers` prints after the
+# first apply with this set - that's what actually makes DNS (and ACM's validation records)
+# resolve.
+variable "domain_name" {
+  description = "The real domain for this app (e.g. bodhsea.in) - enables HTTPS (ALB + ACM + Route53) once set. Leave blank until the domain is actually purchased."
+  type        = string
+  default     = ""
+}
+
 variable "fcm_service_account_json" {
   # FCM's old "server key" HTTP API was shut down by Google in June 2024 - the only API left is
   # HTTP v1, which authenticates via a Firebase service account (a JSON key file you download
