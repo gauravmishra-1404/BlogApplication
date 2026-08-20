@@ -8,18 +8,30 @@
      separate response header. -->
 <th:block th:fragment="postRows">
     <div style="display:contents" th:attr="data-has-next-page=${hasNextPage}">
-        <th:block th:each="post : ${posts}">
+        <th:block th:each="item : ${posts}" th:with="post=${item.post}, repostedBy=${item.repostedBy}">
         <!-- Only populated by the "Following" feed (FollowingFeedController) - absent/empty
              everywhere else (the main dashboard feed), so this never renders there. Only ever
              attached to a post whose own author ISN'T someone the viewer follows - otherwise the
-             post already reads as followed content without needing an explanation. -->
-        <div class="feed-activity-tag" th:if="${postAnnotations != null and postAnnotations.containsKey(post.id)}"
+             post already reads as followed content without needing an explanation. Mutually
+             exclusive with the repost tag below - a repost's own feed position already explains
+             itself, it doesn't also need the "commented" annotation. -->
+        <div class="feed-activity-tag" th:if="${repostedBy == null and postAnnotations != null and postAnnotations.containsKey(post.id)}"
              th:with="annotation=${postAnnotations.get(post.id)}">
             <svg class="icon" aria-hidden="true"><use href="#i-comment"/></svg>
             <span class="avatar-mini" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(annotation.commenter)}">
                 <div th:replace="~{fragments/avatarContent :: content(${annotation.commenter}, ${annotation.commenter.name})}"></div>
             </span>
             <span th:text="${annotation.commenter.name} + ' commented'">Someone commented</span>
+        </div>
+        <!-- Repost attribution - same .feed-activity-tag shape as the "commented" tag above,
+             just a repost icon + "reposted" instead. Renders above the ORIGINAL post's own card;
+             ${post.author} below still resolves to the original author, never to repostedBy. -->
+        <div class="feed-activity-tag" th:if="${repostedBy != null}">
+            <svg class="icon" aria-hidden="true"><use href="#i-repost"/></svg>
+            <span class="avatar-mini" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(repostedBy)}">
+                <div th:replace="~{fragments/avatarContent :: content(${repostedBy}, ${repostedBy.name})}"></div>
+            </span>
+            <span th:text="${repostedBy.name} + ' reposted'">Someone reposted</span>
         </div>
         <a class="post-row" th:href="@{/post/viewPost(id=${post.id})}" th:data-open-post-modal="${post.id}">
             <h2 class="post-title" th:text="${post.title}">Post Title</h2>
@@ -50,6 +62,9 @@
                     <svg class="icon" aria-hidden="true"><use href="#i-thumbs-up"/></svg><span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.likeCount : 0)}">0</span>
                     <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg><span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.dislikeCount : 0)}">0</span>
                     <svg class="icon" aria-hidden="true"><use href="#i-comment"/></svg><span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(commentCount)}">0</span>
+                    <span class="post-repost-count" th:with="repostCount=${repostCounts.get(post.id)} ?: 0" th:if="${repostCount > 0}">
+                        <svg class="icon" aria-hidden="true"><use href="#i-repost"/></svg><span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(repostCount)}">0</span>
+                    </span>
                     <!-- A real <button> nested inside this row's own open <a> - confirmed safe via
                          headless-Chrome DOM dump for the Follow feature's near-identical
                          .follow-row button, unlike nesting another <a>/<form> which does split

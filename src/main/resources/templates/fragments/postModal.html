@@ -72,6 +72,15 @@
                         <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg>
                         <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(postReaction.dislikeCount)}">0</span>
                     </button>
+                    <!-- Same repost pill as viewPostByID.html's own reaction bar - see that
+                         file's comment for the full reasoning. -->
+                    <button type="button" class="repost-toggle" th:if="${post.published}"
+                            th:classappend="${isReposted} ? ' active' : ''"
+                            th:attr="data-post-id=${post.id}, data-logged-in=${#authorization.expression('isAuthenticated()')}">
+                        <svg class="icon" aria-hidden="true"><use href="#i-repost"/></svg>
+                        <span class="repost-toggle-label" th:text="${isReposted} ? 'Reposted' : 'Repost'">Repost</span>
+                        <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(repostCount)}">0</span>
+                    </button>
                     <button type="button" class="bookmark-toggle bookmark-pill" th:if="${post.published}"
                             th:classappend="${isBookmarked} ? ' saved' : ''"
                             th:attr="data-post-id=${post.id}, data-logged-in=${#authorization.expression('isAuthenticated()')}">
