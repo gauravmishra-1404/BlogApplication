@@ -35,6 +35,15 @@ public class FollowServiceImpl implements FollowService {
         User followed = userRepo.findByUsername(followedUsername)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        // Same "not found" treatment an unverified account gets everywhere else it'd otherwise be
+        // publicly reachable (ProfileController.viewProfile, UserRepo.findAllOrderByFollowerCountDesc)
+        // - the directory/profile page hiding it is UI-level only, so without this check, anyone
+        // who already knows/guesses a username could still follow (and get followed-back-visible
+        // to) an account nobody has confirmed ownership of yet by calling this endpoint directly.
+        if (!followed.isEmailVerified()) {
+            throw new RuntimeException("User not found");
+        }
+
         if (follower.getId() == followed.getId()) {
             throw new SelfFollowException("You can't follow yourself.");
         }
