@@ -269,14 +269,21 @@ resource "aws_elastic_beanstalk_environment" "lb" {
   # /login (302), not 200. The target group's default healthy-codes list is just "200", so it
   # marked every instance unhealthy (Target.ResponseCodeMismatch) even though the app itself was
   # fully up the whole time - confirmed live, curl against /login and /registerUser both returned
-  # 200 directly while this environment showed Health: Red. /login is the one page this app
-  # already has as .permitAll() (SecurityConfig.java) that returns a real 200 with no auth, so it
-  # doubles as a correct, zero-extra-code health-check target - no actuator dependency in this
-  # project to add a dedicated /actuator/health endpoint instead.
+  # 200 directly while this environment showed Health: Red.
+  #
+  # Was /login (RestHealthController's own comment has the full story) - moved to the dedicated
+  # /healthz endpoint instead once sessions moved to Redis: /login renders a Thymeleaf form with a
+  # CSRF hidden field, and every 15s health-check ping is a fresh, cookie-less request, so each one
+  # forced Spring Security to create a brand-new session just to hold that token - confirmed live,
+  # 245+ throwaway sessions accumulating in Redis, nearly all from health checks, none serving any
+  # purpose. /healthz is a plain @RestController response, no template, so it never touches
+  # CSRF/session at all - confirmed via redis-cli DBSIZE staying flat across repeated hits, unlike
+  # /login's steady climb. Deployed the /healthz endpoint itself first (a separate commit) so the
+  # app already supported this path before the ALB started checking it here.
   setting {
     namespace = "aws:elasticbeanstalk:environment:process:default"
     name      = "HealthCheckPath"
-    value     = "/login"
+    value     = "/healthz"
   }
 
   dynamic "setting" {
