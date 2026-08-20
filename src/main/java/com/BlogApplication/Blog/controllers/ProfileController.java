@@ -56,7 +56,13 @@ public class ProfileController {
     @GetMapping("/profile/{username}")
     public String viewProfile(@PathVariable String username, Authentication authentication, Model model) {
         User profileUser = userRepo.findByUsername(username).orElse(null);
-        if (profileUser == null) {
+        // Treats an unverified account the same as a nonexistent one - the same enumeration-safe
+        // reasoning /forgot-password already uses (never confirm which emails/usernames are real
+        // to someone who isn't the owner). An unverified user can never be viewing their OWN
+        // profile here either: Spring Security's CustomUserDetails.isEnabled() already blocks
+        // login entirely until the account verifies, so there's no "let the owner see their own
+        // pending profile" case this would need to carve out.
+        if (profileUser == null || !profileUser.isEmailVerified()) {
             return "profileNotFound";
         }
 
