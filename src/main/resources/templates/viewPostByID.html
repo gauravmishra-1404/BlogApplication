@@ -11,6 +11,7 @@
     <script src="/js/commentComposer.js" defer></script>
     <script src="/js/reactions.js" defer></script>
     <script src="/js/bookmark.js" defer></script>
+    <script src="/js/repost.js" defer></script>
     <script src="/js/share.js" defer></script>
     <script src="/js/theme.js" defer></script>
     <script src="/js/navProfileMenu.js" defer></script>
@@ -87,6 +88,18 @@
                     th:classappend="${postReaction.userReaction == 'DISLIKE'} ? ' active' : ''">
                 <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg>
                 <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(postReaction.dislikeCount)}">0</span>
+            </button>
+            <!-- Only on a published post - same reasoning bookmark's own th:if already has,
+                 there's nothing public to repost yet on a draft/deleted post. Same toggle-pill
+                 pattern as bookmark, own accent (repost-toggle.active) so it never reads as a
+                 like/save. Repost count is the ORIGINAL post's own shared counter (see
+                 RepostServiceImpl's own comment) - never a separate number for this repost. -->
+            <button type="button" class="repost-toggle" th:if="${post.published}"
+                    th:classappend="${isReposted} ? ' active' : ''"
+                    th:attr="data-post-id=${post.id}, data-logged-in=${#authorization.expression('isAuthenticated()')}">
+                <svg class="icon" aria-hidden="true"><use href="#i-repost"/></svg>
+                <span class="repost-toggle-label" th:text="${isReposted} ? 'Reposted' : 'Repost'">Repost</span>
+                <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(repostCount)}">0</span>
             </button>
             <button type="button" class="bookmark-toggle bookmark-pill" th:if="${post.published}"
                     th:classappend="${isBookmarked} ? ' saved' : ''"

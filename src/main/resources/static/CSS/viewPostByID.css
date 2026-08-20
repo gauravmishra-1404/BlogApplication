@@ -473,6 +473,7 @@ a.comment-author:hover {
    .comment-actions alongside Reply/Edit/Delete. Both driven by js/reactions.js. */
 .reaction-bar {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     margin: 14px 0 0;
 }
@@ -548,6 +549,42 @@ a.comment-author:hover {
 .bookmark-pill-label {
     position: relative;
     z-index: 1;
+}
+
+/* Same pill shape as .reaction-btn/.bookmark-toggle.bookmark-pill (border-radius 20px, 6px 14px
+   padding, same font-size/weight) - a repost button reads as one more member of the same family
+   of controls, not a visually distinct one-off. .active (not .saved - this isn't a
+   .bookmark-toggle) gets its own green accent, same reasoning bookmark's own violet accent
+   already has: reads as its own kind of state, never borrowed from Like's blue or Save's violet. */
+.repost-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    font-family: inherit;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.repost-toggle:hover {
+    background: var(--color-surface-tint);
+}
+
+.repost-toggle .icon {
+    width: 15px;
+    height: 15px;
+}
+
+.repost-toggle.active {
+    color: var(--color-repost);
+    border-color: var(--color-repost);
+    background: var(--color-repost-bg);
 }
 
 .comment-actions .reaction-bar {
