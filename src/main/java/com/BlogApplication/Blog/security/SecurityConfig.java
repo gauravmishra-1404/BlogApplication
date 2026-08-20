@@ -102,6 +102,10 @@ public class SecurityConfig {
                         ).hasAnyRole("ADMIN", "AUTHOR")
                         // Everything that's actually part of the app - dashboard, posts, profiles,
                         // search/filter/sort, downloads, the JSON API mirrors - requires login.
+                        // The ALB's own health check (infra/terraform/beanstalk.tf) - separate
+                        // from the login/account-creation list below since it's not part of that
+                        // flow at all, just infrastructure plumbing that also can't require auth.
+                        .requestMatchers("/healthz").permitAll()
                         // The only permitAll list left below is the small, unavoidable set of
                         // routes needed to LOG IN or CREATE an account in the first place: you
                         // can't gate the login page behind being logged in.
