@@ -81,7 +81,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**", "/h2-console/**"))
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login", "/api/login", "/h2-console/**").permitAll()
+                        .requestMatchers("/", "/login", "/api/login", "/h2-console/**").permitAll()
                         // Restrictive rules MUST come before the broader permitAll patterns below —
                         // authorizeHttpRequests matches in declaration order and stops at the first hit,
                         // so a broad "/posts/**" listed earlier would silently shadow these.
