@@ -60,6 +60,13 @@
     --color-bookmark-hover: #6a45e8;
     --color-bookmark-bg: rgba(124, 92, 245, 0.1);
 
+    /* Repost accent - same reasoning as bookmark's own comment above: its own hue (green),
+       distinct from Like's blue and Save's violet, so "I reposted this" reads as its own state
+       rather than borrowing a color that already means something else. */
+    --color-repost: #1a9c6b;
+    --color-repost-hover: #158058;
+    --color-repost-bg: rgba(26, 156, 107, 0.1);
+
     --header-glass: rgba(255, 255, 255, 0.14);
     --header-glass-border: rgba(255, 255, 255, 0.25);
     --color-surface-translucent: rgba(255, 255, 255, 0.92);
@@ -110,6 +117,10 @@
     --color-bookmark: #a78bfa;
     --color-bookmark-hover: #c4b5fd;
     --color-bookmark-bg: rgba(167, 139, 250, 0.16);
+
+    --color-repost: #4fd39a;
+    --color-repost-hover: #6ee0ac;
+    --color-repost-bg: rgba(79, 211, 154, 0.16);
 
     --header-glass: rgba(255, 255, 255, 0.05);
     --header-glass-border: rgba(255, 255, 255, 0.1);
