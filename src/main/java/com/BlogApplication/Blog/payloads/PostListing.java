@@ -1,6 +1,5 @@
 package com.BlogApplication.Blog.payloads;
 
-import com.BlogApplication.Blog.models.Post;
 import lombok.Builder;
 import lombok.Value;
 
@@ -11,13 +10,19 @@ import java.util.Map;
 // render one batch of posts - assembled by PostService.getListing() so the controller only
 // calls one service method and copies its fields onto the Model, instead of orchestrating
 // PostService/PostViewService/PostReactionService itself and computing hasNextPage by hand.
+//
+// posts is List<FeedItem>, not List<Post> - a repost interleaves into this same list as its own
+// entry (see FeedItem's own comment for why a plain Post list can't represent that).
+// repostCounts/repostedPostIds mirror commentCounts/bookmarkedPostIds's own shape: one grouped
+// query per page, not one per post.
 @Value
 @Builder
 public class PostListing {
-    List<Post> posts;
+    List<FeedItem> posts;
     Map<Integer, Long> viewCounts;
     Map<Integer, ReactionSummary> reactions;
     Map<Integer, Long> commentCounts;
+    Map<Integer, Long> repostCounts;
     int currentPage;
     int totalPages;
     long totalItems;

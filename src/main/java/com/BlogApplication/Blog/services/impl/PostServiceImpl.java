@@ -6,6 +6,7 @@ import com.BlogApplication.Blog.models.Post;
 import com.BlogApplication.Blog.models.PostMedia;
 import com.BlogApplication.Blog.models.Tags;
 import com.BlogApplication.Blog.models.User;
+import com.BlogApplication.Blog.payloads.FeedItem;
 import com.BlogApplication.Blog.payloads.MediaAttachment;
 import com.BlogApplication.Blog.payloads.PostDetail;
 import com.BlogApplication.Blog.payloads.PostDto;
@@ -14,6 +15,8 @@ import com.BlogApplication.Blog.payloads.ReactionSummary;
 import com.BlogApplication.Blog.repositories.AuthorPostCount;
 import com.BlogApplication.Blog.repositories.PostRepo;
 import com.BlogApplication.Blog.repositories.PostViewRepo;
+import com.BlogApplication.Blog.repositories.RepostCount;
+import com.BlogApplication.Blog.repositories.RepostRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.CommentReactionService;
 import com.BlogApplication.Blog.services.CommentService;
@@ -65,6 +68,9 @@ public class PostServiceImpl implements PostService {
 
     @Autowired
     private TagService tagService;
+
+    @Autowired
+    private RepostRepo repostRepo;
 
     // Spring Boot's own auto-configured Jackson bean (JacksonAutoConfiguration) - reused here
     // rather than `new ObjectMapper()`, same instance the rest of the app's JSON (de)serializes
@@ -405,16 +411,28 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public PostListing getListing(String query, List<String> authors, List<String> tags, String order, int page, int size) {
+        // The main dashboard feed is deliberately NOT personalized by follow relationships at
+        // all - the same global timeline renders for every viewer regardless of who they follow.
+        // Reposts never interleave into it, on purpose: this feed has no notion of "whose
+        // activity", so a repost showing up here would mean the reposting user sees their OWN
+        // repost reflected back at themselves on their own /home visit - redundant with their own
+        // profile's Reposts tab, which already exists exactly to show that. Reposts belong to a
+        // follow relationship (see FollowingFeedController, which merges them in correctly - a
+        // repost surfaces to the reposting user's OWN followers, never to the reposting user's
+        // own view of this global feed).
         Page<Post> postPage = searchPosts(query, authors, tags, order, page, size);
-        List<Integer> postIds = postPage.getContent().stream().map(Post::getId).toList();
+        List<FeedItem> items = postPage.getContent().stream().map(FeedItem::of).toList();
+        List<Integer> postIds = items.stream().map(item -> item.getPost().getId()).distinct().toList();
 
         return PostListing.builder()
-                .posts(postPage.getContent())
+                .posts(items)
                 .viewCounts(postViewService.countViewsForPosts(postIds))
                 // Just public counts here (no per-viewer "did I react" state, unlike the post
                 // page itself) - the dashboard is a listing, not somewhere you react from.
                 .reactions(postReactionService.getSummaries(postIds, null))
                 .commentCounts(commentService.countCommentsForPosts(postIds))
+                .repostCounts(repostRepo.countGroupedByPostIds(postIds).stream()
+                        .collect(Collectors.toMap(RepostCount::getPostId, RepostCount::getCount)))
                 .currentPage(page)
                 .totalPages(postPage.getTotalPages())
                 .totalItems(postPage.getTotalElements())

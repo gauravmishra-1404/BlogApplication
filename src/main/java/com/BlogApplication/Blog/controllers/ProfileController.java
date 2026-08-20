@@ -10,7 +10,9 @@ import com.BlogApplication.Blog.payloads.FollowListEntry;
 import com.BlogApplication.Blog.repositories.CommentRepo;
 import com.BlogApplication.Blog.repositories.FollowRepo;
 import com.BlogApplication.Blog.repositories.PostRepo;
+import com.BlogApplication.Blog.repositories.RepostRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
+import org.springframework.data.domain.Pageable;
 import com.BlogApplication.Blog.services.UserService;
 import com.BlogApplication.Blog.util.AvatarPresets;
 import com.BlogApplication.Blog.util.CoverPresets;
@@ -48,6 +50,9 @@ public class ProfileController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private RepostRepo repostRepo;
+
     @GetMapping("/profile/{username}")
     public String viewProfile(@PathVariable String username, Authentication authentication, Model model) {
         User profileUser = userRepo.findByUsername(username).orElse(null);
@@ -74,6 +79,10 @@ public class ProfileController {
         model.addAttribute("followingCount", followRepo.countByFollowerId(profileUser.getId()));
         model.addAttribute("posts", postRepo.findVisibleByUser(profileUser));
         model.addAttribute("comments", commentRepo.findRepliesReceivedByPostAuthor(profileUser));
+        // Not paginated, same "load everything, no infinite scroll here" simplicity the
+        // Posts/Replies tabs above already have - Pageable.unpaged() over findVisibleByUserId's
+        // real pagination support (built for a future paginated view; not needed yet here).
+        model.addAttribute("reposts", repostRepo.findVisibleByUserId(profileUser.getId(), Pageable.unpaged()).getContent());
         model.addAttribute("avatarGradients", AvatarPresets.GRADIENTS);
         model.addAttribute("coverGradients", AvatarPresets.GRADIENTS);
         model.addAttribute("coverScenes", CoverPresets.SCENES);
