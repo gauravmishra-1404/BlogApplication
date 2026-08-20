@@ -38,7 +38,13 @@ env:
   DEPLOY_ROLE_ARN: arn:aws:iam::201333676681:role/bodhsea-notifications-github-deploy
   DEPLOY_BUCKET: bodhsea-notifications-lambda-artifacts-201333676681
   APP_NAME: bodhsea-notifications-app
-  ENV_NAME: bodhsea-notifications-app-env
+  # The blue-green migration to LoadBalanced/HTTPS (infra/terraform/beanstalk.tf) replaced the
+  # original "bodhsea-notifications-app-env" (SingleInstance, terminated) with this one via
+  # swap-environment-cnames - this workflow's own IAM policy (github-actions.tf) was updated to
+  # match at the time, but this literal string here got missed, so every deploy since kept trying
+  # to update an environment that no longer exists (AccessDenied, since the IAM policy correctly
+  # no longer grants access to the old name either) until this line caught up.
+  ENV_NAME: bodhsea-notifications-app-env-lb
 
 jobs:
   deploy:
