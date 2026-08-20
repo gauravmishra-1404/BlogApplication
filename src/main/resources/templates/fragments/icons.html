@@ -49,17 +49,16 @@
         <path d="M17 2v11l-5 9a2.5 2.5 0 0 1-2.5-2.5V15H5a2 2 0 0 1-2-2.4l1.6-8A2 2 0 0 1 6.6 3H17"/>
         <path d="M17 13h4V2h-4"/>
     </symbol>
-    <!-- "The Ripple" - one idea (a post) rippling outward into wider water. Hardcoded brand
-         colors rather than currentColor like every other icon here on purpose: a brand mark
-         should stay the same three colors regardless of what theme/text-color surrounds it,
-         unlike a functional icon that's meant to blend in. Same geometry as
-         branding/logo/bodhsea-logo-*.png (kept in sync by hand - simple enough not to need a
-         shared source of truth), so the in-app mark, the favicon, and the emailed logo all match. -->
-    <symbol id="i-brand" viewBox="0 0 48 48" fill="none">
-        <circle cx="24" cy="24" r="22" stroke="#7c5cf5" stroke-width="2" stroke-opacity="0.28"/>
-        <circle cx="24" cy="24" r="16.5" stroke="#5b8def" stroke-width="2" stroke-opacity="0.55"/>
-        <circle cx="24" cy="24" r="10" stroke="#5b8def" stroke-width="2" stroke-opacity="0.88"/>
-        <circle cx="24" cy="24" r="3.4" fill="#f2b84d"/>
+    <!-- "The Current Mark, Refined" (Bodh Sea Logo Concepts, Option A) - the flame shape that
+         was already this app's own brand mark before the domain-logo review, kept as the final
+         choice: currentColor like every other icon here (not hardcoded, unlike the Ripple option
+         this replaced) specifically so it keeps adapting to whatever surrounds it - .brand-mark's
+         own color (common.css, dashboardStyle.css) is what actually sets it per context. -->
+    <symbol id="i-brand" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M24 6c-5 4-8 8-8 12 0 3.5 2.5 6 6 6h1v11"/>
+        <path d="M24 12c4 3 6.5 6 6.5 9 0 3-2 5-5 5"/>
+        <path d="M24 10c-3.5 2.5-6 5-6 7.5 0 2 1.5 3.5 3.5 3.5"/>
+        <path d="M5 36c3.5-2.5 7-2.5 10.5 0s7 2.5 10.5 0 7-2.5 10.5 0 7 2.5 10.5 0"/>
     </symbol>
     <symbol id="i-dots" viewBox="0 0 24 24" fill="currentColor">
         <circle cx="12" cy="5" r="2.1"/><circle cx="12" cy="12" r="2.1"/><circle cx="12" cy="19" r="2.1"/>
