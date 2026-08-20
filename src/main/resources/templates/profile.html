@@ -114,6 +114,7 @@
         <div class="tab-bar">
             <button type="button" class="tab-item active" data-tab="posts">Posts</button>
             <button type="button" class="tab-item" data-tab="replies">Replies</button>
+            <button type="button" class="tab-item" data-tab="reposts">Reposts</button>
         </div>
 
         <div class="tab-panel" data-panel="posts">
@@ -162,6 +163,39 @@
                 </div>
             </div>
             <p class="empty-hint" th:if="${#lists.isEmpty(comments)}">No replies received yet.</p>
+        </div>
+
+        <!-- Plain reposts (not Quote) - a pointer, never a new post. Renders the ORIGINAL post's
+             own card wholesale (same "Written by {author}" byline as the post itself would show
+             anywhere else), with a "you/{name} reposted" tag above it - same
+             .feed-activity-tag shape postRows.html's own repost attribution uses, just reused
+             inline here since this tab has its own simpler card style already (no reactions row,
+             no gallery, matching Posts/Replies above). -->
+        <div class="tab-panel" data-panel="reposts" hidden>
+            <div class="post-list" th:if="${!#lists.isEmpty(reposts)}">
+                <div th:each="repost : ${reposts}">
+                    <div class="feed-activity-tag">
+                        <svg class="icon" aria-hidden="true"><use href="#i-repost"/></svg>
+                        <span th:text="${isOwnProfile} ? 'You reposted' : (${profileUser.name} + ' reposted')">Reposted</span>
+                    </div>
+                    <a class="post-row" th:href="@{/post/viewPost(id=${repost.post.id})}" th:data-open-post-modal="${repost.post.id}">
+                        <h3 class="post-title" th:text="${repost.post.title}">Title</h3>
+                        <div class="post-meta">
+                            <span th:text="'Written by ' + ${repost.post.author}">Author</span>
+                            <span th:if="${repost.post.updatedAt != null}"
+                                  th:text="' &middot; ' + ${T(com.BlogApplication.Blog.util.TimeFormatter).relative(repost.post.updatedAt)}">date</span>
+                        </div>
+                        <p class="post-excerpt" th:text="${repost.post.excerpt}">Excerpt</p>
+                    </a>
+                </div>
+            </div>
+            <!-- No apostrophe in either literal on purpose - confirmed live that this project's
+                 Thymeleaf expression parser (OGNL) rejects both a backslash escape AND a doubled
+                 quote for an embedded literal apostrophe inside a string literal here, so the
+                 simplest actually-correct fix is avoiding the contraction entirely rather than
+                 guessing at a third escaping scheme. -->
+            <p class="empty-hint" th:if="${#lists.isEmpty(reposts)}"
+               th:text="${isOwnProfile} ? 'You have not reposted anything yet.' : (${profileUser.name} + ' has not reposted anything yet.')">No reposts yet.</p>
         </div>
     </div>
 </main>
