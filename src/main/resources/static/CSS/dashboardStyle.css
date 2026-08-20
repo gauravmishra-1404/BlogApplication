@@ -116,6 +116,23 @@
     margin-right: 8px;
 }
 
+/* Own accent (green) rather than inheriting .post-reactions' default muted color - matches
+   .bookmark-toggle.saved's own reasoning, a repost count reads as its own kind of stat, not a
+   plain view/comment tally. Only ever rendered when the count is above zero (see postRows.html),
+   so there's no "0" state to style here. */
+.post-repost-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--color-repost);
+    margin-right: 8px;
+}
+
+.post-repost-count .icon {
+    width: 13px;
+    height: 13px;
+}
+
 .post-excerpt {
     font-size: var(--text-base);
     color: var(--color-text-muted);

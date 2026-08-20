@@ -3,7 +3,10 @@ package com.BlogApplication.Blog.controllers;
 import com.BlogApplication.Blog.models.Bookmark;
 import com.BlogApplication.Blog.models.Post;
 import com.BlogApplication.Blog.models.User;
+import com.BlogApplication.Blog.payloads.FeedItem;
 import com.BlogApplication.Blog.repositories.BookmarkRepo;
+import com.BlogApplication.Blog.repositories.RepostCount;
+import com.BlogApplication.Blog.repositories.RepostRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.CommentService;
 import com.BlogApplication.Blog.services.PostReactionService;
@@ -45,6 +48,9 @@ public class BookmarkPageController {
     @Autowired
     private CommentService commentService;
 
+    @Autowired
+    private RepostRepo repostRepo;
+
     @GetMapping("/bookmarks")
     public String myBookmarks(@RequestParam(defaultValue = "0") int page, Authentication authentication, Model model) {
         addBookmarksToModel(page, authentication, model);
@@ -71,7 +77,9 @@ public class BookmarkPageController {
             model.addAttribute("viewCounts", Map.of());
             model.addAttribute("postReactions", Map.of());
             model.addAttribute("commentCounts", Map.of());
+            model.addAttribute("repostCounts", Map.of());
             model.addAttribute("bookmarkedPostIds", Set.of());
+            model.addAttribute("repostedPostIds", Set.of());
             model.addAttribute("hasNextPage", false);
             return;
         }
@@ -80,13 +88,19 @@ public class BookmarkPageController {
         List<Post> posts = bookmarkPage.getContent().stream().map(Bookmark::getPost).toList();
         List<Integer> postIds = posts.stream().map(Post::getId).toList();
 
-        model.addAttribute("posts", posts);
+        // A bookmark listing never carries repost attribution - FeedItem.of() (repostedBy null)
+        // for every row, same wrapper postRows.html now expects everywhere, just always the
+        // plain-post shape here.
+        model.addAttribute("posts", posts.stream().map(FeedItem::of).toList());
         model.addAttribute("viewCounts", postViewService.countViewsForPosts(postIds));
         model.addAttribute("postReactions", postReactionService.getSummaries(postIds, null));
         model.addAttribute("commentCounts", commentService.countCommentsForPosts(postIds));
+        model.addAttribute("repostCounts", repostRepo.countGroupedByPostIds(postIds).stream()
+                .collect(java.util.stream.Collectors.toMap(RepostCount::getPostId, RepostCount::getCount)));
         // Every post on this page IS a bookmark by definition - the icon always renders filled
         // here, same set-membership contract postRows.html's toggle button checks everywhere else.
         model.addAttribute("bookmarkedPostIds", new HashSet<>(postIds));
+        model.addAttribute("repostedPostIds", new HashSet<>(repostRepo.findRepostedPostIdsAmong(viewer.getId(), postIds)));
         model.addAttribute("hasNextPage", bookmarkPage.hasNext());
     }
 }

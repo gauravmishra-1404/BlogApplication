@@ -12,6 +12,7 @@ import com.BlogApplication.Blog.repositories.AuthorPostCount;
 import com.BlogApplication.Blog.repositories.BookmarkRepo;
 import com.BlogApplication.Blog.repositories.CommentRepo;
 import com.BlogApplication.Blog.repositories.FollowRepo;
+import com.BlogApplication.Blog.repositories.RepostRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
 import com.BlogApplication.Blog.services.CommentService;
 import com.BlogApplication.Blog.services.PostPdfService;
@@ -74,6 +75,9 @@ public class PostController {
     @Autowired
     private BookmarkRepo bookmarkRepo;
 
+    @Autowired
+    private RepostRepo repostRepo;
+
     @GetMapping("/home")
     public String getAllPosts(@RequestParam(defaultValue = "0") int page,
                               @RequestParam(defaultValue = "10") int size,
@@ -135,6 +139,8 @@ public class PostController {
         model.addAttribute("postReaction", detail.getPostReaction());
         model.addAttribute("commentReactions", detail.getCommentReactions());
         model.addAttribute("isBookmarked", isBookmarked(id, authentication));
+        model.addAttribute("isReposted", isReposted(id, authentication));
+        model.addAttribute("repostCount", repostRepo.countByPostId(id));
         // currentUser is populated globally for every page by GlobalModelAttributes now.
 
         return "viewPostByID";
@@ -157,6 +163,8 @@ public class PostController {
         model.addAttribute("postReaction", detail.getPostReaction());
         model.addAttribute("commentReactions", detail.getCommentReactions());
         model.addAttribute("isBookmarked", isBookmarked(id, authentication));
+        model.addAttribute("isReposted", isReposted(id, authentication));
+        model.addAttribute("repostCount", repostRepo.countByPostId(id));
 
         return "fragments/postModal :: postModal";
     }
@@ -203,6 +211,16 @@ public class PostController {
         }
         return userRepo.findByEmail(authentication.getName())
                 .map(u -> bookmarkRepo.existsByUserIdAndPostId(u.getId(), postId))
+                .orElse(false);
+    }
+
+    // Same shape as isBookmarked - the single-post reaction bar's own repost button state.
+    private boolean isReposted(int postId, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+        return userRepo.findByEmail(authentication.getName())
+                .map(u -> repostRepo.existsByUserIdAndPostId(u.getId(), postId))
                 .orElse(false);
     }
 
@@ -415,6 +433,7 @@ public class PostController {
         model.addAttribute("viewCounts", listing.getViewCounts());
         model.addAttribute("postReactions", listing.getReactions());
         model.addAttribute("commentCounts", listing.getCommentCounts());
+        model.addAttribute("repostCounts", listing.getRepostCounts());
         model.addAttribute("currentPage", listing.getCurrentPage());
         model.addAttribute("totalPages", listing.getTotalPages());
         model.addAttribute("totalItems", listing.getTotalItems());
@@ -431,13 +450,16 @@ public class PostController {
         // batch (postsFragment), rather than threading Authentication through all 6 callers.
         Object currentUserAttr = model.getAttribute("currentUser");
         Set<Integer> bookmarkedPostIds = Set.of();
+        Set<Integer> repostedPostIds = Set.of();
         if (currentUserAttr instanceof User viewer) {
-            List<Integer> postIds = listing.getPosts().stream().map(Post::getId).toList();
+            List<Integer> postIds = listing.getPosts().stream().map(item -> item.getPost().getId()).distinct().toList();
             if (!postIds.isEmpty()) {
                 bookmarkedPostIds = new HashSet<>(bookmarkRepo.findBookmarkedPostIdsAmong(viewer.getId(), postIds));
+                repostedPostIds = new HashSet<>(repostRepo.findRepostedPostIdsAmong(viewer.getId(), postIds));
             }
         }
         model.addAttribute("bookmarkedPostIds", bookmarkedPostIds);
+        model.addAttribute("repostedPostIds", repostedPostIds);
     }
 
     //    add comments on post by id
