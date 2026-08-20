@@ -189,7 +189,9 @@ body {
 .brand-mark {
     width: 30px;
     height: 30px;
-    color: #ffffff;
+    /* No color here - #i-brand (fragments/icons.html) now carries its own hardcoded brand
+       colors instead of inheriting currentColor, so this stays correct across light/dark mode
+       and any surrounding text color without a theme-specific override. */
     flex: 0 0 auto;
 }
 

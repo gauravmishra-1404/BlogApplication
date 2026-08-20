@@ -417,7 +417,8 @@
 .sidebar-brand .brand-mark {
     width: 22px;
     height: 22px;
-    color: var(--color-primary);
+    /* No color here - see common.css's .brand-mark comment: #i-brand carries its own hardcoded
+       brand colors now. */
     flex: 0 0 auto;
 }
 
