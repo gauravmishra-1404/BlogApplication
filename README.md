@@ -88,6 +88,12 @@ flowchart TB
   queues (email/push/in-app), each with its own subscription filter, fan it out to three
   independent Lambda workers. `inapp-worker` writes the notification straight to Postgres;
   `email-worker` calls SendGrid; `push-worker` calls Firebase Cloud Messaging.
+- **Email deliverability**: outbound mail sends as `notifications@bodhsea.in`, a domain
+  SendGrid has cryptographically authenticated — 3 CNAME records (DKIM + Return-Path/SPF) plus
+  a DMARC TXT record, all in the same Route 53 zone. Without this, an unauthenticated sender on
+  someone else's domain (this project's own sends used to go out as `@gmail.com`, through a
+  server that isn't Google's) is one of the strongest spam signals a receiving mail server sees,
+  regardless of the email's actual content.
 - **Infrastructure as code**: every AWS resource above is defined in `infra/terraform/` and the
   three Lambda workers live in `infra/lambdas/` as their own small Maven modules.
 
@@ -135,12 +141,14 @@ flowchart TB
 - SNS + SQS + Lambda (Java 21) — the notification pipeline
 - IAM — scoped roles/policies (instance role for the app, per-function roles for each Lambda)
 - Route 53 — DNS for `bodhsea.in` (a hosted zone Terraform manages; the domain itself is
-  registered with a separate third-party registrar and delegated to Route 53's nameservers)
+  registered with a separate third-party registrar and delegated to Route 53's nameservers), plus
+  the CNAME/TXT records backing SendGrid's domain authentication and DMARC (`mail.tf`)
 - ACM — the free TLS certificate the load balancer presents for `bodhsea.in`, DNS-validated
   through the Route 53 zone above
 
 **Third-party integrations**
-- SendGrid — transactional email delivery
+- SendGrid — transactional email delivery, sending from a domain-authenticated `bodhsea.in`
+  address (SPF/DKIM via Route 53, plus DMARC) rather than an unauthenticated free-mail address
 - Firebase Cloud Messaging — push notifications
 - Cloudinary — legacy avatar storage path (being phased out in favor of direct S3 uploads)
 
