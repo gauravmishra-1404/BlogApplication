@@ -1,7 +1,5 @@
 package com.BlogApplication.Blog.security;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -12,9 +10,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
-import org.springframework.session.FindByIndexNameSessionRepository;
-import org.springframework.session.Session;
-import org.springframework.session.security.SpringSessionBackedSessionRegistry;
 
 @Configuration
 public class SecurityConfig {
@@ -37,32 +32,34 @@ public class SecurityConfig {
 
     }
 
-    // Tracks who's logged in where, so maximumSessions() below can enforce one active
-    // session per account instead of letting the same login work unlimited times at once.
+    // Tracks who's logged in where, so maximumSessions() below can enforce 2 active sessions per
+    // account instead of letting the same login work unlimited times at once.
     //
-    // Two implementations, exactly one of which is ever actually created:
+    // Deliberately plain SessionRegistryImpl even now that sessions live in shared Redis
+    // (application.properties, infra/terraform/redis.tf) - a SpringSessionBackedSessionRegistry
+    // (reading live state from Redis so the 2-session limit is exactly accurate across every
+    // Beanstalk instance) was tried and reverted: it requires Spring Session's INDEXED Redis
+    // repository, which runs `CONFIG SET notify-keyspace-events` on startup to detect session
+    // expiry - and AWS ElastiCache rejects the CONFIG command outright for any client ("ERR
+    // unknown command 'CONFIG'"), confirmed live. That crashed the app on every boot (two real
+    // outages before this was reverted).
     //
-    // - redisBackedSessionRegistry, when spring.session.store-type=redis (production - see
-    //   application.properties, infra/terraform/redis.tf): reads live session state straight out
-    //   of the shared Redis store via FindByIndexNameSessionRepository, so "who's logged in
-    //   where" is correct no matter which of the (up to 4) Beanstalk instances actually served
-    //   each request. This is the whole point of adding Redis in the first place - without it,
-    //   swapping the session STORE to Redis wouldn't have been enough on its own, since this
-    //   registry bean is what maximumSessions() actually asks "how many sessions does this user
-    //   have right now", and a plain SessionRegistryImpl only ever knows about sessions THIS one
-    //   JVM has personally seen.
-    // - inMemorySessionRegistry, the @ConditionalOnMissingBean fallback: used whenever the Redis
-    //   bean above didn't get created (local `docker` profile, tests - spring.session.store-type
-    //   defaults to "none" there), so local dev never needs a real Redis instance running.
+    // What staying with SessionRegistryImpl actually costs: this bean only ever knows about
+    // sessions THIS one JVM has personally seen, so in a multi-instance deployment the 2-session
+    // limit becomes approximate per-instance rather than exact account-wide - someone COULD end
+    // up with slightly more than 2 total concurrent sessions across different instances. That's
+    // a minor abuse-limit leniency, not a correctness bug - it can never cause anyone to be
+    // wrongly logged out, which was the actual, critical problem Redis-backed sessions exist to
+    // fix. That fix is untouched by this: HttpSession data itself is still fully shared via
+    // Redis (spring-session-data-redis's default, non-indexed RedisSessionRepository - no CONFIG
+    // command involved at all), so a request landing on a different instance than the one that
+    // logged someone in still finds their session correctly. Revisit with the indexed repository
+    // later (needs notify-keyspace-events set via the ElastiCache parameter group instead of at
+    // runtime, plus a ConfigureRedisAction.NO_OP bean to stop Spring Session from attempting the
+    // blocked CONFIG call itself) only if exact cross-instance enforcement ever actually matters
+    // enough to justify that added complexity.
     @Bean
-    @ConditionalOnProperty(prefix = "spring.session", name = "store-type", havingValue = "redis")
-    public SessionRegistry redisBackedSessionRegistry(FindByIndexNameSessionRepository<? extends Session> sessionRepository) {
-        return new SpringSessionBackedSessionRegistry<>(sessionRepository);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(SessionRegistry.class)
-    public SessionRegistry inMemorySessionRegistry() {
+    public SessionRegistry sessionRegistry() {
         return new SessionRegistryImpl();
     }
 
@@ -74,9 +71,6 @@ public class SecurityConfig {
         return new HttpSessionEventPublisher();
     }
 
-    // SessionRegistry injected as a parameter rather than called as a method - there's no longer
-    // one single sessionRegistry() bean method to call directly (see the two conditional ones
-    // above), so this just asks Spring for whichever ONE of them actually got created.
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, SessionRegistry sessionRegistry) throws Exception {
         http
