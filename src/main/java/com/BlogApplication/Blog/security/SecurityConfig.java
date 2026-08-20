@@ -1,5 +1,7 @@
 package com.BlogApplication.Blog.security;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -10,6 +12,9 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
+import org.springframework.session.FindByIndexNameSessionRepository;
+import org.springframework.session.Session;
+import org.springframework.session.security.SpringSessionBackedSessionRegistry;
 
 @Configuration
 public class SecurityConfig {
@@ -34,8 +39,30 @@ public class SecurityConfig {
 
     // Tracks who's logged in where, so maximumSessions() below can enforce one active
     // session per account instead of letting the same login work unlimited times at once.
+    //
+    // Two implementations, exactly one of which is ever actually created:
+    //
+    // - redisBackedSessionRegistry, when spring.session.store-type=redis (production - see
+    //   application.properties, infra/terraform/redis.tf): reads live session state straight out
+    //   of the shared Redis store via FindByIndexNameSessionRepository, so "who's logged in
+    //   where" is correct no matter which of the (up to 4) Beanstalk instances actually served
+    //   each request. This is the whole point of adding Redis in the first place - without it,
+    //   swapping the session STORE to Redis wouldn't have been enough on its own, since this
+    //   registry bean is what maximumSessions() actually asks "how many sessions does this user
+    //   have right now", and a plain SessionRegistryImpl only ever knows about sessions THIS one
+    //   JVM has personally seen.
+    // - inMemorySessionRegistry, the @ConditionalOnMissingBean fallback: used whenever the Redis
+    //   bean above didn't get created (local `docker` profile, tests - spring.session.store-type
+    //   defaults to "none" there), so local dev never needs a real Redis instance running.
     @Bean
-    public SessionRegistry sessionRegistry() {
+    @ConditionalOnProperty(prefix = "spring.session", name = "store-type", havingValue = "redis")
+    public SessionRegistry redisBackedSessionRegistry(FindByIndexNameSessionRepository<? extends Session> sessionRepository) {
+        return new SpringSessionBackedSessionRegistry<>(sessionRepository);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(SessionRegistry.class)
+    public SessionRegistry inMemorySessionRegistry() {
         return new SessionRegistryImpl();
     }
 
@@ -47,8 +74,11 @@ public class SecurityConfig {
         return new HttpSessionEventPublisher();
     }
 
+    // SessionRegistry injected as a parameter rather than called as a method - there's no longer
+    // one single sessionRegistry() bean method to call directly (see the two conditional ones
+    // above), so this just asks Spring for whichever ONE of them actually got created.
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, SessionRegistry sessionRegistry) throws Exception {
         http
                 // /h2-console is only ever registered when spring.h2.console.enabled=true (the
                 // docker/test profiles) - in production (Postgres, console disabled) this rule
@@ -118,7 +148,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .maximumSessions(2)
                         .maxSessionsPreventsLogin(false)
-                        .sessionRegistry(sessionRegistry())
+                        .sessionRegistry(sessionRegistry)
                 )
                 // Every login is remembered for 30 days via a signed cookie (hash-based -
                 // no extra DB table, since this Postgres instance is shared with another app

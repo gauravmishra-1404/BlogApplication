@@ -38,6 +38,22 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
+		<!-- Shared session store (ElastiCache Redis, infra/terraform/redis.tf) - without this,
+		     a login session only exists in the memory of whichever single EC2 instance handled
+		     that request, so the moment Beanstalk's autoscaling group runs more than one instance
+		     (it's already configured to, up to 4 - see beanstalk.tf), the ALB round-robins each
+		     request across instances with no session affinity and users get logged out/bounced
+		     at random. Inert locally: spring.session.store-type defaults to "none" outside
+		     production (application-docker.properties), so `docker` profile dev never needs a
+		     local Redis instance. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.session</groupId>
+			<artifactId>spring-session-data-redis</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-thymeleaf</artifactId>

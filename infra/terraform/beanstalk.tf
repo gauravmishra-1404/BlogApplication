@@ -57,6 +57,12 @@ locals {
     # S3's own regional endpoint for now - functional today, a one-env-var swap later once a CDN
     # exists in front of the bucket.
     "AWS_MEDIA_CDN_DOMAIN" = { namespace = "aws:elasticbeanstalk:application:environment", value = aws_s3_bucket.post_media.bucket_regional_domain_name }
+    # Shared session store (redis.tf) - see that file's own comment for why this exists. Redis
+    # here specifically (not "none") is what actually makes it safe for the ASG below to run more
+    # than 1 instance at once.
+    "SPRING_SESSION_STORE_TYPE" = { namespace = "aws:elasticbeanstalk:application:environment", value = "redis" }
+    "SPRING_DATA_REDIS_HOST"    = { namespace = "aws:elasticbeanstalk:application:environment", value = aws_elasticache_cluster.sessions.cache_nodes[0].address }
+    "SPRING_DATA_REDIS_PORT"    = { namespace = "aws:elasticbeanstalk:application:environment", value = tostring(aws_elasticache_cluster.sessions.cache_nodes[0].port) }
   }
 }
 
