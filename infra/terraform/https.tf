@@ -63,11 +63,17 @@ resource "aws_acm_certificate_validation" "main" {
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
 }
 
-# The region-wide constant hosted-zone-id ALBs use for Route53 ALIAS records - not tied to this
-# specific ALB (Beanstalk creates/owns that one internally in LoadBalanced mode, there's no
-# separate aws_lb resource here to reference directly), just the fixed value AWS documents per
-# region for "any ALB living in this region".
-data "aws_lb_hosted_zone_id" "main" {}
+# NOT the same as an ALB's own hosted zone id (data.aws_lb_hosted_zone_id) - confirmed live, AWS
+# rejected an ALIAS record built with that value ("the alias target name does not lie within the
+# target zone"). A Beanstalk environment's *.elasticbeanstalk.com CNAME is a separate abstraction
+# Beanstalk itself manages (not a direct alias to the underlying ALB it creates in LoadBalanced
+# mode), with its own fixed hosted zone id per region, published in AWS's own docs:
+# https://docs.aws.amazon.com/general/latest/gr/elasticbeanstalk.html - Z18NTBI3Y7N9TZ is
+# specifically ap-south-1's; hardcoded rather than derived since this project runs in one region
+# and a real region change would need re-checking this table anyway.
+locals {
+  beanstalk_hosted_zone_id = "Z18NTBI3Y7N9TZ"
+}
 
 # Points both the apex domain and www at Beanstalk's own environment CNAME, which itself already
 # resolves through to the ALB once EnvironmentType=LoadBalanced (see beanstalk.tf). ALIAS (not a
@@ -81,8 +87,8 @@ resource "aws_route53_record" "app_apex" {
   type    = "A"
 
   alias {
-    name                   = aws_elastic_beanstalk_environment.main.cname
-    zone_id                = data.aws_lb_hosted_zone_id.main.id
+    name                   = aws_elastic_beanstalk_environment.lb[0].cname
+    zone_id                = local.beanstalk_hosted_zone_id
     evaluate_target_health = true
   }
 }
@@ -94,8 +100,8 @@ resource "aws_route53_record" "app_www" {
   type    = "A"
 
   alias {
-    name                   = aws_elastic_beanstalk_environment.main.cname
-    zone_id                = data.aws_lb_hosted_zone_id.main.id
+    name                   = aws_elastic_beanstalk_environment.lb[0].cname
+    zone_id                = local.beanstalk_hosted_zone_id
     evaluate_target_health = true
   }
 }

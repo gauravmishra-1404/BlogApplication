@@ -181,7 +181,7 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
         Resource = [
           "arn:aws:elasticbeanstalk:${var.aws_region}:${data.aws_caller_identity.current.account_id}:application/${aws_elastic_beanstalk_application.main.name}",
           "arn:aws:elasticbeanstalk:${var.aws_region}:${data.aws_caller_identity.current.account_id}:applicationversion/${aws_elastic_beanstalk_application.main.name}/*",
-          "arn:aws:elasticbeanstalk:${var.aws_region}:${data.aws_caller_identity.current.account_id}:environment/${aws_elastic_beanstalk_application.main.name}/${aws_elastic_beanstalk_environment.main.name}",
+          "arn:aws:elasticbeanstalk:${var.aws_region}:${data.aws_caller_identity.current.account_id}:environment/${aws_elastic_beanstalk_application.main.name}/${aws_elastic_beanstalk_environment.lb[0].name}",
           "arn:aws:elasticbeanstalk:${var.aws_region}::solutionstack/*"
         ]
         # CreateApplicationVersion also needs to reference the solution stack implicitly through
