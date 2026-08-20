@@ -39,6 +39,7 @@ flowchart TB
         ALB["Application Load Balancer<br/>:443 HTTPS terminates here"]
         EB["EC2 instance (Elastic Beanstalk,<br/>Docker platform) — Spring Boot app<br/>:80 plain HTTP, ALB→instance only"]
         RDS[("RDS PostgreSQL<br/>private subnet")]
+        Redis[("ElastiCache Redis<br/>shared session store")]
         S3B["S3 — post media &<br/>profile images"]
         SNS{{"SNS Topic<br/>notifications"}}
         SQSe["SQS — email"]
@@ -58,6 +59,7 @@ flowchart TB
     ALB -. "TLS cert" .-> ACM
     ALB -- "4 - plain HTTP, same VPC" --> EB
     EB -- "5 - JDBC" --> RDS
+    EB -- "session read/write" --> Redis
     User -- "presigned PUT<br/>(direct upload, bypasses ALB/app)" --> S3B
     EB -- "presign URLs<br/>(instance-role creds)" --> S3B
     EB -- "publish event" --> SNS
@@ -88,6 +90,11 @@ flowchart TB
   queues (email/push/in-app), each with its own subscription filter, fan it out to three
   independent Lambda workers. `inapp-worker` writes the notification straight to Postgres;
   `email-worker` calls SendGrid; `push-worker` calls Firebase Cloud Messaging.
+- **Session storage**: login sessions live in a shared ElastiCache Redis instance, not the app
+  instance's own memory - the Beanstalk ASG can already scale up to 4 instances, and without a
+  shared session store, the ALB (no sticky sessions) would round-robin each request across
+  instances with no session affinity the moment it ever ran more than one, logging users out at
+  random depending which instance handled a given request.
 - **Email deliverability**: outbound mail sends as `notifications@bodhsea.in`, a domain
   SendGrid has cryptographically authenticated — 3 CNAME records (DKIM + Return-Path/SPF) plus
   a DMARC TXT record, all in the same Route 53 zone. Without this, an unauthenticated sender on
@@ -145,6 +152,8 @@ flowchart TB
   the CNAME/TXT records backing SendGrid's domain authentication and DMARC (`mail.tf`)
 - ACM — the free TLS certificate the load balancer presents for `bodhsea.in`, DNS-validated
   through the Route 53 zone above
+- ElastiCache (Redis) — shared session store, single `cache.t3.micro` node, VPC/security-group
+  isolated the same way RDS is
 
 **Third-party integrations**
 - SendGrid — transactional email delivery, sending from a domain-authenticated `bodhsea.in`
@@ -249,6 +258,7 @@ loader, or your deployment platform's own environment configuration. None are re
 | `CLOUDINARY_ENABLED` / `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Legacy avatar image hosting |
 | `AWS_SQS_ENABLED` / `AWS_REGION` / `AWS_SNS_TOPIC_ARN` | Notification publishing (SNS) |
 | `AWS_MEDIA_ENABLED` / `AWS_MEDIA_BUCKET` / `AWS_MEDIA_CDN_DOMAIN` | Direct-to-S3 post/profile media uploads |
+| `SPRING_SESSION_STORE_TYPE` / `SPRING_DATA_REDIS_HOST` / `SPRING_DATA_REDIS_PORT` | Shared session store (Redis) - defaults to `none` (single-instance sessions) if unset |
 
 AWS credentials for SNS/S3 access are **not** passed as environment variables in production — the
 app reads them from its EC2 instance role's temporary credentials automatically via the AWS SDK's
