@@ -31,12 +31,13 @@ via SNS → SQS → Lambda), direct-to-S3 media uploads, and infrastructure full
 
 ```mermaid
 flowchart TB
-    subgraph Client
-        Browser["Browser<br/>(Thymeleaf-rendered pages + vanilla JS)"]
-    end
+    User["User's browser"]
+    DNS[("Route 53<br/>DNS — bodhsea.in")]
 
     subgraph AWS["AWS (ap-south-1) — Terraform-managed"]
-        EB["Elastic Beanstalk<br/>EC2 (Docker platform)<br/>Spring Boot app"]
+        ACM["ACM certificate<br/>(TLS for bodhsea.in)"]
+        ALB["Application Load Balancer<br/>:443 HTTPS terminates here"]
+        EB["EC2 instance (Elastic Beanstalk,<br/>Docker platform) — Spring Boot app<br/>:80 plain HTTP, ALB→instance only"]
         RDS[("RDS PostgreSQL<br/>private subnet")]
         S3B["S3 — post media &<br/>profile images"]
         SNS{{"SNS Topic<br/>notifications"}}
@@ -51,9 +52,13 @@ flowchart TB
     SendGrid[("SendGrid API")]
     FCM[("Firebase Cloud<br/>Messaging")]
 
-    Browser -- "HTTP" --> EB
-    Browser -- "presigned PUT<br/>(direct upload)" --> S3B
-    EB -- "JDBC" --> RDS
+    User -- "1 - resolve bodhsea.in" --> DNS
+    DNS -- "2 - A/ALIAS record" --> ALB
+    User -- "3 - HTTPS request" --> ALB
+    ALB -. "TLS cert" .-> ACM
+    ALB -- "4 - plain HTTP, same VPC" --> EB
+    EB -- "5 - JDBC" --> RDS
+    User -- "presigned PUT<br/>(direct upload, bypasses ALB/app)" --> S3B
     EB -- "presign URLs<br/>(instance-role creds)" --> S3B
     EB -- "publish event" --> SNS
     SNS --> SQSe --> LmE --> SendGrid
@@ -62,20 +67,52 @@ flowchart TB
     LmI -- "writes notification row" --> RDS
 ```
 
-- **App server**: a single Spring Boot process on an EC2 instance managed by Elastic Beanstalk
+- **DNS**: `bodhsea.in` is registered with a third-party registrar; Route 53 is the authoritative
+  DNS host (the registrar's nameservers are delegated to Route 53's 4 nameservers). An `A`/`ALIAS`
+  record on the apex domain (and `www`) points at the Application Load Balancer.
+- **TLS / load balancing**: Elastic Beanstalk runs the app as a `LoadBalanced` environment — an
+  Application Load Balancer (ALB) sits in front of the EC2 instance, terminates HTTPS on port 443
+  using a free ACM certificate issued for `bodhsea.in` (DNS-validated via Route 53), and forwards
+  plain HTTP to the instance on port 80 inside the same VPC. The instance is never reached
+  directly from the internet on 443 — only the ALB holds the certificate.
+- **App server**: a single Spring Boot process on that EC2 instance, managed by Elastic Beanstalk
   (Docker platform) — no separate frontend/backend split, Thymeleaf renders full pages and
   fragments server-side, vanilla JS handles the interactive bits (reactions, bookmarks, reposts,
   infinite scroll, modals).
 - **Database**: PostgreSQL on RDS in production (private subnet, reachable only from the app
   instance's own security group); H2 in-memory for local development.
 - **Media uploads**: images/video for posts and profile/cover photos upload directly from the
-  browser to S3 via short-lived presigned URLs — the app server never proxies file bytes.
+  browser to S3 via short-lived presigned URLs — the app server (and the ALB) never proxy file
+  bytes; only the small presign request/response round-trips through the app.
 - **Notifications**: the app publishes one event to an SNS topic per notification; three SQS
   queues (email/push/in-app), each with its own subscription filter, fan it out to three
   independent Lambda workers. `inapp-worker` writes the notification straight to Postgres;
   `email-worker` calls SendGrid; `push-worker` calls Firebase Cloud Messaging.
+- **Email deliverability**: outbound mail sends as `notifications@bodhsea.in`, a domain
+  SendGrid has cryptographically authenticated — 3 CNAME records (DKIM + Return-Path/SPF) plus
+  a DMARC TXT record, all in the same Route 53 zone. Without this, an unauthenticated sender on
+  someone else's domain (this project's own sends used to go out as `@gmail.com`, through a
+  server that isn't Google's) is one of the strongest spam signals a receiving mail server sees,
+  regardless of the email's actual content.
 - **Infrastructure as code**: every AWS resource above is defined in `infra/terraform/` and the
   three Lambda workers live in `infra/lambdas/` as their own small Maven modules.
+
+### Request/response path (a normal page load)
+
+1. Browser resolves `bodhsea.in` — Route 53 answers with the ALB's address.
+2. Browser opens an HTTPS connection to the ALB; the ALB presents the ACM certificate for
+   `bodhsea.in` and terminates TLS there (the EC2 instance itself never handles TLS at all).
+3. ALB forwards the now-decrypted request to the EC2 instance over plain HTTP, inside the VPC —
+   this hop never leaves AWS's own network.
+4. Spring Boot (behind Beanstalk's own reverse proxy on the instance) routes the request to a
+   `@Controller`, which calls into a service/repository layer backed by RDS over JDBC.
+5. The controller renders a Thymeleaf template (or fragment, for an AJAX/infinite-scroll request)
+   server-side and returns HTML; the response retraces the same path back through the instance,
+   the ALB (re-encrypting over HTTPS to the browser), out to the user.
+6. A media upload (avatar, cover, post image/video) is the one path that *doesn't* retrace this
+   route both ways: the browser asks the app for a short-lived presigned S3 URL (steps 1–5 above,
+   but for a tiny JSON request/response), then PUTs the actual file bytes **directly to S3**,
+   bypassing the ALB and app server entirely for the large part of the transfer.
 
 ## Tech Stack
 
@@ -96,15 +133,22 @@ flowchart TB
 - H2 (local development, in-memory)
 
 **AWS services** (all provisioned via Terraform)
-- Elastic Beanstalk (EC2/Docker) — app hosting
+- Elastic Beanstalk (EC2/Docker, `LoadBalanced` environment) — app hosting
+- Elastic Load Balancing (Application Load Balancer) — HTTPS termination, provisioned by
+  Beanstalk itself as part of the `LoadBalanced` environment type
 - RDS (PostgreSQL) — database
 - S3 — post media and profile/cover image storage
 - SNS + SQS + Lambda (Java 21) — the notification pipeline
 - IAM — scoped roles/policies (instance role for the app, per-function roles for each Lambda)
-- Route 53 + ACM — DNS and TLS once a custom domain is attached
+- Route 53 — DNS for `bodhsea.in` (a hosted zone Terraform manages; the domain itself is
+  registered with a separate third-party registrar and delegated to Route 53's nameservers), plus
+  the CNAME/TXT records backing SendGrid's domain authentication and DMARC (`mail.tf`)
+- ACM — the free TLS certificate the load balancer presents for `bodhsea.in`, DNS-validated
+  through the Route 53 zone above
 
 **Third-party integrations**
-- SendGrid — transactional email delivery
+- SendGrid — transactional email delivery, sending from a domain-authenticated `bodhsea.in`
+  address (SPF/DKIM via Route 53, plus DMARC) rather than an unauthenticated free-mail address
 - Firebase Cloud Messaging — push notifications
 - Cloudinary — legacy avatar storage path (being phased out in favor of direct S3 uploads)
 

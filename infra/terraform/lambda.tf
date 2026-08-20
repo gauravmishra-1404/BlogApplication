@@ -91,6 +91,8 @@ resource "aws_lambda_function" "worker" {
     variables = each.key == "email" ? {
       SENDGRID_API_KEY    = var.sendgrid_api_key
       SENDGRID_FROM_EMAIL = var.sendgrid_from_email
+      # email-worker builds real links inside real emails - the CNAME swap to the LoadBalanced
+      # environment (beanstalk.tf) is done and verified, so this is the real, working domain now.
       APP_BASE_URL        = local.beanstalk_app_base_url
       } : each.key == "push" ? {
       FCM_SERVICE_ACCOUNT_JSON = var.fcm_service_account_json

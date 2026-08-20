@@ -14,7 +14,11 @@
 
 locals {
   beanstalk_cname_prefix = "bodhsea-app"
-  beanstalk_app_base_url = "http://${local.beanstalk_cname_prefix}.${var.aws_region}.elasticbeanstalk.com"
+  # Switches to the real HTTPS domain automatically once var.domain_name is set (https.tf) -
+  # every place this local feeds (APP_BASE_URL below, email-worker's own copy in lambda.tf,
+  # media.tf's CORS allowed_origins) picks up the upgrade in the same apply, nothing left
+  # pointing at the old raw http:// elasticbeanstalk.com URL by hand afterward.
+  beanstalk_app_base_url = local.https_enabled ? "https://${var.domain_name}" : "http://${local.beanstalk_cname_prefix}.${var.aws_region}.elasticbeanstalk.com"
 
   # Same "Terraform uploads an already-built artifact, doesn't build it itself" convention
   # lambda.tf already uses for the worker jars - run infra/terraform/package-beanstalk.sh before
@@ -24,6 +28,36 @@ locals {
   # real deploy did that and overwhelmed the target t3.micro (1GB RAM) badly enough to make it
   # stop responding entirely mid-build. See package-beanstalk.sh's own comment for the full story.
   beanstalk_bundle = "${path.module}/build/beanstalk-app.zip"
+
+  # Feeds the "lb" environment below - kept as its own local (rather than inlined directly into
+  # that resource) from when there were briefly two environment resources sharing it during the
+  # blue-green cutover to LoadBalanced/HTTPS (see that resource's own comment); left as a local
+  # since a shared block of settings is still a reasonable shape even with one consumer now.
+  beanstalk_shared_settings = {
+    "ServiceRole"              = { namespace = "aws:elasticbeanstalk:environment", value = aws_iam_role.beanstalk_service.name }
+    "InstanceType"             = { namespace = "aws:autoscaling:launchconfiguration", value = "t3.micro" }
+    "IamInstanceProfile"       = { namespace = "aws:autoscaling:launchconfiguration", value = aws_iam_instance_profile.beanstalk_ec2.name }
+    "SecurityGroups"           = { namespace = "aws:autoscaling:launchconfiguration", value = aws_security_group.app_instance.id }
+    "VPCId"                    = { namespace = "aws:ec2:vpc", value = data.aws_vpc.default.id }
+    "Subnets"                  = { namespace = "aws:ec2:vpc", value = join(",", data.aws_subnets.default.ids) }
+    "AssociatePublicIpAddress" = { namespace = "aws:ec2:vpc", value = "true" }
+    "DATASOURCE_URL"           = { namespace = "aws:elasticbeanstalk:application:environment", value = "jdbc:postgresql://${aws_db_instance.main.endpoint}/bodhsea" }
+    "DATASOURCE_USERNAME"      = { namespace = "aws:elasticbeanstalk:application:environment", value = aws_db_instance.main.username }
+    "DATASOURCE_PASSWORD"      = { namespace = "aws:elasticbeanstalk:application:environment", value = random_password.db_master.result }
+    "APP_BASE_URL"             = { namespace = "aws:elasticbeanstalk:application:environment", value = local.beanstalk_app_base_url }
+    "SENDGRID_API_KEY"         = { namespace = "aws:elasticbeanstalk:application:environment", value = var.sendgrid_api_key }
+    "SENDGRID_FROM_EMAIL"      = { namespace = "aws:elasticbeanstalk:application:environment", value = var.sendgrid_from_email }
+    "AWS_REGION"               = { namespace = "aws:elasticbeanstalk:application:environment", value = var.aws_region }
+    "AWS_SQS_ENABLED"          = { namespace = "aws:elasticbeanstalk:application:environment", value = "true" }
+    "AWS_SNS_TOPIC_ARN"        = { namespace = "aws:elasticbeanstalk:application:environment", value = aws_sns_topic.notifications.arn }
+    "AWS_MEDIA_ENABLED"        = { namespace = "aws:elasticbeanstalk:application:environment", value = "true" }
+    "AWS_MEDIA_BUCKET"         = { namespace = "aws:elasticbeanstalk:application:environment", value = aws_s3_bucket.post_media.bucket }
+    # No Cloudflare/CDN in front yet (media.tf's file comment - CloudFront was refused on this
+    # account, Cloudflare needs a domain that hasn't been bought yet), so this points straight at
+    # S3's own regional endpoint for now - functional today, a one-env-var swap later once a CDN
+    # exists in front of the bucket.
+    "AWS_MEDIA_CDN_DOMAIN" = { namespace = "aws:elasticbeanstalk:application:environment", value = aws_s3_bucket.post_media.bucket_regional_domain_name }
+  }
 }
 
 resource "aws_s3_object" "beanstalk_bundle" {
@@ -180,150 +214,93 @@ resource "aws_iam_instance_profile" "beanstalk_ec2" {
   role = aws_iam_role.beanstalk_ec2.name
 }
 
-resource "aws_elastic_beanstalk_environment" "main" {
-  name                = "${var.project}-app-env"
+# The original environment (SingleInstance, no ALB, no HTTPS) has been decommissioned - it was
+# replaced by the LoadBalanced environment below via a blue-green cutover (a second, separate
+# environment created alongside it, verified healthy, then swap-environment-cnames moved the real
+# "bodhsea-app" hostname over to it) rather than an in-place conversion, because Beanstalk rejects
+# EnvironmentType/LoadBalancerType changes on an existing environment outright
+# (ConfigurationValidationException, confirmed live, no partial change applied).
+#
+# cname_prefix below is local.beanstalk_cname_prefix ("bodhsea-app"), NOT "<prefix>-lb" - real,
+# hard lesson: swap-environment-cnames changes the actual live cname_prefix on both environments
+# (that's the whole mechanism), and cname_prefix can't be updated in place (ForceNew) - leaving
+# this declared as the pre-swap "-lb" value would have left Terraform's own config out of sync
+# with the swap that already happened, and its "fix" for that drift is to destroy and recreate
+# this environment with the OLD prefix, undoing the swap and taking the live site down to do it.
+# Confirmed via a real `terraform plan` showing exactly that "must be replaced" action before this
+# was corrected. Bumping cname_prefix here always needs to mirror whatever's actually true after
+# the last real swap, not what this environment was created with.
+#
+# No version_label here, same as "main" - deliberately, since CI (.github/workflows/deploy.yml)
+# manages deploys directly via UpdateEnvironment from here on, matching "main"'s own reasoning.
+# BUT: a environment with no version_label starts on AWS's own placeholder "Welcome to Elastic
+# Beanstalk" sample app, not your actual app - confirmed live, the domain briefly served that
+# placeholder instead of Bodh Sea right after this environment's first creation, until a one-time
+# manual `aws elasticbeanstalk update-environment --version-label <current>` bootstrapped the
+# real app onto it. A brand-new environment created this way always needs that one manual step;
+# it's not something Terraform or CI does for you on environment creation itself.
+resource "aws_elastic_beanstalk_environment" "lb" {
+  count               = local.https_enabled ? 1 : 0
+  name                = "${var.project}-app-env-lb"
   application         = aws_elastic_beanstalk_application.main.name
   solution_stack_name = "64bit Amazon Linux 2023 v4.13.6 running Docker"
   cname_prefix        = local.beanstalk_cname_prefix
 
-  # No version_label here on purpose, as of the GitHub Actions workflow (.github/workflows/
-  # deploy.yml) taking over routine deploys - that workflow calls elasticbeanstalk:UpdateEnvironment
-  # directly on every push to master, entirely outside Terraform. If this attribute stayed wired
-  # to aws_elastic_beanstalk_application_version.main.name (which only changes when someone
-  # locally reruns package-beanstalk.sh + terraform apply), the NEXT unrelated infra-only
-  # `terraform apply` would see "drift" against whatever CI most recently deployed and roll the
-  # live environment back to a stale local build - actively undoing CI's deploy. Leaving this
-  # unset means Terraform stops caring which version is live; aws_s3_object.beanstalk_bundle and
-  # aws_elastic_beanstalk_application_version.main above still exist as a manual/fallback deploy
-  # path (run package-beanstalk.sh, terraform apply, then a manual `aws elasticbeanstalk
-  # update-environment --version-label ...` if CI is ever unavailable) - they just no longer
-  # auto-attach to the environment themselves.
-
   setting {
     namespace = "aws:elasticbeanstalk:environment"
     name      = "EnvironmentType"
-    value     = "SingleInstance"
+    value     = "LoadBalanced"
   }
 
   setting {
     namespace = "aws:elasticbeanstalk:environment"
-    name      = "ServiceRole"
-    value     = aws_iam_role.beanstalk_service.name
+    name      = "LoadBalancerType"
+    value     = "application"
   }
 
+  # The ALB target group's health check defaults to path "/", expecting HTTP 200 - but "/" is
+  # behind Spring Security here, so an unauthenticated health-check request gets redirected to
+  # /login (302), not 200. The target group's default healthy-codes list is just "200", so it
+  # marked every instance unhealthy (Target.ResponseCodeMismatch) even though the app itself was
+  # fully up the whole time - confirmed live, curl against /login and /registerUser both returned
+  # 200 directly while this environment showed Health: Red. /login is the one page this app
+  # already has as .permitAll() (SecurityConfig.java) that returns a real 200 with no auth, so it
+  # doubles as a correct, zero-extra-code health-check target - no actuator dependency in this
+  # project to add a dedicated /actuator/health endpoint instead.
   setting {
-    namespace = "aws:autoscaling:launchconfiguration"
-    name      = "InstanceType"
-    value     = "t3.micro"
+    namespace = "aws:elasticbeanstalk:environment:process:default"
+    name      = "HealthCheckPath"
+    value     = "/login"
   }
 
-  setting {
-    namespace = "aws:autoscaling:launchconfiguration"
-    name      = "IamInstanceProfile"
-    value     = aws_iam_instance_profile.beanstalk_ec2.name
+  dynamic "setting" {
+    for_each = local.beanstalk_shared_settings
+    content {
+      namespace = setting.value.namespace
+      name      = setting.key
+      value     = setting.value.value
+    }
   }
 
+  # HTTPS listener on the ALB - port 80 is left enabled too (Beanstalk's own default listener),
+  # deliberately no forced redirect to 443 yet - existing http:// links/bookmarks (including
+  # every screenshot/link shared this whole build) keep working unchanged; a redirect is a
+  # reasonable follow-up once the domain's been live a while, not bundled into this migration.
   setting {
-    namespace = "aws:autoscaling:launchconfiguration"
-    name      = "SecurityGroups"
-    value     = aws_security_group.app_instance.id
-  }
-
-  setting {
-    namespace = "aws:ec2:vpc"
-    name      = "VPCId"
-    value     = data.aws_vpc.default.id
-  }
-
-  setting {
-    namespace = "aws:ec2:vpc"
-    name      = "Subnets"
-    value     = join(",", data.aws_subnets.default.ids)
-  }
-
-  setting {
-    namespace = "aws:ec2:vpc"
-    name      = "AssociatePublicIpAddress"
-    value     = "true"
-  }
-
-  # --- App env vars - same 3-value DATASOURCE_* shape application.properties already expects,
-  # just pointed at the new RDS instance instead of Render's Postgres. Notifications (SNS) and
-  # media upload (S3) are turned on below too, now that the core app + database have been proven
-  # working - credentials for both come from the instance role above, not env vars. ---
-  setting {
-    namespace = "aws:elasticbeanstalk:application:environment"
-    name      = "DATASOURCE_URL"
-    value     = "jdbc:postgresql://${aws_db_instance.main.endpoint}/bodhsea"
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:application:environment"
-    name      = "DATASOURCE_USERNAME"
-    value     = aws_db_instance.main.username
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:application:environment"
-    name      = "DATASOURCE_PASSWORD"
-    value     = random_password.db_master.result
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:application:environment"
-    name      = "APP_BASE_URL"
-    value     = local.beanstalk_app_base_url
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:application:environment"
-    name      = "SENDGRID_API_KEY"
-    value     = var.sendgrid_api_key
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:application:environment"
-    name      = "SENDGRID_FROM_EMAIL"
-    value     = var.sendgrid_from_email
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:application:environment"
-    name      = "AWS_REGION"
-    value     = var.aws_region
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:application:environment"
-    name      = "AWS_SQS_ENABLED"
+    namespace = "aws:elbv2:listener:443"
+    name      = "ListenerEnabled"
     value     = "true"
   }
 
   setting {
-    namespace = "aws:elasticbeanstalk:application:environment"
-    name      = "AWS_SNS_TOPIC_ARN"
-    value     = aws_sns_topic.notifications.arn
+    namespace = "aws:elbv2:listener:443"
+    name      = "Protocol"
+    value     = "HTTPS"
   }
 
   setting {
-    namespace = "aws:elasticbeanstalk:application:environment"
-    name      = "AWS_MEDIA_ENABLED"
-    value     = "true"
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:application:environment"
-    name      = "AWS_MEDIA_BUCKET"
-    value     = aws_s3_bucket.post_media.bucket
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:application:environment"
-    # No Cloudflare/CDN in front yet (media.tf's file comment - CloudFront was refused on this
-    # account, Cloudflare needs a domain that hasn't been bought yet), so this points straight at
-    # S3's own regional endpoint for now - functional today, a one-env-var swap later once a CDN
-    # exists in front of the bucket.
-    name  = "AWS_MEDIA_CDN_DOMAIN"
-    value = aws_s3_bucket.post_media.bucket_regional_domain_name
+    namespace = "aws:elbv2:listener:443"
+    name      = "SSLCertificateArns"
+    value     = aws_acm_certificate_validation.main[0].certificate_arn
   }
 }

@@ -30,3 +30,8 @@ output "media_bucket_name" {
   description = "The app's AWS_MEDIA_BUCKET env var - the presign endpoint needs this to know which bucket to sign a PUT URL against."
   value       = aws_s3_bucket.post_media.bucket
 }
+
+output "route53_name_servers" {
+  description = "Empty until var.domain_name is set (see https.tf). Once it's applied with a real domain, point that domain's registrar at these 4 nameservers - that's the one manual step outside Terraform that actually makes this zone (and ACM's DNS validation, and the app itself) resolve."
+  value       = local.https_enabled ? aws_route53_zone.main[0].name_servers : []
+}
