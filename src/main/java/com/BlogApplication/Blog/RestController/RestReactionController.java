@@ -4,6 +4,7 @@ import com.BlogApplication.Blog.models.ReactionType;
 import com.BlogApplication.Blog.payloads.ReactionSummary;
 import com.BlogApplication.Blog.services.CommentReactionService;
 import com.BlogApplication.Blog.services.PostReactionService;
+import com.BlogApplication.Blog.services.ShortReactionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -27,6 +28,9 @@ public class RestReactionController {
     @Autowired
     private CommentReactionService commentReactionService;
 
+    @Autowired
+    private ShortReactionService shortReactionService;
+
     @PostMapping("/posts/{id}/reactions/{type}")
     public ResponseEntity<ReactionSummary> togglePostReaction(@PathVariable int id, @PathVariable String type,
                                                               Authentication authentication) {
@@ -35,6 +39,18 @@ public class RestReactionController {
             return ResponseEntity.badRequest().build();
         }
         return ResponseEntity.ok(postReactionService.toggle(id, authentication.getName(), reactionType));
+    }
+
+    // reactions.js builds this URL generically from data-target-type="short" + pluralizing
+    // ("short" + "s") - no JS change needed to wire this up, confirmed during this feature's plan.
+    @PostMapping("/shorts/{id}/reactions/{type}")
+    public ResponseEntity<ReactionSummary> toggleShortReaction(@PathVariable int id, @PathVariable String type,
+                                                                Authentication authentication) {
+        ReactionType reactionType = parseType(type);
+        if (reactionType == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(shortReactionService.toggle(id, authentication.getName(), reactionType));
     }
 
     @PostMapping("/comments/{id}/reactions/{type}")

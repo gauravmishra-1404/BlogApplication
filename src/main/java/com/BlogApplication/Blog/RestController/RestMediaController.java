@@ -68,4 +68,21 @@ public class RestMediaController {
             return ResponseEntity.status(503).build();
         }
     }
+
+    // Same mechanism as /presign, called from composeModal.js's Short branch - video only, own
+    // shorts/{ownerId}/... S3 prefix (see MediaUploadService.presignShortVideo's own comment).
+    @PostMapping("/presign-short-video")
+    public ResponseEntity<PresignedUpload> presignShortVideo(@RequestParam String contentType, Authentication authentication) {
+        User user = userRepo.findByEmail(authentication.getName()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(401).build();
+        }
+        try {
+            return ResponseEntity.ok(mediaUploadService.presignShortVideo(contentType, user.getId()));
+        } catch (UnsupportedMediaTypeException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (MediaUploadUnavailableException e) {
+            return ResponseEntity.status(503).build();
+        }
+    }
 }
