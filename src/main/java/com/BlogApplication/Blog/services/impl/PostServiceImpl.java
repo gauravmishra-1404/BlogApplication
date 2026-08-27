@@ -298,6 +298,7 @@ public class PostServiceImpl implements PostService {
         postDtoByID.setPublished(postByID.isPublished());
         postDtoByID.setPublishedAt(postByID.getPublishedAt());
         postDtoByID.setExcerpt(postByID.getExcerpt());
+        postDtoByID.setScheduledAt(postByID.getScheduledAt());
 
         List<Tags> tagsList = postByID.getTagList();
         StringBuilder constructTagList = new StringBuilder();
