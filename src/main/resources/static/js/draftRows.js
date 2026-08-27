@@ -3,8 +3,15 @@
 // straight out of the row's own data attributes rather than a second fetch, same approach
 // js/share.js's Edit button already uses for a published post.
 document.addEventListener('DOMContentLoaded', function () {
+    // Real bug fixed here: this used to bail out on `!rows.length` alone, which also skipped
+    // the Short-tile wiring further below whenever there were zero Post drafts (Posts 0 /
+    // Shorts >0 - exactly the case where the tabs default to the Shorts tab) - a Short draft
+    // tile rendered fine but its click/keydown listeners were never attached at all. The modal's
+    // own presence is the only thing both blocks actually depend on; each collection's own
+    // emptiness only skips that collection's own wiring, not the other one's.
+    if (!window.BodhSeaCompose) return;
+
     var rows = document.querySelectorAll('.draft-row');
-    if (!rows.length || !window.BodhSeaCompose) return;
 
     function openRow(row) {
         var tags = (row.dataset.postTags || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean);
@@ -33,9 +40,9 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Short drafts - same page, same modal, just a tile instead of a row and a different data
-    // shape (draftsPage.html's shorts-tile-grid section).
+    // shape (draftsPage.html's shorts-tile-grid section). No length guard needed here - forEach
+    // on an empty NodeList is already a no-op, same as the Post rows above.
     var shortTiles = document.querySelectorAll('.shorts-tile[data-short-id]');
-    if (!shortTiles.length) return;
 
     function openShortTile(tile) {
         window.BodhSeaCompose.openForEdit({

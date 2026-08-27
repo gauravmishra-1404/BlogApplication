@@ -94,7 +94,12 @@
                 <div class="shorts-tile-grid" th:unless="${#lists.isEmpty(shorts)}">
                     <a class="shorts-tile" th:each="short : ${shorts}" th:href="@{/shorts/{id}(id=${short.id})}"
                        th:with="playbackUrl=${short.transcodedVideoUrl != null ? short.transcodedVideoUrl : short.videoUrl}">
-                        <video class="shorts-tile-video" th:src="${playbackUrl}" th:poster="${short.thumbnailUrl}" muted preload="metadata"></video>
+                        <!-- onloadedmetadata nudges the browser to actually decode/paint a frame from the
+                             raw video today, since thumbnailUrl stays null until the transcode pipeline
+                             (Phase 2) is deployed - without it, preload="metadata" alone can leave the
+                             tile visibly blank until someone plays it. -->
+                        <video class="shorts-tile-video" th:src="${playbackUrl}" th:poster="${short.thumbnailUrl}"
+                               muted preload="metadata" onloadedmetadata="this.currentTime=0.1"></video>
                         <span class="shorts-tile-views"
                               th:with="viewCount=${shortViewCounts.get(short.id) != null ? shortViewCounts.get(short.id) : 0}"
                               th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(viewCount)} + (${viewCount == 1} ? ' view' : ' views')">0 views</span>
