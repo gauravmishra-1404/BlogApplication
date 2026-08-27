@@ -1,19 +1,24 @@
 package com.BlogApplication.Blog.controllers;
 
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 
 @Controller
 public class LoginController {
 
-    // The bare domain (bodhsea.in, no path) had no mapping at all before this - confirmed live,
-    // a Whitelabel 404 rather than landing anywhere useful, the single most natural thing a real
-    // visitor types. Placeholder redirect straight to /login for now, per explicit direction -
-    // a real marketing/landing page is planned separately; this just stops the bare domain from
-    // 404ing in the meantime.
+    // The bare domain (bodhsea.in, no path) used to just redirect straight to /login - a
+    // placeholder for exactly this, per that commit's own comment. Now the real marketing
+    // landing page (templates/landing.html): a logged-out visitor sees it, an already-logged-in
+    // user skips straight past it to /home instead of being pitched a "get started" page for a
+    // product they're already inside - same isLoggedIn check GlobalModelAttributes.currentUser()
+    // already uses (excluding the anonymous-authentication placeholder Spring Security installs
+    // for a logged-out request, not just null).
     @GetMapping("/")
-    public String root(){
-        return "redirect:/login";
+    public String root(Authentication authentication) {
+        boolean isLoggedIn = authentication != null && !(authentication instanceof AnonymousAuthenticationToken);
+        return isLoggedIn ? "redirect:/home" : "landing";
     }
 
     @GetMapping("/login")
