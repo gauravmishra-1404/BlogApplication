@@ -5,13 +5,16 @@ import com.BlogApplication.Blog.exceptions.IncorrectPasswordException;
 import com.BlogApplication.Blog.exceptions.UsernameTakenException;
 import com.BlogApplication.Blog.models.Follow;
 import com.BlogApplication.Blog.models.Post;
+import com.BlogApplication.Blog.models.ShortVideo;
 import com.BlogApplication.Blog.models.User;
 import com.BlogApplication.Blog.payloads.FollowListEntry;
 import com.BlogApplication.Blog.repositories.CommentRepo;
 import com.BlogApplication.Blog.repositories.FollowRepo;
 import com.BlogApplication.Blog.repositories.PostRepo;
 import com.BlogApplication.Blog.repositories.RepostRepo;
+import com.BlogApplication.Blog.repositories.ShortRepo;
 import com.BlogApplication.Blog.repositories.UserRepo;
+import com.BlogApplication.Blog.services.ShortViewService;
 import org.springframework.data.domain.Pageable;
 import com.BlogApplication.Blog.services.UserService;
 import com.BlogApplication.Blog.util.AvatarPresets;
@@ -53,6 +56,12 @@ public class ProfileController {
     @Autowired
     private RepostRepo repostRepo;
 
+    @Autowired
+    private ShortRepo shortRepo;
+
+    @Autowired
+    private ShortViewService shortViewService;
+
     @GetMapping("/profile/{username}")
     public String viewProfile(@PathVariable String username, Authentication authentication, Model model) {
         User profileUser = userRepo.findByUsername(username).orElse(null);
@@ -84,6 +93,12 @@ public class ProfileController {
         model.addAttribute("followerCount", followRepo.countByFollowedId(profileUser.getId()));
         model.addAttribute("followingCount", followRepo.countByFollowerId(profileUser.getId()));
         model.addAttribute("posts", postRepo.findVisibleByUser(profileUser));
+        List<ShortVideo> shorts = shortRepo.findVisibleByUser(profileUser);
+        model.addAttribute("shorts", shorts);
+        // Batched, same "one grouped query for the whole tab" shape ShortService.getShortsListing
+        // already uses for the main feed, not a per-tile call.
+        List<Integer> shortIds = shorts.stream().map(ShortVideo::getId).toList();
+        model.addAttribute("shortViewCounts", shortViewService.countViewsForShorts(shortIds));
         model.addAttribute("comments", commentRepo.findRepliesReceivedByPostAuthor(profileUser));
         // Not paginated, same "load everything, no infinite scroll here" simplicity the
         // Posts/Replies tabs above already have - Pageable.unpaged() over findVisibleByUserId's

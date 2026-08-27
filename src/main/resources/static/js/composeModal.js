@@ -55,18 +55,49 @@ document.addEventListener('DOMContentLoaded', function () {
     var skinToneBtn = document.getElementById('composeSkinToneBtn');
     var emojiConfirmBtn = document.getElementById('composeEmojiConfirm');
 
+    // ---------- Post/Short type switcher ----------
+    var typeSwitcher = document.getElementById('composeTypeSwitcher');
+    var typePostBtn = document.getElementById('composeTypePost');
+    var typeShortBtn = document.getElementById('composeTypeShort');
+    var postFieldsWrap = document.getElementById('composePostFields');
+    var shortFieldsWrap = document.getElementById('composeShortFields');
+    var captionInput = document.getElementById('composeCaption');
+    var composeType = 'post';
+
+    // ---------- Short video upload ----------
+    var shortVideoUrlInput = document.getElementById('composeShortVideoUrl');
+    var shortVideoDropzone = document.getElementById('composeShortVideoDropzone');
+    var shortVideoDzTitle = document.getElementById('composeShortVideoDzTitle');
+    var shortVideoFileInput = document.getElementById('composeShortVideoFileInput');
+    var shortVideoState = { uploading: false, failed: false, remoteUrl: null, xhr: null };
+
+    // ---------- Schedule popover ----------
+    var scheduledAtInput = document.getElementById('composeScheduledAt');
+    var scheduleBtn = document.getElementById('composeScheduleBtn');
+    var schedulePopover = document.getElementById('composeSchedulePopover');
+    var scheduleInput = document.getElementById('composeScheduleInput');
+    var scheduleClearBtn = document.getElementById('composeScheduleClear');
+    var scheduleConfirmBtn = document.getElementById('composeScheduleConfirm');
+    // The label the main action button falls back to once no schedule is set - tracks whichever
+    // of Publish/Save changes resetToCreateMode()/openForEdit() most recently set, so a set
+    // schedule can temporarily override it with "Schedule" and hand it back cleanly.
+    var baseButtonLabel = 'Publish';
+
     var createAction = form.getAttribute('action');
     var editAction = form.dataset.editAction;
+    var createActionShort = form.dataset.createActionShort;
+    var editActionShort = form.dataset.editActionShort;
 
     function openModal() {
         backdrop.hidden = false;
         document.body.style.overflow = 'hidden';
-        titleInput.focus();
+        (composeType === 'short' ? captionInput : titleInput).focus();
     }
     function closeModal() {
         backdrop.hidden = true;
         document.body.style.overflow = '';
         closePicker();
+        closeSchedulePopover();
     }
 
     function clearTagChips() {
@@ -74,55 +105,138 @@ document.addEventListener('DOMContentLoaded', function () {
         syncTagsHidden();
     }
 
+    var isEditMode = false;
+
+    // The single source of truth for which of the 4 endpoints (create/edit x post/short) this
+    // form currently targets - called after either composeType or isEditMode changes, rather
+    // than each of the 4 call sites setting form.action directly.
+    function updateFormAction() {
+        if (composeType === 'short') {
+            form.setAttribute('action', isEditMode ? editActionShort : createActionShort);
+        } else {
+            form.setAttribute('action', isEditMode ? editAction : createAction);
+        }
+    }
+
+    // Switches which field group is visible/required - only ever called for a brand-new
+    // create (the switcher itself is disabled during edit, see below), so there's no existing
+    // title/content/caption/video data to reconcile between the two.
+    function setComposeType(type) {
+        composeType = type;
+        typePostBtn.classList.toggle('active', type === 'post');
+        typeShortBtn.classList.toggle('active', type === 'short');
+        postFieldsWrap.hidden = type !== 'post';
+        shortFieldsWrap.hidden = type !== 'short';
+        updateFormAction();
+        updatePostState();
+    }
+    typePostBtn.addEventListener('click', function () { if (!isEditMode) setComposeType('post'); });
+    typeShortBtn.addEventListener('click', function () { if (!isEditMode) setComposeType('short'); });
+
+    function resetShortVideo() {
+        if (shortVideoState.xhr && shortVideoState.uploading) shortVideoState.xhr.abort();
+        shortVideoState = { uploading: false, failed: false, remoteUrl: null, xhr: null };
+        shortVideoUrlInput.value = '';
+        shortVideoDropzone.hidden = false;
+        shortVideoDzTitle.textContent = 'Drop a video, or click to browse';
+        shortVideoDropzone.classList.remove('compact');
+    }
+
+    function resetSchedule() {
+        scheduledAtInput.value = '';
+        scheduleInput.value = '';
+        updateScheduleUI();
+    }
+
     function resetToCreateMode() {
-        form.setAttribute('action', createAction);
-        // PostDto.id is a primitive int - submitting id="" (this field's default state) fails
-        // Spring's data binding with a MethodArgumentNotValidException and breaks the create
-        // path entirely. disabled excludes an input from form submission altogether, which is
-        // also the semantically correct state: a not-yet-created post has no id to send.
+        isEditMode = false;
         postIdInput.disabled = true;
         postIdInput.value = '';
         titleInput.value = '';
         contentInput.value = '';
         clearTagChips();
         resetMedia();
+        captionInput.value = '';
+        resetShortVideo();
+        resetSchedule();
+        typeSwitcher.classList.remove('disabled');
+        setComposeType('post');
         modalTitleText.textContent = 'Create post';
-        postBtnLabel.textContent = 'Publish';
+        baseButtonLabel = 'Publish';
+        updateScheduleUI();
         draftBtn.hidden = false;
         autosize();
         updateCounts();
     }
 
-    // Called by js/share.js when Edit is clicked in the post-view modal's kebab menu, and by
-    // js/draftRows.js when a row on the Drafts page is clicked. data: { id, title, content,
-    // tags: string[], media: [{url, type}] (optional - draftRows.js's own drafts list has no
-    // gallery DOM to scrape, so this arrives undefined there and existingMedia just stays
-    // empty), isDraft (optional, default false) }. Save Draft only ever shows for a brand-new
-    // post or one that's still a draft - an already-published post edited this way only ever
-    // gets "Save changes", since Publish is a one-way door (see
-    // PostServiceImpl.updatePostByID's own comment) and there's nothing left to "draft" back to.
+    // Called by js/share.js when Edit is clicked in the post-view modal's kebab menu, by
+    // js/draftRows.js when a row on the Drafts page is clicked, and by fragments/shortModal.html's
+    // own Edit button for a Short. data: { id, type ('post'|'short', default 'post'), title,
+    // content, tags: string[], media: [{url, type}] (Post only), caption, videoUrl (Short only),
+    // scheduledAt (optional, "yyyy-MM-ddTHH:mm" - prefills the schedule popover for an
+    // already-scheduled item), isDraft (optional, default false) }. The type switcher is disabled
+    // while editing - an existing row can't change which table it lives in from this UI. Save
+    // Draft only ever shows for a brand-new item or one that's still a draft - an already-
+    // published item edited this way only ever gets "Save changes", since Publish is a one-way
+    // door (see PostServiceImpl.updatePostByID's/ShortServiceImpl.updateShortByID's own comment)
+    // and there's nothing left to "draft" back to.
     window.BodhSeaCompose = {
         openForEdit: function (data) {
-            form.setAttribute('action', editAction);
+            isEditMode = true;
+            var type = data.type || 'post';
+            composeType = type;
+            typePostBtn.classList.toggle('active', type === 'post');
+            typeShortBtn.classList.toggle('active', type === 'short');
+            postFieldsWrap.hidden = type !== 'post';
+            shortFieldsWrap.hidden = type !== 'short';
+            typeSwitcher.classList.add('disabled');
+
             postIdInput.disabled = false;
             postIdInput.value = data.id;
-            titleInput.value = data.title;
-            contentInput.value = data.content;
-            clearTagChips();
-            data.tags.forEach(function (tag) { addTag(tag); });
-            resetMedia();
-            (data.media || []).forEach(function (m) { addExistingMedia(m.url, m.type); });
+
+            if (type === 'short') {
+                captionInput.value = data.caption || '';
+                resetShortVideo();
+                if (data.videoUrl) {
+                    // Kept visible (not hidden like the fresh-upload-in-progress case) so editing
+                    // a Short doesn't look like it has no video at all - clicking it replaces the
+                    // existing one, same "click to replace" affordance a completed fresh upload
+                    // already shows.
+                    shortVideoState.remoteUrl = data.videoUrl;
+                    shortVideoUrlInput.value = data.videoUrl;
+                    shortVideoDropzone.classList.add('compact');
+                    shortVideoDzTitle.textContent = 'Video attached - click to replace';
+                }
+            } else {
+                titleInput.value = data.title;
+                contentInput.value = data.content;
+                clearTagChips();
+                (data.tags || []).forEach(function (tag) { addTag(tag); });
+                resetMedia();
+                (data.media || []).forEach(function (m) { addExistingMedia(m.url, m.type); });
+            }
+
+            resetSchedule();
+            if (data.scheduledAt) {
+                scheduledAtInput.value = data.scheduledAt;
+                scheduleInput.value = data.scheduledAt;
+                updateScheduleUI();
+            }
+
+            updateFormAction();
             if (data.isDraft) {
-                modalTitleText.textContent = 'Edit draft';
-                postBtnLabel.textContent = 'Publish';
+                modalTitleText.textContent = type === 'short' ? 'Edit Short' : 'Edit draft';
+                baseButtonLabel = 'Publish';
                 draftBtn.hidden = false;
             } else {
-                modalTitleText.textContent = 'Edit post';
-                postBtnLabel.textContent = 'Save changes';
+                modalTitleText.textContent = type === 'short' ? 'Edit Short' : 'Edit post';
+                baseButtonLabel = 'Save changes';
                 draftBtn.hidden = true;
             }
+            updateScheduleUI();
             autosize();
             updateCounts();
+            updatePostState();
             openModal();
         }
     };
@@ -133,26 +247,48 @@ document.addEventListener('DOMContentLoaded', function () {
             openModal();
         });
     }
+
+    // Generic "open create mode" trigger - covers the Shorts-tab empty-state CTA on
+    // draftsPage.html (data-compose-type="short" pre-selects the switcher) without a second
+    // one-off copy of the FAB's own wiring above; a trigger with no data-compose-type just
+    // behaves like the FAB (plain Post create).
+    document.querySelectorAll('[data-compose-open]').forEach(function (trigger) {
+        trigger.addEventListener('click', function () {
+            resetToCreateMode();
+            if (trigger.dataset.composeType === 'short') setComposeType('short');
+            openModal();
+        });
+    });
+
     closeBtn.addEventListener('click', closeModal);
     backdrop.addEventListener('click', function (e) { if (e.target === backdrop) closeModal(); });
 
     // Both footer actions are real submits of the same form - which one fires just sets
-    // "published" first, so PostServiceImpl.save()/updatePostByID() know whether to enforce the
-    // full title/content/tags requirement (Publish) or accept whatever's there so far (Save
-    // draft). Plain buttons rather than one submit + a name/value pair, since a disabled
-    // submit button's own value is never sent at all, exactly the state Publish starts in
-    // before there's a title/content/tag to submit.
+    // "published" first, so PostServiceImpl.save()/updatePostByID() (or their Short
+    // equivalents) know whether to enforce the full required-fields check (Publish) or accept
+    // whatever's there so far (Save draft). Plain buttons rather than one submit + a name/value
+    // pair, since a disabled submit button's own value is never sent at all, exactly the state
+    // Publish starts in before there's a title/content/tag (or video) to submit.
+    //
+    // Save Draft always means a true, undated draft - clicking it clears any schedule that was
+    // set via the popover, rather than leaving an ambiguous "draft with a schedule attached"
+    // state neither button's label would reflect correctly.
     draftBtn.addEventListener('click', function () {
+        resetSchedule();
         publishedInput.value = 'false';
         form.requestSubmit();
     });
+    // A schedule being set overrides Publish/Save changes into "Schedule" - same isPublished the
+    // draft flow already used (server tells the two apart via scheduledAt being non-null, see
+    // PostRepo/ShortRepo.publishDueScheduled*).
     postBtn.addEventListener('click', function () {
-        publishedInput.value = 'true';
+        publishedInput.value = scheduledAtInput.value ? 'false' : 'true';
         form.requestSubmit();
     });
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Escape' || backdrop.hidden) return;
         if (emojiPopover.classList.contains('open')) { closePicker(); return; }
+        if (schedulePopover.classList.contains('open')) { closeSchedulePopover(); return; }
         closeModal();
     });
 
@@ -170,6 +306,15 @@ document.addEventListener('DOMContentLoaded', function () {
         updatePostState();
     }
     function updatePostState() {
+        if (composeType === 'short') {
+            // A Short's only real requirement is its video (caption is optional) - mirrors
+            // ShortServiceImpl.save()'s own server-side check. shortVideoState.uploading
+            // (declared below, safe to call here - function declarations/var hoisting) gates
+            // both buttons the same way anyMediaUploading() does for a Post.
+            postBtn.disabled = !shortVideoUrlInput.value || shortVideoState.uploading;
+            draftBtn.disabled = shortVideoState.uploading;
+            return;
+        }
         // Tags are required the same as title/content - see PostServiceImpl.save()'s
         // server-side check, which is the one that actually matters; this is just the UX
         // so the button reflects that before a submit round-trip finds out the hard way.
@@ -481,6 +626,133 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
         mediaDropzone.classList.remove('drag-over');
         if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+    });
+
+    // ---------- short video upload ----------
+    // Single-file mirror of the Post media upload above - one video, always required, its own
+    // S3 prefix/presign endpoint (see MediaUploadService.presignShortVideo). No image branch at
+    // all, unlike Post's dropzone. Just a plain >1MB floor (not the tiered min/max Post media
+    // uses) - simpler, since a Short is a single required file rather than a multi-item gallery.
+    var SHORT_VIDEO_MIN_BYTES = 1024 * 1024;
+    var SHORT_VIDEO_MAX_BYTES = 100 * 1024 * 1024;
+    var SHORT_VIDEO_ALLOWED_TYPES = { 'video/mp4': true, 'video/webm': true, 'video/quicktime': true };
+
+    function addShortVideoFile(file) {
+        if (!SHORT_VIDEO_ALLOWED_TYPES[file.type]) {
+            showMediaError('"' + file.name + '" isn\'t a supported video format.');
+            return;
+        }
+        if (file.size < SHORT_VIDEO_MIN_BYTES) {
+            showMediaError('"' + file.name + '" is too small - videos need to be at least ' + formatBytes(SHORT_VIDEO_MIN_BYTES) + '.');
+            return;
+        }
+        if (file.size > SHORT_VIDEO_MAX_BYTES) {
+            showMediaError('"' + file.name + '" is too large - videos can be at most ' + formatBytes(SHORT_VIDEO_MAX_BYTES) + '.');
+            return;
+        }
+
+        shortVideoState.uploading = true;
+        shortVideoState.failed = false;
+        shortVideoDzTitle.textContent = 'Uploading...';
+        shortVideoDropzone.classList.add('compact');
+        updatePostState();
+
+        fetch('/api/media/presign-short-video?contentType=' + encodeURIComponent(file.type), {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(function (response) {
+                if (response.status === 503) {
+                    showMediaError('Video upload isn\'t available yet - check back soon.');
+                    throw new Error('media upload unavailable');
+                }
+                if (!response.ok) throw new Error('presign failed: ' + response.status);
+                return response.json();
+            })
+            .then(function (presigned) {
+                var xhr = new XMLHttpRequest();
+                shortVideoState.xhr = xhr;
+                xhr.open('PUT', presigned.uploadUrl);
+                xhr.setRequestHeader('Content-Type', file.type);
+                xhr.upload.onprogress = function (e) {
+                    if (!e.lengthComputable) return;
+                    shortVideoDzTitle.textContent = 'Uploading... ' + Math.round((e.loaded / e.total) * 100) + '%';
+                };
+                xhr.onload = function () {
+                    shortVideoState.uploading = false;
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        shortVideoState.remoteUrl = presigned.publicUrl;
+                        shortVideoUrlInput.value = presigned.publicUrl;
+                        shortVideoDzTitle.textContent = 'Video ready - click to replace';
+                    } else {
+                        shortVideoState.failed = true;
+                        shortVideoDzTitle.textContent = 'Upload failed - click to retry';
+                    }
+                    updatePostState();
+                };
+                xhr.onerror = function () {
+                    shortVideoState.uploading = false;
+                    shortVideoState.failed = true;
+                    shortVideoDzTitle.textContent = 'Upload failed - click to retry';
+                    updatePostState();
+                };
+                xhr.send(file);
+            })
+            .catch(function () {
+                shortVideoState.uploading = false;
+                shortVideoState.failed = true;
+                shortVideoDzTitle.textContent = 'Upload failed - click to retry';
+                updatePostState();
+            });
+    }
+
+    shortVideoDropzone.addEventListener('click', function () { shortVideoFileInput.click(); });
+    shortVideoFileInput.addEventListener('change', function () {
+        if (this.files && this.files[0]) addShortVideoFile(this.files[0]);
+        this.value = '';
+    });
+    shortVideoDropzone.addEventListener('dragover', function (e) { e.preventDefault(); shortVideoDropzone.classList.add('drag-over'); });
+    shortVideoDropzone.addEventListener('dragleave', function () { shortVideoDropzone.classList.remove('drag-over'); });
+    shortVideoDropzone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        shortVideoDropzone.classList.remove('drag-over');
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) addShortVideoFile(e.dataTransfer.files[0]);
+    });
+
+    // ---------- schedule popover ----------
+    // Same .tool-btn-wrap/.picker-popover open/close shape the emoji picker below uses, kept as
+    // its own small pair of functions rather than merged with openPicker/closePicker - the two
+    // popovers are independent (opening one doesn't need to close the other, unlike a case where
+    // only one popover could ever be open at a time).
+    //
+    // No separate chip/badge confirming the schedule - the main action button's own label
+    // switching to "Schedule" is the feedback (same idea as it already switching to "Save
+    // changes" in edit mode), one signal instead of two saying the same thing.
+    function updateScheduleUI() {
+        postBtnLabel.textContent = scheduledAtInput.value ? 'Schedule' : baseButtonLabel;
+    }
+    function openSchedulePopover() {
+        schedulePopover.classList.add('open');
+        scheduleBtn.setAttribute('aria-expanded', 'true');
+    }
+    function closeSchedulePopover() {
+        schedulePopover.classList.remove('open');
+        scheduleBtn.setAttribute('aria-expanded', 'false');
+    }
+    scheduleBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        schedulePopover.classList.contains('open') ? closeSchedulePopover() : openSchedulePopover();
+    });
+    schedulePopover.addEventListener('click', function (e) { e.stopPropagation(); });
+    document.addEventListener('click', function () { closeSchedulePopover(); });
+    scheduleConfirmBtn.addEventListener('click', function () {
+        scheduledAtInput.value = scheduleInput.value;
+        updateScheduleUI();
+        closeSchedulePopover();
+    });
+    scheduleClearBtn.addEventListener('click', function () {
+        resetSchedule();
+        closeSchedulePopover();
     });
 
     // ---------- emoji picker ----------

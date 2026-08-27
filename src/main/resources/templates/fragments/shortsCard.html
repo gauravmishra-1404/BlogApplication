@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- One full-bleed Short in the immersive vertical-swipe feed (templates/shortsPage.html). Reuses
+     the exact existing reaction-toggle/bookmark-toggle markup/data-attributes js/reactions.js and
+     js/bookmark.js already handle (data-target-type="short"), unmodified - see this feature's
+     plan. No repost pill (Shorts are never repostable). Comment icon opens the comment-thread
+     overlay (js/shortsFeed.js -> GET /short/{id}/modal -> fragments/shortModal.html), matching
+     js/postModal.js's own fetch-and-inject pattern. -->
+<div th:fragment="shortsCard(short, viewCount, reaction, commentCount)" class="shorts-card" th:data-short-id="${short.id}"
+     th:with="playbackUrl=${short.transcodedVideoUrl != null ? short.transcodedVideoUrl : short.videoUrl}">
+    <!-- Prefers the Phase 2 transcode-worker's normalized output once it exists; falls back to
+         the raw upload otherwise - a Short is always playable immediately on publish, never
+         blocked on the pipeline finishing (see ShortVideo.java's own comment). poster is the
+         extracted thumbnail, absent (blank) until the pipeline supplies one. -->
+    <video class="shorts-card-video" th:src="${playbackUrl}" th:poster="${short.thumbnailUrl}" muted loop playsinline preload="metadata"></video>
+
+    <!-- Playback progress, YouTube Shorts/Reels-style - js/shortsFeed.js drives the fill width
+         off this card's own <video> timeupdate event (currentTime/duration), not a fixed
+         animation - naturally holds in place when paused and wraps to 0 on loop, since that's
+         just currentTime's own native behavior. -->
+    <div class="shorts-progress-track"><div class="shorts-progress-fill"></div></div>
+
+    <!-- Tap the video to pause/resume (js/shortsFeed.js) - this icon flashes center-screen for a
+         moment as the only feedback, same "immediate response to every interaction" idea as the
+         rest of the app, then fades. Hidden by default; JS toggles the icon + visibility. -->
+    <div class="shorts-pause-flash" aria-hidden="true">
+        <svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>
+    </div>
+
+    <!-- Separate from the tap-to-pause gesture above - sound is its own explicit choice, not
+         bundled into the same tap. Starts muted (autoplay-with-sound is blocked by every major
+         browser regardless). -->
+    <button type="button" class="shorts-mute-btn" aria-label="Unmute">
+        <svg class="icon" aria-hidden="true"><use href="#i-volume-mute"/></svg>
+    </button>
+
+    <div class="shorts-card-overlay">
+        <div class="shorts-card-author">
+            <!-- data-profile-url is required here, not just href - js/profileLinks.js listens
+                 globally (capture phase) for any .post-author-link click and navigates to THAT
+                 attribute instead of letting the real href fire (it exists because
+                 postRows.html's own .post-author-link sits inside a whole-row <a>, where nesting
+                 a real anchor would split the row - see that file's own comment). This card
+                 isn't nested inside another anchor, but reusing the class for its styling still
+                 opts into that global behavior, so the attribute has to be there too or the link
+                 silently resolves to "undefined". -->
+            <a th:if="${short.user != null and short.user.username != null}"
+               th:href="@{/profile/{u}(u=${short.user.username})}"
+               th:attr="data-profile-url=@{/profile/{u}(u=${short.user.username})}"
+               class="post-author-link">
+                <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(short.user)}">
+                    <div th:replace="~{fragments/avatarContent :: content(${short.user}, ${short.user.name})}"></div>
+                </span>
+                <span th:text="${short.user.name}">Author</span>
+            </a>
+            <!-- Same .follow-btn contract js/follow.js already drives everywhere else
+                 (data-username, not a raw id) - see that file's own comment. isFollowing state
+                 isn't computed here (ShortListing carries no follow data, unlike
+                 followedAuthorIds on the main dashboard) - starts as "Follow" regardless, same
+                 gap the dashboard's own widget would have without that extra query; fine for v1
+                 since a wrong initial label just self-corrects on click. -->
+            <button type="button" class="follow-btn compact" th:if="${short.user != null and currentUser != null and short.user.id != currentUser.id and short.user.username != null}"
+                    th:attr="data-username=${short.user.username},data-logged-in=${currentUser != null}">Follow</button>
+        </div>
+        <p class="shorts-card-caption" th:if="${short.caption != null and !#strings.isEmpty(short.caption)}" th:text="${short.caption}">Caption</p>
+    </div>
+
+    <div class="shorts-action-rail">
+        <div class="reaction-bar vertical" data-target-type="short" th:data-target-id="${short.id}"
+             th:data-logged-in="${currentUser != null}">
+            <button type="button" class="reaction-btn" data-reaction="LIKE"
+                    th:classappend="${reaction != null and reaction.userReaction == 'LIKE'} ? ' active' : ''">
+                <svg class="icon" aria-hidden="true"><use href="#i-thumbs-up"/></svg>
+                <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.likeCount : 0)}">0</span>
+            </button>
+            <button type="button" class="reaction-btn" data-reaction="DISLIKE"
+                    th:classappend="${reaction != null and reaction.userReaction == 'DISLIKE'} ? ' active' : ''">
+                <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg>
+                <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.dislikeCount : 0)}">0</span>
+            </button>
+        </div>
+        <button type="button" class="shorts-action-btn" th:attr="data-open-short-modal=${short.id}">
+            <svg class="icon" aria-hidden="true"><use href="#i-comment"/></svg>
+            <span th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(commentCount != null ? commentCount : 0)}">0</span>
+        </button>
+        <button type="button" class="bookmark-toggle shorts-action-btn"
+                th:attr="data-target-type=short, data-target-id=${short.id}, data-logged-in=${currentUser != null}">
+            <span class="pop"></span>
+            <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg>
+        </button>
+        <!-- Not fragments/shareMenu.html - that fragment's Download accordion is hardcoded to
+             /post/download?id=, which doesn't apply to a video and would use the wrong id space
+             entirely (Shorts and Posts are separate id sequences now). js/shortsFeed.js handles
+             this directly instead: Web Share API where available, clipboard-copy + toast
+             otherwise - simpler than reusing a menu built around a capability Shorts don't have. -->
+        <button type="button" class="shorts-action-btn" th:attr="data-share-short=@{/shorts}">
+            <svg class="icon" aria-hidden="true"><use href="#i-share"/></svg>
+        </button>
+    </div>
+
+    <!-- No dedicated "eye" icon in fragments/icons.html - matching postModal.html's own
+         text-only view-count style (".blog-views") rather than inventing a new sprite entry. -->
+    <span class="shorts-card-views" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(viewCount != null ? viewCount : 0)} + (${viewCount == 1} ? ' view' : ' views')">0 views</span>
+</div>
+</body>
+</html>

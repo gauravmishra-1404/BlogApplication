@@ -846,6 +846,24 @@
     background: var(--gradient-primary);
 }
 
+/* Item count next to a tab's label (draftsPage.html's Posts/Shorts tabs) - deliberately muted,
+   not the attention-grabbing red of .notif-badge elsewhere, since this is just "how many are
+   here", not "something needs your attention". */
+.tab-count {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    background: var(--color-surface-tint);
+    padding: 1px 7px;
+    border-radius: 999px;
+    margin-left: 4px;
+}
+
+.tab-item.active .tab-count {
+    color: var(--color-text);
+}
+
 .tab-panel {
     padding: 18px 24px 24px;
 }
@@ -855,6 +873,12 @@
     color: var(--color-text-muted);
     font-size: var(--text-sm);
     padding: 40px 0;
+}
+
+/* Draft/bookmark tab panels now carry an optional CTA under the hint text (a plain <p> alone
+   still works fine too - profile.html's own Posts/Replies tabs use no CTA at all). */
+.tab-panel .empty-hint p {
+    margin: 0 0 16px;
 }
 
 .profile-wrap .post-list {
@@ -884,6 +908,53 @@
     font-size: var(--text-xs);
     color: var(--color-text-muted);
     margin-bottom: 6px;
+}
+
+/* Shorts tab - vertical-thumbnail tiles instead of the text-row .post-list style above, since a
+   Short's actual content is the video. 3 columns at desktop width, narrowing at the 600px
+   breakpoint below like every other profile-tab layout in this file. */
+.shorts-tile-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+.shorts-tile {
+    position: relative;
+    display: block;
+    aspect-ratio: 9 / 16;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--color-surface-tint);
+}
+.shorts-tile-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
+}
+.shorts-tile-caption {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 8px;
+    font-size: var(--text-xs);
+    color: #fff;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.65), transparent);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.shorts-tile-views {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
 .profile-wrap .post-excerpt {
@@ -1386,4 +1457,6 @@
 
 @media (max-width: 600px) {
     .pinfo-row-value { max-width: 160px; }
+
+    .shorts-tile-grid { grid-template-columns: repeat(2, 1fr); }
 }

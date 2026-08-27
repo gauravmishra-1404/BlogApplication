@@ -1,22 +1,29 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
-<!-- Dashboard's compose-post modal - doubles as both Create and Edit (js/composeModal.js opens
-     it instead of navigating to /posts/createForm for a new post, or /posts/edit for an
-     existing one). Create posts to /post/publish; Edit switches the same form's action to
-     /post/republish and adds the post's id, both existing endpoints unchanged - Spring binds
-     title/tags/author/content onto PostDto by request-param name regardless of which page/mode
-     the form came from. Edit mode is opened from fragments/shareMenu.html's Edit button, reading
-     the post's current title/content/tags straight out of the already-open post-view modal's own
-     DOM (fragments/postModal.html) rather than a second fetch - see js/composeModal.js's
-     openForEdit().
+<!-- Dashboard's compose modal - doubles as both Create and Edit, and now as both Post and Short
+     (js/composeModal.js opens it instead of navigating to /posts/createForm for a new post, or
+     /posts/edit for an existing one). A type switcher at the top (#composeTypePost/
+     #composeTypeShort) toggles which field group is visible/required and swaps this SAME form's
+     action between /post/publish and /short/publish (or /post/republish / /short/republish in
+     edit mode) - two real underlying submissions against each entity's own already-correct save
+     flow, not a merged endpoint. Fields belonging to the inactive type still submit along with
+     the request when present, but Spring's @ModelAttribute binding onto PostDto/ShortDto simply
+     ignores whatever doesn't match that DTO's own properties - safe either way, nothing needs to
+     be removed from the DOM before submit.
+
+     Edit mode is opened from fragments/shareMenu.html's Edit button (Posts) or
+     fragments/shortModal.html's own Edit button (Shorts), reading the item's current data
+     straight out of the already-open view modal's DOM rather than a second fetch - see
+     js/composeModal.js's openForEdit().
 
      Photo/video attachments are real (js/composeModal.js: presign -> direct-to-S3 upload -> the
-     resulting CloudFront URLs ride along as a hidden JSON field, see PostDto.mediaJson /
-     PostServiceImpl.resolveMedia). Poll/Schedule/Location are still shown disabled with a
-     "Soon" badge, same convention as the sidebar's Following/Bookmarks/Drafts. There is no GIF
-     or voice-note option here (unlike the design artifact's own mockup) since neither is wired
-     to anything real yet - faking either with local placeholders would ship non-functional UI. -->
+     resulting CloudFront URLs ride along as a hidden JSON field for Posts, or a single hidden
+     videoUrl field for Shorts). Poll/Location are still shown disabled with a "Soon" badge, same
+     convention as the sidebar's Following/Bookmarks/Drafts - Schedule is real now, shared by both
+     Post and Short paths (scheduledAt on whichever DTO is active). There is no GIF or voice-note
+     option here (unlike the design artifact's own mockup) since neither is wired to anything real
+     yet - faking either with local placeholders would ship non-functional UI. -->
 <div th:fragment="composeModal" class="compose-modal-backdrop" id="composeModalBackdrop" hidden>
     <div class="compose-modal-frame">
         <div class="compose-modal-head">
@@ -29,7 +36,9 @@
             </button>
         </div>
 
-        <form th:action="@{/post/publish}" th:attr="data-edit-action=@{/post/republish}" th:method="post" class="compose-modal-body" id="composeForm">
+        <form th:action="@{/post/publish}"
+              th:attr="data-edit-action=@{/post/republish}, data-create-action-short=@{/short/publish}, data-edit-action-short=@{/short/republish}"
+              th:method="post" class="compose-modal-body" id="composeForm">
             <input type="hidden" name="id" id="composePostId" value="">
             <!-- Draft vs Publish - js/composeModal.js sets this to "false"/"true" right before
                  submitting depending on which footer button was clicked (see that file for why
@@ -37,6 +46,10 @@
                  name/value). Defaults "true" so the old standalone newPost.html/editByPostID.html
                  forms (which have no draft concept at all) keep behaving exactly as before. -->
             <input type="hidden" name="published" id="composePublished" value="true">
+            <!-- Only meaningful alongside published=false - set by the schedule popover below,
+                 shared by both the Post and Short paths (PostDto.scheduledAt / ShortDto.scheduledAt
+                 bind onto whichever DTO the active form action targets). -->
+            <input type="hidden" name="scheduledAt" id="composeScheduledAt" value="">
             <div class="compose-author">
                 <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(currentUser)}">
                     <div th:replace="~{fragments/avatarContent :: content(${currentUser}, ${currentUser != null ? currentUser.name : null})}"></div>
@@ -47,9 +60,26 @@
                 </span>
             </div>
 
+            <!-- Post/Short switcher - the one FAB/one modal design confirmed for this feature
+                 (see this feature's plan) rather than a second FAB or a second modal. Sized as a
+                 real choice, not a subtle tab. Switching toggles #composePostFields/
+                 #composeShortFields' visibility+required state and swaps the form's own action
+                 (js/composeModal.js) - it does not touch any hidden "type" field, since Post and
+                 Short are separate entities/endpoints now, not one discriminated table. -->
+            <div class="compose-type-switcher" id="composeTypeSwitcher">
+                <button type="button" class="type-switch-btn active" id="composeTypePost" data-compose-type="post">
+                    <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>Post
+                </button>
+                <button type="button" class="type-switch-btn" id="composeTypeShort" data-compose-type="short">
+                    <svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>Short
+                </button>
+            </div>
+
             <!-- Same "readonly unless ROLE_ADMIN" rule newPost.html already applies - a hidden
                  field carries the fixed value for everyone else, since there's no visible input
-                 worth showing when it can't be changed. -->
+                 worth showing when it can't be changed. Shared by both Post and Short (PostDto/
+                 ShortDto have no such field to bind, so this is only ever read by PostServiceImpl
+                 - harmless extra param when submitting a Short). -->
             <input type="hidden" name="author"
                    th:if="${currentUser == null or currentUser.role != 'ROLE_ADMIN'}"
                    th:value="${currentUser != null ? currentUser.name : ''}">
@@ -57,38 +87,61 @@
                    th:if="${currentUser != null and currentUser.role == 'ROLE_ADMIN'}"
                    th:value="${currentUser.name}" placeholder="Author name">
 
-            <!-- No "required" here (pre-draft-feature leftover, removed) - both buttons now
-                 submit via form.requestSubmit(), which unlike a plain type="submit" button DOES
-                 enforce native HTML5 constraint validation, and would silently block Save Draft
-                 from ever reaching the server whenever title/content is still empty - exactly
-                 the case a draft exists to allow. Publish is still correctly gated: composePostBtn
-                 stays disabled until updatePostState() sees a real title/content/tag, and
-                 PostServiceImpl.save()/updatePostByID() still enforce all three server-side
-                 whenever postDto.getPublished() is true. -->
-            <input type="text" name="title" id="composeTitle" class="compose-title"
-                   placeholder="Give your post a title" maxlength="200">
-            <textarea name="content" id="composeContent" class="compose-content"
-                      placeholder="Share your story, thoughts, or drop a meme..." rows="3"></textarea>
+            <div id="composePostFields">
+                <!-- No "required" here (pre-draft-feature leftover, removed) - both buttons now
+                     submit via form.requestSubmit(), which unlike a plain type="submit" button DOES
+                     enforce native HTML5 constraint validation, and would silently block Save Draft
+                     from ever reaching the server whenever title/content is still empty - exactly
+                     the case a draft exists to allow. Publish is still correctly gated: composePostBtn
+                     stays disabled until updatePostState() sees a real title/content/tag, and
+                     PostServiceImpl.save()/updatePostByID() still enforce all three server-side
+                     whenever postDto.getPublished() is true. -->
+                <input type="text" name="title" id="composeTitle" class="compose-title"
+                       placeholder="Give your post a title" maxlength="200">
+                <textarea name="content" id="composeContent" class="compose-content"
+                          placeholder="Share your story, thoughts, or drop a meme..." rows="3"></textarea>
 
-            <!-- media: JSON array of {url, type} pairs, built up client-side as each file
-                 finishes uploading (see js/composeModal.js) - never a raw file input, the
-                 upload itself already happened by the time this form is submitted. -->
-            <input type="hidden" name="mediaJson" id="composeMediaHidden" value="">
+                <!-- media: JSON array of {url, type} pairs, built up client-side as each file
+                     finishes uploading (see js/composeModal.js) - never a raw file input, the
+                     upload itself already happened by the time this form is submitted. -->
+                <input type="hidden" name="mediaJson" id="composeMediaHidden" value="">
 
-            <div class="media-preview-grid" id="composeMediaPreviewGrid" hidden></div>
+                <div class="media-preview-grid" id="composeMediaPreviewGrid" hidden></div>
 
-            <div class="media-dropzone" id="composeMediaDropzone">
-                <svg class="icon" aria-hidden="true"><use href="#i-image"/></svg>
-                <div class="dz-title" id="composeMediaDzTitle">Drop photos or a video, or click to browse</div>
-                <div class="dz-sub">Up to 4 images (10KB&ndash;3MB each), or 1 video (5&ndash;100MB)</div>
+                <div class="media-dropzone" id="composeMediaDropzone">
+                    <svg class="icon" aria-hidden="true"><use href="#i-image"/></svg>
+                    <div class="dz-title" id="composeMediaDzTitle">Drop photos or a video, or click to browse</div>
+                    <div class="dz-sub">Up to 4 images (10KB&ndash;3MB each), or 1 video (5&ndash;100MB)</div>
+                </div>
+                <input type="file" id="composeMediaFileInput" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" multiple hidden>
+
+                <div class="composer-section-label">Tags (at least one required)</div>
+                <div class="tag-input-wrap" id="composeTagWrap">
+                    <input type="text" class="tag-input" id="composeTagInput" placeholder="Add a tag and press Enter">
+                </div>
+                <input type="hidden" name="tags" id="composeTagsHidden">
             </div>
-            <input type="file" id="composeMediaFileInput" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" multiple hidden>
 
-            <div class="composer-section-label">Tags (at least one required)</div>
-            <div class="tag-input-wrap" id="composeTagWrap">
-                <input type="text" class="tag-input" id="composeTagInput" placeholder="Add a tag and press Enter">
+            <!-- Short fields - hidden until the switcher above selects "Short". A Short is always
+                 exactly one required video (composeModal.js's updatePostState gates Publish/
+                 Schedule on it the same way Posts gate on title+content+tag), caption is optional
+                 - the video IS the content, unlike a Post's title. -->
+            <div id="composeShortFields" hidden>
+                <textarea name="caption" id="composeCaption" class="compose-content"
+                          placeholder="Write a caption (optional)..." rows="2"></textarea>
+
+                <!-- videoUrl: single presigned-upload result, not a JSON array - a Short can never
+                     have more than one video, unlike Post's media gallery. Own S3 prefix/presign
+                     endpoint (see MediaUploadService.presignShortVideo). -->
+                <input type="hidden" name="videoUrl" id="composeShortVideoUrl" value="">
+
+                <div class="media-dropzone" id="composeShortVideoDropzone">
+                    <svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>
+                    <div class="dz-title" id="composeShortVideoDzTitle">Drop a video, or click to browse</div>
+                    <div class="dz-sub">1 video, 5&ndash;100MB - required to publish a Short</div>
+                </div>
+                <input type="file" id="composeShortVideoFileInput" accept="video/mp4,video/webm,video/quicktime" hidden>
             </div>
-            <input type="hidden" name="tags" id="composeTagsHidden">
 
             <div class="composer-toolbar">
                 <button type="button" class="tool-btn" id="composeMediaBtn" title="Photo &amp; video">
@@ -124,10 +177,25 @@
                     <svg class="icon" aria-hidden="true"><use href="#i-poll"/></svg>
                     <span class="tt-soon">Soon</span>
                 </button>
-                <button type="button" class="tool-btn disabled" title="Schedule - coming soon" disabled>
-                    <svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg>
-                    <span class="tt-soon">Soon</span>
-                </button>
+                <!-- Schedule - now real (was disabled with a "Soon" badge). Same
+                     .tool-btn-wrap/.picker-popover shape the emoji picker above already uses,
+                     just with a single datetime-local input instead of a grid - the first
+                     date/time input anywhere in this app, no existing pattern to deviate from.
+                     Shared by both Post and Short paths: composeScheduledAt's value binds onto
+                     whichever DTO the active form action targets. -->
+                <div class="tool-btn-wrap">
+                    <button type="button" class="tool-btn" id="composeScheduleBtn" aria-haspopup="true" aria-expanded="false" title="Schedule">
+                        <svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg>
+                    </button>
+                    <div class="picker-popover schedule-popover" id="composeSchedulePopover">
+                        <label for="composeScheduleInput">Schedule for later</label>
+                        <input type="datetime-local" id="composeScheduleInput">
+                        <div class="schedule-popover-actions">
+                            <button type="button" class="edit-cancel" id="composeScheduleClear">Clear</button>
+                            <button type="button" class="composer-submit" id="composeScheduleConfirm">Set</button>
+                        </div>
+                    </div>
+                </div>
                 <button type="button" class="tool-btn disabled" title="Location - coming soon" disabled>
                     <svg class="icon" aria-hidden="true"><use href="#i-map-pin"/></svg>
                     <span class="tt-soon">Soon</span>

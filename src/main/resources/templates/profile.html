@@ -114,6 +114,7 @@
 
         <div class="tab-bar">
             <button type="button" class="tab-item active" data-tab="posts">Posts</button>
+            <button type="button" class="tab-item" data-tab="shorts">Shorts</button>
             <button type="button" class="tab-item" data-tab="replies">Replies</button>
             <button type="button" class="tab-item" data-tab="reposts">Reposts</button>
         </div>
@@ -130,6 +131,31 @@
                 </a>
             </div>
             <p class="empty-hint" th:if="${#lists.isEmpty(posts)}">No posts yet.</p>
+        </div>
+
+        <!-- Shorts tab - vertical-thumbnail tiles instead of postRows.html's text-row style,
+             since a Short's actual content is the video, not a title/excerpt. Each tile links to
+             its own real per-Short URL (GET /shorts/{id}) - the feed opens pinned to that exact
+             Short first, not just the plain shared list. -->
+        <div class="tab-panel" data-panel="shorts" hidden>
+            <div class="shorts-tile-grid" th:if="${!#lists.isEmpty(shorts)}">
+                <a class="shorts-tile" th:each="short : ${shorts}" th:href="@{/shorts/{id}(id=${short.id})}"
+                   th:with="playbackUrl=${short.transcodedVideoUrl != null ? short.transcodedVideoUrl : short.videoUrl}">
+                    <!-- Same transcoded-with-raw-fallback preference as fragments/shortsCard.html. -->
+                    <video class="shorts-tile-video" th:src="${playbackUrl}" th:poster="${short.thumbnailUrl}" muted preload="metadata"></video>
+                    <!-- Same compact-count + view/views pluralization as fragments/shortsCard.html's
+                         own text-only .shorts-card-views (no dedicated "eye" icon in the sprite,
+                         same reasoning that file's own comment gives), batched via
+                         ShortViewService.countViewsForShorts (ProfileController), not a per-tile
+                         query. -->
+                    <span class="shorts-tile-views"
+                          th:with="viewCount=${shortViewCounts.get(short.id) != null ? shortViewCounts.get(short.id) : 0}"
+                          th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(viewCount)} + (${viewCount == 1} ? ' view' : ' views')">0 views</span>
+                    <span class="shorts-tile-caption" th:if="${short.caption != null and !#strings.isEmpty(short.caption)}"
+                          th:text="${short.caption}">Caption</span>
+                </a>
+            </div>
+            <p class="empty-hint" th:if="${#lists.isEmpty(shorts)}">No Shorts yet.</p>
         </div>
 
         <!-- Replies received - other people's comments on THIS profile's own posts, not comments

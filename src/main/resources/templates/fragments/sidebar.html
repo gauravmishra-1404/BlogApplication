@@ -38,6 +38,8 @@
             <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><span>Bookmarks</span></a>
         <a th:href="@{/drafts}" class="sidebar-navitem" th:classappend="${activeItem == 'drafts'} ? ' active' : ''">
             <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg><span>Drafts</span></a>
+        <a th:href="@{/shorts}" class="sidebar-navitem" th:classappend="${activeItem == 'shorts'} ? ' active' : ''">
+            <svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Shorts</span></a>
     </div>
 
     <!-- Profile dropdown - identical trigger/panel/ids to the old shared header (see
