@@ -53,6 +53,14 @@ public class Post {
     @Column(name = "deleted")
     private Boolean deleted;
 
+    // Only ever meaningful while isPublished is false - a scheduled post is exactly that: not
+    // published yet, with a future time to become so. No separate status is introduced for this;
+    // ScheduledPostPublisher's poller is the only thing that ever reads it, flipping isPublished
+    // true (the same one-way-door PostServiceImpl.save()/updatePostByID() already implement) once
+    // it's due. Bare LocalDateTime, no timezone handling - same as publishedAt/createdAt already.
+    @Column(name = "scheduled_at")
+    private LocalDateTime scheduledAt;
+
     // @BatchSize (Hibernate, not JPA-standard) - without it, an EAGER collection gets loaded
     // with ONE SEPARATE QUERY PER PARENT ROW: rendering a 15-post feed page fires 15 queries
     // just for tagList, another 15 for comments, another 15 for media - 45+ extra round-trips
@@ -207,5 +215,13 @@ public class Post {
 
     public void setDeleted(boolean deleted) {
         this.deleted = deleted;
+    }
+
+    public LocalDateTime getScheduledAt() {
+        return scheduledAt;
+    }
+
+    public void setScheduledAt(LocalDateTime scheduledAt) {
+        this.scheduledAt = scheduledAt;
     }
 }

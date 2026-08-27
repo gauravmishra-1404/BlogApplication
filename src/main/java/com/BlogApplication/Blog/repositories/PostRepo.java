@@ -5,8 +5,10 @@ import com.BlogApplication.Blog.models.User;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -48,6 +50,18 @@ public interface PostRepo extends JpaRepository<Post,Integer>, JpaSpecificationE
            "SELECT c.post.id FROM Comment c WHERE (c.deleted IS NULL OR c.deleted = false) AND c.user.id IN :followedIds" +
            "))")
     List<Post> findFollowingFeedCandidates(@Param("followedIds") List<Integer> followedIds);
+
+    // The one write this repository does - everything else here is a read. Deliberately a single
+    // atomic UPDATE, not a SELECT-then-save: the instant one instance's transaction commits, a row
+    // is no longer isPublished = false, so a second instance's ScheduledPostPublisher tick running
+    // at the same moment matches zero rows on it - no distributed lock needed, Postgres's/H2's own
+    // row-level atomicity does the coordination. Returns the row count purely so the caller can log
+    // "published N scheduled post(s)" - a real 0 most ticks is expected, not an error.
+    @Modifying
+    @Transactional
+    @Query("UPDATE Post p SET p.isPublished = true, p.publishedAt = CURRENT_TIMESTAMP " +
+           "WHERE p.isPublished = false AND p.scheduledAt IS NOT NULL AND p.scheduledAt <= CURRENT_TIMESTAMP")
+    int publishDueScheduledPosts();
 
     // The "Drafts" section - a user's own unpublished posts only, most recently edited first so
     // work-in-progress naturally floats to the top. isPublished must be explicitly false here

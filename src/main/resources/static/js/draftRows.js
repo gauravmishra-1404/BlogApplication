@@ -31,4 +31,30 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     });
+
+    // Short drafts - same page, same modal, just a tile instead of a row and a different data
+    // shape (draftsPage.html's shorts-tile-grid section).
+    var shortTiles = document.querySelectorAll('.shorts-tile[data-short-id]');
+    if (!shortTiles.length) return;
+
+    function openShortTile(tile) {
+        window.BodhSeaCompose.openForEdit({
+            id: tile.dataset.shortId,
+            type: 'short',
+            caption: tile.dataset.caption || '',
+            videoUrl: tile.dataset.videoUrl || '',
+            scheduledAt: tile.dataset.scheduledAt || '',
+            isDraft: true
+        });
+    }
+
+    shortTiles.forEach(function (tile) {
+        tile.addEventListener('click', function () { openShortTile(tile); });
+        tile.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openShortTile(tile);
+            }
+        });
+    });
 });

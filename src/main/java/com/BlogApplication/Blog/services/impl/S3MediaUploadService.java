@@ -55,6 +55,15 @@ public class S3MediaUploadService implements MediaUploadService {
 
     private static final Set<String> ALLOWED_PROFILE_IMAGE_KINDS = Set.of("avatar", "cover");
 
+    // contentType -> extension only, video types only - a Short is always exactly one video, so
+    // unlike ALLOWED_CONTENT_TYPES above there's no image branch and no PostMedia type needed
+    // (every Short video is implicitly PostMedia.VIDEO).
+    private static final Map<String, String> ALLOWED_SHORT_VIDEO_CONTENT_TYPES = Map.of(
+            "video/mp4", "mp4",
+            "video/webm", "webm",
+            "video/quicktime", "mov"
+    );
+
     // Presigned PUT URLs (unlike a presigned POST with a policy document) can't carry an
     // enforced size condition - S3 will accept whatever the signed PUT request sends up to this
     // bucket's own account-level limits. The real size range (1-3MB per image, 5-100MB video) is
@@ -153,6 +162,37 @@ public class S3MediaUploadService implements MediaUploadService {
                 .uploadUrl(presigned.url().toString())
                 .publicUrl("https://" + cdnDomain + "/" + key)
                 .mediaType(PostMedia.IMAGE)
+                .build();
+    }
+
+    @Override
+    public PresignedUpload presignShortVideo(String contentType, int ownerId) {
+        String extension = ALLOWED_SHORT_VIDEO_CONTENT_TYPES.get(contentType);
+        if (extension == null) {
+            throw new UnsupportedMediaTypeException("Unsupported file type: " + contentType);
+        }
+
+        // shorts/{ownerId}/{uuid}.{ext} - a sibling prefix to posts/{ownerId}/... and
+        // profiles/{ownerId}/..., never overlapping with either.
+        String key = "shorts/" + ownerId + "/" + UUID.randomUUID() + "." + extension;
+
+        PutObjectRequest objectRequest = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .contentType(contentType)
+                .build();
+
+        PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
+                .signatureDuration(URL_EXPIRY)
+                .putObjectRequest(objectRequest)
+                .build();
+
+        PresignedPutObjectRequest presigned = presigner().presignPutObject(presignRequest);
+
+        return PresignedUpload.builder()
+                .uploadUrl(presigned.url().toString())
+                .publicUrl("https://" + cdnDomain + "/" + key)
+                .mediaType(PostMedia.VIDEO)
                 .build();
     }
 }

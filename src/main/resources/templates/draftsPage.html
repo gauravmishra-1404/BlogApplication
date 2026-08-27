@@ -8,12 +8,18 @@
     <script src="/js/themeInit.js"></script>
     <link rel="stylesheet" href="/CSS/common.css">
     <link rel="stylesheet" href="/CSS/dashboardStyle.css">
+    <!-- Only for .shorts-tile-grid/.shorts-tile/etc. below - those rules happen to live in
+         profileStyle.css (built for the profile page's own Shorts tab first) but aren't
+         profile-specific in what they style, so reusing them here beats duplicating them. -->
+    <link rel="stylesheet" href="/CSS/profileStyle.css">
     <script src="/js/theme.js" defer></script>
     <script src="/js/navProfileMenu.js" defer></script>
     <script src="/js/confirmDialog.js" defer></script>
     <script src="/js/toast.js" defer></script>
     <script src="/js/composeModal.js" defer></script>
     <script src="/js/draftRows.js" defer></script>
+    <!-- Drives the Posts/Shorts .tab-bar below - same generic script profile.html's own tabs use. -->
+    <script src="/js/profileTabs.js" defer></script>
 </head>
 <body>
 <div th:replace="~{fragments/icons :: defs}"></div>
@@ -31,40 +37,93 @@
             <div class="crumb">Home / <b>Drafts</b></div>
         </div>
 
-        <div class="empty-drafts" th:if="${#lists.isEmpty(drafts)}">
-            <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>
-            <h3>No drafts yet</h3>
-            <p>Start writing and save it as a draft any time before you're ready to publish.</p>
-            <!-- Reuses composeModal.js's existing FAB-wiring as-is (id="composeFabBtn" is the
-                 exact id that script already listens for to reset-and-open the compose modal in
-                 create mode) rather than inventing a second "open for create" entry point. -->
-            <button type="button" class="cta-button" id="composeFabBtn">Start writing</button>
-        </div>
+        <!-- Posts/Shorts tab switcher - always rendered, even at 0/0 (each panel carries its own
+             empty state below) rather than collapsing to one combined "No drafts yet" screen, so
+             it's clear from the first visit that Drafts covers both content types. Chosen over
+             stacking both lists in one column (the original Short-drafts fix) because a growing
+             Post draft list would keep pushing the Shorts grid further down with no bound.
+             Reuses profile.html's own .tab-bar/.tab-item/.tab-panel markup+CSS verbatim
+             (profileTabs.js generalized below to drive either page) instead of inventing a
+             second tab pattern.
+             Default tab: Shorts only when there are Shorts drafts and zero Post drafts - the
+             point is to never open on a panel you know is empty when the other one isn't. -->
+        <div th:with="defaultShorts=${#lists.isEmpty(drafts) and !#lists.isEmpty(shortDrafts)}">
+            <div class="tab-bar">
+                <button type="button" class="tab-item" th:classappend="${!defaultShorts} ? ' active' : ''" data-tab="posts">
+                    Posts <span class="tab-count" th:text="${#lists.size(drafts)}">0</span>
+                </button>
+                <button type="button" class="tab-item" th:classappend="${defaultShorts} ? ' active' : ''" data-tab="shorts">
+                    Shorts <span class="tab-count" th:text="${#lists.size(shortDrafts)}">0</span>
+                </button>
+            </div>
 
-        <div class="draft-list" th:unless="${#lists.isEmpty(drafts)}">
-            <!-- Not a real <a> - a draft has no URL of its own to navigate to, it only ever
-                 opens in the compose modal (js/draftRows.js), so this is a plain clickable row
-                 (role="button", not role="link") - same reasoning fragments/postRows.html's own
-                 .post-author-link span already established for a non-navigating clickable. -->
-            <div class="draft-row" role="button" tabindex="0" th:each="draft : ${drafts}"
-                 th:attr="data-post-id=${draft.id},
-                        data-post-title=${draft.title},
-                        data-post-content=${draft.content},
-                        data-post-tags=${#strings.listJoin(draft.tagList.![name], ',')},
-                        data-post-media=${T(com.BlogApplication.Blog.util.MediaJsonUtil).toJson(draft.media)}">
-                <span class="draft-icon">
-                    <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>
-                </span>
-                <div class="draft-body">
-                    <div class="draft-head">
-                        <span class="draft-title" th:text="${draft.title != null and !#strings.isEmpty(draft.title)} ? ${draft.title} : 'Untitled'">Title</span>
-                        <span class="draft-badge">Draft</span>
+            <div class="tab-panel" data-panel="posts" th:hidden="${defaultShorts}">
+                <div class="draft-list" th:unless="${#lists.isEmpty(drafts)}">
+                    <!-- Not a real <a> - a draft has no URL of its own to navigate to, it only ever
+                         opens in the compose modal (js/draftRows.js), so this is a plain clickable row
+                         (role="button", not role="link") - same reasoning fragments/postRows.html's own
+                         .post-author-link span already established for a non-navigating clickable. -->
+                    <!-- Pre-existing bug found while QA-ing the Shorts drafts fix (unrelated to Shorts
+                         itself, already on master before this branch): T(...) type expressions are
+                         evaluated in a restricted context when they're one of several comma-separated
+                         assignments inside th:attr, so this threw "Instantiation of new objects... is
+                         forbidden" on every real Post draft. th:with runs in the normal (unrestricted)
+                         context, so hoisting the T() call there and referencing the plain variable from
+                         th:attr fixes it without changing the output. -->
+                    <div class="draft-row" role="button" tabindex="0" th:each="draft : ${drafts}"
+                         th:with="mediaJson=${T(com.BlogApplication.Blog.util.MediaJsonUtil).toJson(draft.media)}"
+                         th:attr="data-post-id=${draft.id},
+                                data-post-title=${draft.title},
+                                data-post-content=${draft.content},
+                                data-post-tags=${#strings.listJoin(draft.tagList.![name], ',')},
+                                data-post-media=${mediaJson}">
+                        <span class="draft-icon">
+                            <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>
+                        </span>
+                        <div class="draft-body">
+                            <div class="draft-head">
+                                <span class="draft-title" th:text="${draft.title != null and !#strings.isEmpty(draft.title)} ? ${draft.title} : 'Untitled'">Title</span>
+                                <span class="draft-badge">Draft</span>
+                            </div>
+                            <p class="draft-excerpt" th:text="${draft.content != null and !#strings.isEmpty(draft.content)} ? ${#strings.abbreviate(draft.content, 140)} : 'No content yet.'">Excerpt</p>
+                            <span class="draft-meta" th:text="'Edited ' + ${T(com.BlogApplication.Blog.util.TimeFormatter).relative(draft.updatedAt)}">Edited</span>
+                            <div class="draft-tags" th:if="${!draft.tagList.isEmpty()}">
+                                <span class="draft-tag" th:each="tag : ${draft.tagList}" th:text="${#strings.toLowerCase(tag.name)}">tag</span>
+                            </div>
+                        </div>
                     </div>
-                    <p class="draft-excerpt" th:text="${draft.content != null and !#strings.isEmpty(draft.content)} ? ${#strings.abbreviate(draft.content, 140)} : 'No content yet.'">Excerpt</p>
-                    <span class="draft-meta" th:text="'Edited ' + ${T(com.BlogApplication.Blog.util.TimeFormatter).relative(draft.updatedAt)}">Edited</span>
-                    <div class="draft-tags" th:if="${!draft.tagList.isEmpty()}">
-                        <span class="draft-tag" th:each="tag : ${draft.tagList}" th:text="${#strings.toLowerCase(tag.name)}">tag</span>
+                </div>
+                <div class="empty-hint" th:if="${#lists.isEmpty(drafts)}">
+                    <p>No Post drafts yet. Start writing and save it as a draft any time before you're ready to publish.</p>
+                    <!-- Reuses composeModal.js's existing FAB-wiring as-is (id="composeFabBtn" is
+                         the exact id that script already listens for to reset-and-open the
+                         compose modal in create mode). -->
+                    <button type="button" class="cta-button" id="composeFabBtn">Start writing</button>
+                </div>
+            </div>
+
+            <!-- Short drafts - previously a disclosed gap (ShortRepo.findDraftsByUser existed but
+                 this page never called it, so a Short saved as a draft was fully editable but never
+                 actually showed up here). -->
+            <div class="tab-panel" data-panel="shorts" th:hidden="${!defaultShorts}">
+                <div class="shorts-tile-grid" th:unless="${#lists.isEmpty(shortDrafts)}">
+                    <!-- Not a real <a> - same "no URL of its own, opens in the compose modal instead"
+                         reasoning as .draft-row above (js/draftRows.js handles both). -->
+                    <div class="shorts-tile" role="button" tabindex="0" th:each="draft : ${shortDrafts}"
+                         th:attr="data-short-id=${draft.id},
+                                data-caption=${draft.caption},
+                                data-video-url=${draft.videoUrl},
+                                data-scheduled-at=${draft.scheduledAt}">
+                        <video class="shorts-tile-video" th:src="${draft.videoUrl}" muted preload="metadata"></video>
+                        <span class="shorts-tile-caption" th:if="${draft.caption != null and !#strings.isEmpty(draft.caption)}"
+                              th:text="${draft.caption}">Caption</span>
                     </div>
+                </div>
+                <div class="empty-hint" th:if="${#lists.isEmpty(shortDrafts)}">
+                    <p>No Short drafts yet. Start filming and save it as a draft any time before you're ready to publish.</p>
+                    <!-- Same generic [data-compose-open] trigger composeModal.js now offers -
+                         pre-selects "Short" in the type switcher instead of defaulting to Post. -->
+                    <button type="button" class="cta-button" data-compose-open data-compose-type="short">Start a Short</button>
                 </div>
             </div>
         </div>

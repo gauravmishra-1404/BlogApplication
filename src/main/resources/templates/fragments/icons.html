@@ -165,6 +165,18 @@
     <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor">
         <path d="M8 5v14l11-7z"/>
     </symbol>
+    <!-- Pause - same solid-fill treatment as i-play above, the Shorts feed's tap-to-pause
+         center-screen flash (js/shortsFeed.js) swaps between the two. -->
+    <symbol id="i-pause" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M7 5h3v14H7zM14 5h3v14h-3z"/>
+    </symbol>
+    <!-- Mute/unmute toggle (Shorts feed's own speaker button, js/shortsFeed.js) -->
+    <symbol id="i-volume" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="4 9 4 15 8 15 13 20 13 4 8 9 4 9"/><path d="M17 8a5 5 0 0 1 0 8"/><path d="M20 5a9 9 0 0 1 0 14"/>
+    </symbol>
+    <symbol id="i-volume-mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="4 9 4 15 8 15 13 20 13 4 8 9 4 9"/><path d="m17 9 5 6M22 9l-5 6"/>
+    </symbol>
     <!-- Shared gradient for the infinite-scroll leaf loader (postDashboard.html) - defined once
          here rather than duplicated inside every .leaf-loader instance. -->
     <defs>

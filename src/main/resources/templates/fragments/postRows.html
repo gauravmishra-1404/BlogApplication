@@ -71,7 +71,7 @@
                          the parse tree (see fragments/shareMenu.html's own doc comment). -->
                     <button type="button" class="bookmark-toggle"
                             th:classappend="${bookmarkedPostIds != null and bookmarkedPostIds.contains(post.id)} ? ' saved' : ''"
-                            th:attr="data-post-id=${post.id}, data-logged-in=${currentUser != null}"
+                            th:attr="data-target-type=post, data-target-id=${post.id}, data-logged-in=${currentUser != null}"
                             aria-label="Save for later">
                         <span class="pop"></span>
                         <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg>

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- The repeated Short-card markup, shared between shortsPage.html's initial render and
+     ShortsController.shortsFragment() (js/shortsFeed.js's per-batch fetch) - mirrors
+     fragments/postRows.html's own wrapper/data-has-next-page pattern exactly. -->
+<th:block th:fragment="shortsCards">
+    <div style="display:contents" th:attr="data-has-next-page=${hasNextPage}">
+        <th:block th:each="short : ${shorts}">
+            <div th:replace="~{fragments/shortsCard :: shortsCard(${short}, ${viewCounts.get(short.id)}, ${shortReactions.get(short.id)}, ${commentCounts.get(short.id)})}"></div>
+        </th:block>
+    </div>
+</th:block>
+</body>
+</html>

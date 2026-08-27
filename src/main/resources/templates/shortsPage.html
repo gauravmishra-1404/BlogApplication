@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+    <title>Shorts - Bodh Sea</title>
+    <script src="/js/themeInit.js"></script>
+    <link rel="stylesheet" href="/CSS/common.css">
+    <link rel="stylesheet" href="/CSS/dashboardStyle.css">
+    <!-- Needed because fragments/shortModal.html reuses .post-modal/.comment-node's markup and
+         classes wholesale, same reasoning postDashboard.html's own comment gives for including
+         this alongside fragments/postModal.html. -->
+    <link rel="stylesheet" href="/CSS/viewPostByID.css">
+    <script src="/js/theme.js" defer></script>
+    <script src="/js/navProfileMenu.js" defer></script>
+    <script src="/js/profileLinks.js" defer></script>
+    <script src="/js/reactions.js" defer></script>
+    <script src="/js/bookmark.js" defer></script>
+    <script src="/js/follow.js" defer></script>
+    <script src="/js/commentThread.js" defer></script>
+    <script src="/js/commentComposer.js" defer></script>
+    <script src="/js/composeModal.js" defer></script>
+    <script src="/js/confirmDialog.js" defer></script>
+    <script src="/js/toast.js" defer></script>
+    <script src="/js/shortsFeed.js" defer></script>
+</head>
+<body>
+<div th:replace="~{fragments/icons :: defs}"></div>
+<div th:replace="~{fragments/presetIcons :: defs}"></div>
+<div th:replace="~{fragments/confirmDialog :: confirmDialog}"></div>
+<div th:replace="~{fragments/toast :: toast}"></div>
+
+<div class="dashboard-shell no-side-rail">
+
+    <!-- ============ LEFT: sidebar ============ -->
+    <div th:replace="~{fragments/sidebar :: sidebar('shorts')}"></div>
+
+    <!-- ============ CENTER: the immersive feed ============ -->
+    <main class="center shorts-center">
+        <!-- Scroll-snap container, native browser-driven vertical paging - no gesture library
+             needed. One shorts-card fills the viewport height at a time (see .shorts-feed's own
+             CSS), matching the full-immersive-swipe-feed decision confirmed for this feature. -->
+        <div class="shorts-feed" id="shortsFeed"
+             th:data-next-page="${currentPage + 1}">
+            <div th:replace="~{fragments/shortsCards :: shortsCards}"></div>
+        </div>
+        <div class="infinite-scroll-status" id="shortsScrollStatus" hidden>
+            <div class="leaf-loader" aria-label="Loading more Shorts" role="status">
+                <svg class="ring" viewBox="0 0 40 40" aria-hidden="true">
+                    <circle cx="20" cy="20" r="16" fill="none" stroke="var(--color-border)" stroke-width="3"/>
+                    <circle cx="20" cy="20" r="16" fill="none" stroke="url(#leafLoaderGradient)" stroke-width="3" stroke-linecap="round" stroke-dasharray="28 101"/>
+                </svg>
+                <svg class="leaf" viewBox="-10 -13 20 26" aria-hidden="true">
+                    <path d="M0,-11 C6,-8 8,0 6,7 C4,11 -4,11 -6,7 C-8,0 -6,-8 0,-11 Z" fill="url(#leafLoaderGradient)"/>
+                </svg>
+            </div>
+        </div>
+    </main>
+
+</div>
+
+<!-- No FAB on this page by request - creating a Post or Short both still happen from /home's
+     FAB (the compose modal's own Post/Short switcher covers Shorts too). The compose modal
+     fragment below stays included regardless - fragments/shortModal.html's own Edit button still
+     opens it in edit mode for a Short, same "modal present, no FAB" shape profile.html already
+     uses (composeModal.js's own fab lookup is already null-safe for exactly this case). -->
+
+<!-- Comment-thread overlay (js/shortsFeed.js) - empty until a card's comment icon is tapped,
+     which fetches GET /short/{id}/modal and injects fragments/shortModal.html's markup here.
+     Mirrors postDashboard.html's own #postModalBackdrop/#postModalFrame pattern. -->
+<div class="post-modal-backdrop" id="shortModalBackdrop" hidden>
+    <div class="post-modal-frame" id="shortModalFrame"></div>
+</div>
+
+<div th:replace="~{fragments/composeModal :: composeModal}"></div>
+
+</body>
+</html>

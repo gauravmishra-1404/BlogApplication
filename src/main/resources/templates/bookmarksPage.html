@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="/CSS/common.css">
     <link rel="stylesheet" href="/CSS/dashboardStyle.css">
     <link rel="stylesheet" href="/CSS/viewPostByID.css">
+    <!-- Only for .shorts-tile-grid/.shorts-tile/etc. below - same reuse as draftsPage.html, built
+         first for the profile page's own Shorts tab. -->
+    <link rel="stylesheet" href="/CSS/profileStyle.css">
     <script src="/js/theme.js" defer></script>
     <script src="/js/navProfileMenu.js" defer></script>
     <script src="/js/profileLinks.js" defer></script>
@@ -26,6 +29,8 @@
     <script src="/js/confirmDialog.js" defer></script>
     <script src="/js/follow.js" defer></script>
     <script src="/js/loadMoreFeed.js" defer></script>
+    <!-- Drives the Posts/Shorts .tab-bar below - same generic script draftsPage.html/profile.html use. -->
+    <script src="/js/profileTabs.js" defer></script>
 </head>
 <body>
 <div th:replace="~{fragments/icons :: defs}"></div>
@@ -51,21 +56,58 @@
             <div th:replace="~{fragments/rightSidebar :: rightSidebar}"></div>
         </div>
 
-        <div class="empty-bookmarks" th:if="${#lists.isEmpty(posts)}">
-            <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg>
-            <h3>No bookmarks yet</h3>
-            <p>Tap the bookmark icon on any post to save it here and read it later.</p>
-            <a th:href="@{/home}" class="cta-button">Explore posts</a>
-        </div>
+        <!-- Posts/Shorts tab switcher - always rendered, even at 0/0 (each panel carries its own
+             empty state below) rather than collapsing to one combined "No bookmarks yet" screen,
+             same reasoning as draftsPage.html's own tabs (profileTabs.js drives both).
+             No count badge on the Posts tab: unlike Drafts, ${posts} is only the current
+             infinite-scroll page, not the full bookmarked-post total, so a number here would be
+             misleading (and would go stale as more pages load). Shorts has a real total instead -
+             ShortBookmarkRepo.findVisibleByUserId is a single, uncapped-enough fetch, not paginated.
+             Default tab: Shorts only when this first Post page is empty and Shorts isn't. -->
+        <div th:with="defaultShorts=${#lists.isEmpty(posts) and !#lists.isEmpty(shorts)}">
+            <div class="tab-bar">
+                <button type="button" class="tab-item" th:classappend="${!defaultShorts} ? ' active' : ''" data-tab="posts">Posts</button>
+                <button type="button" class="tab-item" th:classappend="${defaultShorts} ? ' active' : ''" data-tab="shorts">
+                    Shorts <span class="tab-count" th:text="${#lists.size(shorts)}">0</span>
+                </button>
+            </div>
 
-        <div class="post-list" id="bookmarksFeedList" data-load-more-list
-             th:unless="${#lists.isEmpty(posts)}"
-             data-load-more-button="bookmarksFeedLoadMore" data-load-more-url="/bookmarks/fragment"
-             th:data-next-page="${currentPage + 1}">
-            <div th:replace="~{fragments/postRows :: postRows}"></div>
-        </div>
+            <div class="tab-panel" data-panel="posts" th:hidden="${defaultShorts}">
+                <div class="post-list" id="bookmarksFeedList" data-load-more-list
+                     th:unless="${#lists.isEmpty(posts)}"
+                     data-load-more-button="bookmarksFeedLoadMore" data-load-more-url="/bookmarks/fragment"
+                     th:data-next-page="${currentPage + 1}">
+                    <div th:replace="~{fragments/postRows :: postRows}"></div>
+                </div>
+                <button type="button" class="load-more-btn" id="bookmarksFeedLoadMore" hidden>Load more</button>
+                <div class="empty-hint" th:if="${#lists.isEmpty(posts)}">
+                    <p>No bookmarked posts yet. Tap the bookmark icon on any post to save it here and read it later.</p>
+                    <a th:href="@{/home}" class="cta-button">Explore posts</a>
+                </div>
+            </div>
 
-        <button type="button" class="load-more-btn" id="bookmarksFeedLoadMore" hidden>Load more</button>
+            <!-- Bookmarked Shorts - previously a disclosed gap (ShortBookmarkRepo.findVisibleByUserId
+                 existed but this page never called it, so a bookmarked Short saved fine but never
+                 showed up here). Real <a> tiles, not role="button" - a bookmarked Short is published
+                 and has a real /shorts/{id} URL, same markup as profile.html's own Shorts tab. -->
+            <div class="tab-panel" data-panel="shorts" th:hidden="${!defaultShorts}">
+                <div class="shorts-tile-grid" th:unless="${#lists.isEmpty(shorts)}">
+                    <a class="shorts-tile" th:each="short : ${shorts}" th:href="@{/shorts/{id}(id=${short.id})}"
+                       th:with="playbackUrl=${short.transcodedVideoUrl != null ? short.transcodedVideoUrl : short.videoUrl}">
+                        <video class="shorts-tile-video" th:src="${playbackUrl}" th:poster="${short.thumbnailUrl}" muted preload="metadata"></video>
+                        <span class="shorts-tile-views"
+                              th:with="viewCount=${shortViewCounts.get(short.id) != null ? shortViewCounts.get(short.id) : 0}"
+                              th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(viewCount)} + (${viewCount == 1} ? ' view' : ' views')">0 views</span>
+                        <span class="shorts-tile-caption" th:if="${short.caption != null and !#strings.isEmpty(short.caption)}"
+                              th:text="${short.caption}">Caption</span>
+                    </a>
+                </div>
+                <div class="empty-hint" th:if="${#lists.isEmpty(shorts)}">
+                    <p>No bookmarked Shorts yet. Tap the bookmark icon on any Short to save it here and watch it later.</p>
+                    <a th:href="@{/shorts}" class="cta-button">Explore Shorts</a>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- ============ RIGHT: real-data widgets ============ -->

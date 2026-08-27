@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<!-- Mirrors fragments/postModal.html's structure, scoped down for a Short: no tags, no
+     multi-image gallery (a Short is always exactly one video), no repost pill (Shorts are never
+     repostable - see ShortListing's own comment), and a simple inline Edit/Delete pair instead of
+     reusing fragments/shareMenu.html (that fragment's Download-as-PDF option doesn't apply to a
+     video). Opened by js/shortsFeed.js's comment-icon tap, same overlay-over-the-feed pattern
+     js/postModal.js already uses for Posts. -->
+<div th:fragment="shortModal" class="post-modal short-modal"
+     th:attr="data-short-id=${shortVideo.id}, data-caption=${shortVideo.caption}, data-video-url=${shortVideo.videoUrl}, data-scheduled-at=${shortVideo.scheduledAt}, data-is-draft=${!shortVideo.published}">
+    <div class="post-modal-head">
+        <button type="button" class="post-modal-close" data-modal-close aria-label="Close">
+            <svg class="icon" aria-hidden="true"><use href="#i-close"/></svg>
+        </button>
+    </div>
+    <div class="post-modal-scroll">
+        <div class="container short-modal-body"
+             th:with="playbackUrl=${shortVideo.transcodedVideoUrl != null ? shortVideo.transcodedVideoUrl : shortVideo.videoUrl}">
+            <!-- Same transcoded-with-raw-fallback preference as fragments/shortsCard.html - not
+                 the modal root's own data-video-url above, which stays the raw upload on purpose
+                 (that's what composeModal.js's openForEdit() prefills for editing, the actual
+                 source of truth the user submits back, not the derived playback copy). -->
+            <video class="short-modal-video" th:src="${playbackUrl}" th:poster="${shortVideo.thumbnailUrl}" controls playsinline loop></video>
+
+            <div class="post-footer-bar">
+                <a class="post-author-chip" th:if="${shortVideo.user != null and shortVideo.user.username != null}"
+                   th:href="@{/profile/{u}(u=${shortVideo.user.username})}">
+                    <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(shortVideo.user)}">
+                        <div th:replace="~{fragments/avatarContent :: content(${shortVideo.user}, ${shortVideo.user.name})}"></div>
+                    </span>
+                    <span th:text="${shortVideo.user.name}">Author Name</span>
+                </a>
+
+                <div class="reaction-bar" data-target-type="short" th:data-target-id="${shortVideo.id}"
+                     th:data-logged-in="${#authorization.expression('isAuthenticated()')}">
+                    <button type="button" class="reaction-btn" data-reaction="LIKE"
+                            th:classappend="${reaction.userReaction == 'LIKE'} ? ' active' : ''">
+                        <svg class="icon" aria-hidden="true"><use href="#i-thumbs-up"/></svg>
+                        <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction.likeCount)}">0</span>
+                    </button>
+                    <button type="button" class="reaction-btn" data-reaction="DISLIKE"
+                            th:classappend="${reaction.userReaction == 'DISLIKE'} ? ' active' : ''">
+                        <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg>
+                        <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction.dislikeCount)}">0</span>
+                    </button>
+                    <button type="button" class="bookmark-toggle bookmark-pill"
+                            th:classappend="${isBookmarked} ? ' saved' : ''"
+                            th:attr="data-target-type=short, data-target-id=${shortVideo.id}, data-logged-in=${#authorization.expression('isAuthenticated()')}">
+                        <span class="pop"></span>
+                        <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg>
+                        <span class="bookmark-pill-label" th:text="${isBookmarked} ? 'Saved' : 'Save'">Save</span>
+                    </button>
+                    <!-- Own author-or-admin-only Edit/Delete pair instead of shareMenu.html - that
+                         fragment's Download-as-PDF checkbox is Post-specific and doesn't apply here. -->
+                    <span th:if="${#authorization.expression('isAuthenticated()') and (#authorization.expression('hasRole(''ADMIN'')') or (shortVideo.user != null and shortVideo.user.email == #authentication.name))}">
+                        <button type="button" class="action-edit" data-edit-short th:attr="data-short-id=${shortVideo.id}">
+                            <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>Edit</button>
+                        <form th:action="@{/shorts/delete(id=${shortVideo.id})}" th:method="post"
+                              data-confirm-title="Delete this Short?"
+                              data-confirm-message="This can't be undone. It will be permanently removed from your profile and everyone's feed."
+                              data-confirm-label="Delete">
+                            <button type="submit" class="action-delete">
+                                <svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>Delete</button>
+                        </form>
+                    </span>
+                </div>
+                <p class="blog-meta" th:if="${shortVideo.caption != null and !#strings.isEmpty(shortVideo.caption)}"
+                   th:text="${shortVideo.caption}">Caption</p>
+            </div>
+        </div>
+
+        <div class="comment-section">
+            <h3>Add a Comment</h3>
+            <div class="comment-composer" sec:authorize="isAuthenticated()">
+                <div class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(currentUser)}">
+                    <div th:replace="~{fragments/avatarContent :: content(${currentUser}, ${currentUser != null ? currentUser.name : null})}"></div>
+                </div>
+                <div class="composer-body">
+                    <form th:action="@{/shorts/{id}/comments/add(id=${shortVideo.id})}" th:method="POST">
+                        <textarea name="content" class="composer-textarea" placeholder="Write your comment here..." required rows="1"></textarea>
+                        <div class="composer-actions">
+                            <button type="submit" class="composer-submit" disabled>
+                                <svg class="icon" aria-hidden="true"><use href="#i-send"/></svg>Add Comment</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="comment-login-prompt" sec:authorize="isAnonymous()">
+                <p>Join the conversation - sign in to leave a comment.</p>
+                <a th:href="@{/login}" class="composer-submit">
+                    <svg class="icon" aria-hidden="true"><use href="#i-login"/></svg>Log in</a>
+            </div>
+        </div>
+
+        <div class="comments-list">
+            <h3>Comments</h3>
+            <ul>
+                <li th:each="comment : ${comments}" th:if="${comment.parent == null and !comment.deleted}">
+                    <div th:replace="~{fragments/shortCommentNode :: shortCommentNode(${comment}, ${commentReactions})}"></div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div th:fragment="notFound" class="post-modal short-modal">
+    <div class="post-modal-head">
+        <button type="button" class="post-modal-close" data-modal-close aria-label="Close">
+            <svg class="icon" aria-hidden="true"><use href="#i-close"/></svg>
+        </button>
+    </div>
+    <div class="post-modal-scroll">
+        <p class="post-modal-error">This Short isn't available anymore.</p>
+    </div>
+</div>
+</body>
+</html>

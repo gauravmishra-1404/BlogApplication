@@ -127,3 +127,37 @@ Every UI decision on this project gets checked against these before it's called 
 - **Accessibility** — usable for everyone, including people with visual or motor impairments:
   high-contrast text, readable font sizing, and respect for `prefers-reduced-motion` wherever
   something animates (same loader again — its spin/pulse both turn off under that media query).
+
+## Clean, modular Spring Boot code (2026-08-26)
+
+**Why:** the same two corrections (a hand-written logger instead of Lombok, a field-injected
+dependency instead of a constructor) kept coming up file by file. One standing rule settles it
+instead of relitigating it on every new class.
+
+**The rule, for new code from here on:**
+
+- **Lombok wherever it removes real boilerplate**, without fighting a pattern the class already
+  needs: `@Slf4j` for logging (never hand-write `LoggerFactory.getLogger(...)`),
+  `@RequiredArgsConstructor` + `private final` fields for constructor injection, `@Getter`/
+  `@Setter`/`@Builder` for models/DTOs/payloads. Exception: an entity with a null-safe custom
+  getter (`Post.isPublished()`'s `return isPublished == null || isPublished;` idiom, `isDeleted()`,
+  etc.) keeps that accessor hand-written — plain `@Getter` doesn't know about the null-safety logic,
+  so Lombok covers the boilerplate parts of a class, not the parts that carry real behavior.
+- **Field-level `@Autowired` is the standard for dependency injection here** — it's already the
+  entire codebase's convention (`PostServiceImpl` alone has a dozen `@Autowired` fields), and it's
+  already exactly as little code as a constructor would be, without having to hand-write one.
+  Don't introduce `@RequiredArgsConstructor`/constructor injection as a competing style — one
+  consistent way to wire dependencies beats two different "correct" ways living side by side.
+- **DTOs at the API boundary, never a raw `@Entity`** in a controller's request/response — already
+  this project's own convention (`PostDto` exists for exactly this reason), just holding future code
+  to it explicitly rather than leaving it an unstated habit.
+- **Thin controllers, real logic in services** — a controller resolves the request, authenticates,
+  and delegates; the service layer owns business rules and `@Transactional` boundaries; repositories
+  stay data-access only.
+- **Configuration lives in `application.properties`, never hardcoded** — a URL, a threshold, a
+  scheduler interval all go through `@Value("${...}")` with a sensible default, the same way
+  `aws.*`/`scheduler.*` already work. A new hardcoded literal where a property was the obvious move
+  is a regression against this project's own established pattern.
+- **`@Transactional` stays narrow** — `readOnly = true` where a method only reads, and never
+  wrapping a slow external call (S3, SendGrid, FCM) inside a transaction that holds a DB connection
+  open for the whole round trip.

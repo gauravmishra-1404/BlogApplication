@@ -83,7 +83,7 @@
                     </button>
                     <button type="button" class="bookmark-toggle bookmark-pill" th:if="${post.published}"
                             th:classappend="${isBookmarked} ? ' saved' : ''"
-                            th:attr="data-post-id=${post.id}, data-logged-in=${#authorization.expression('isAuthenticated()')}">
+                            th:attr="data-target-type=post, data-target-id=${post.id}, data-logged-in=${#authorization.expression('isAuthenticated()')}">
                         <span class="pop"></span>
                         <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg>
                         <span class="bookmark-pill-label" th:text="${isBookmarked} ? 'Saved' : 'Save'">Save</span>

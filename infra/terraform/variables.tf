@@ -56,6 +56,19 @@ variable "domain_name" {
   default     = ""
 }
 
+# A public, community-maintained Lambda Layer bundling a static ffmpeg binary at /opt/bin/ffmpeg
+# (the conventional extraction path every Lambda Layer publishes under) - transcode-worker
+# shells out to it via ProcessBuilder rather than this project building/publishing its own layer.
+# Region- and architecture-specific (this stack's Lambdas are x86_64/java21, region var.aws_region
+# - ap-south-1 by default), so the actual ARN has to be looked up/verified for that exact
+# region+architecture before ever running `terraform apply` with this set - a stale or
+# wrong-region ARN fails at deploy time (layer not found), not silently.
+variable "ffmpeg_layer_arn" {
+  description = "ARN of a public Lambda Layer providing a static ffmpeg binary at /opt/bin/ffmpeg, for the transcode-worker Lambda. Verify this against the actual target region/architecture before applying - left blank by default since no working default exists across regions."
+  type        = string
+  default     = ""
+}
+
 variable "fcm_service_account_json" {
   # FCM's old "server key" HTTP API was shut down by Google in June 2024 - the only API left is
   # HTTP v1, which authenticates via a Firebase service account (a JSON key file you download

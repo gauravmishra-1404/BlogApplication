@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<!-- Mirrors fragments/commentNode.html exactly, against /shorts/comments/... URLs and
+     comment.shortVideo instead of comment.post - see ShortComment.java's own comment for why
+     this is a separate table/fragment rather than sharing Post's. -->
+<div th:fragment="shortCommentNode(comment, reactions)" class="comment-node" th:with="reaction=${reactions.get(comment.id)}">
+    <a class="avatar" th:if="${comment.user != null and comment.user.username != null}"
+       th:href="@{/profile/{u}(u=${comment.user.username})}"
+       th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(comment.user)}">
+        <div th:replace="~{fragments/avatarContent :: content(${comment.user}, ${comment.user.name})}"></div>
+    </a>
+    <div class="avatar" th:unless="${comment.user != null and comment.user.username != null}"
+         th:classappend="${comment.user == null} ? 'deleted' : ''"
+         th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(comment.user)}">
+        <div th:replace="~{fragments/avatarContent :: content(${comment.user}, ${comment.user != null ? comment.user.name : null})}"></div>
+    </div>
+
+    <div class="comment-body">
+        <div class="comment-head">
+            <a class="comment-author" th:if="${comment.user != null and comment.user.username != null}"
+               th:href="@{/profile/{u}(u=${comment.user.username})}"
+               th:text="${comment.user.name}">Comment Author</a>
+            <span class="comment-author" th:unless="${comment.user != null and comment.user.username != null}"
+                  th:text="${comment.user != null ? comment.user.name : 'Deleted user'}">Comment Author</span>
+            <span class="comment-meta" th:if="${comment.createdAt != null}"
+                  th:text="${T(com.BlogApplication.Blog.util.TimeFormatter).relative(comment.createdAt)}"
+                  th:title="${T(com.BlogApplication.Blog.util.TimeFormatter).absolute(comment.createdAt)}">date</span>
+            <span class="comment-edited" th:if="${comment.edited}">(edited)</span>
+        </div>
+        <p class="comment-text" th:text="${comment.content}">Comment Content</p>
+
+        <div class="comment-actions">
+            <div class="reaction-bar" data-target-type="comment" th:data-target-id="${comment.id}"
+                 th:data-logged-in="${#authorization.expression('isAuthenticated()')}">
+                <button type="button" class="reaction-btn" data-reaction="LIKE"
+                        th:classappend="${reaction != null and reaction.userReaction == 'LIKE'} ? ' active' : ''">
+                    <svg class="icon" aria-hidden="true"><use href="#i-thumbs-up"/></svg>
+                    <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.likeCount : 0)}">0</span>
+                </button>
+                <button type="button" class="reaction-btn" data-reaction="DISLIKE"
+                        th:classappend="${reaction != null and reaction.userReaction == 'DISLIKE'} ? ' active' : ''">
+                    <svg class="icon" aria-hidden="true"><use href="#i-thumbs-down"/></svg>
+                    <span class="reaction-count" th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(reaction != null ? reaction.dislikeCount : 0)}">0</span>
+                </button>
+            </div>
+            <button type="button" class="action-reply" sec:authorize="isAuthenticated()"
+                    th:attr="data-toggle-reply=${'short-reply-box-' + comment.id}">Reply</button>
+            <button type="button" class="action-edit"
+                    sec:authorize="isAuthenticated()"
+                    th:attr="data-toggle-edit=${'short-edit-box-' + comment.id}"
+                    th:if="${#authorization.expression('hasRole(''ADMIN'')')
+                       or (comment.user != null and comment.user.email == #authentication.name)}">
+                <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>Edit</button>
+            <form th:action="@{/shorts/comments/delete/{id}(id=${comment.id})}" th:method="post"
+                  data-confirm-title="Delete this comment?"
+                  data-confirm-message="This can't be undone, and any replies underneath it will be removed too."
+                  data-confirm-label="Delete"
+                  sec:authorize="isAuthenticated()"
+                  th:if="${#authorization.expression('hasRole(''ADMIN'')')
+                          or (comment.user != null and comment.user.email == #authentication.name)
+                          or (comment.shortVideo != null and comment.shortVideo.user != null and comment.shortVideo.user.email == #authentication.name)}">
+                <button type="submit" class="action-delete">
+                    <svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>Delete</button>
+            </form>
+        </div>
+
+        <div class="reply-box" th:id="${'short-reply-box-' + comment.id}" sec:authorize="isAuthenticated()">
+            <form th:action="@{/shorts/comments/{id}/reply(id=${comment.id})}" th:method="POST">
+                <textarea name="content" class="composer-textarea" placeholder="Write your reply..." required rows="1"></textarea>
+                <div class="composer-actions">
+                    <button type="submit" class="composer-submit" disabled>
+                        <svg class="icon" aria-hidden="true"><use href="#i-send"/></svg>Add Reply</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="edit-box" th:id="${'short-edit-box-' + comment.id}" sec:authorize="isAuthenticated()"
+             th:if="${#authorization.expression('hasRole(''ADMIN'')')
+                       or (comment.user != null and comment.user.email == #authentication.name)}">
+            <form th:action="@{/shorts/comments/edit}" th:method="POST">
+                <input type="hidden" name="id" th:value="${comment.id}">
+                <textarea name="content" class="composer-textarea" required rows="1" th:text="${comment.content}"></textarea>
+                <div class="composer-actions">
+                    <button type="button" class="edit-cancel" th:attr="data-cancel-edit=${'short-edit-box-' + comment.id}">Cancel</button>
+                    <button type="submit" class="composer-submit">
+                        <svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Save</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="nested-comments" th:if="${!comment.visibleReplies.isEmpty()}">
+            <button type="button" class="show-replies-toggle" aria-expanded="false"
+                    th:attr="data-toggle-replies=${'short-replies-' + comment.id}">
+                <svg class="icon chevron" aria-hidden="true"><use href="#i-chevron-down"/></svg>
+                <span th:text="${comment.visibleReplies.size()} + (${comment.visibleReplies.size()} == 1 ? ' reply' : ' replies')">N replies</span>
+            </button>
+            <div class="replies" th:id="${'short-replies-' + comment.id}" hidden>
+                <div th:each="reply : ${comment.visibleReplies}">
+                    <div th:replace="~{fragments/shortCommentNode :: shortCommentNode(${reply}, ${reactions})}"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

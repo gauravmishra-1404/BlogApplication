@@ -19,6 +19,8 @@ public class PostDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String tags;
+    // Only meaningful alongside isPublished = false - see Post.scheduledAt's own comment.
+    private LocalDateTime scheduledAt;
     // Write direction: raw JSON array from the compose form's hidden "media" field (e.g.
     // [{"url":"https://cdn.../posts/5/abc.jpg","type":"IMAGE"}]) - parsed by
     // PostServiceImpl.resolveMedia(), same "plain string on the DTO, resolved into real
@@ -167,5 +169,13 @@ public class PostDto {
 
     public void setViewCount(long viewCount) {
         this.viewCount = viewCount;
+    }
+
+    public LocalDateTime getScheduledAt() {
+        return scheduledAt;
+    }
+
+    public void setScheduledAt(LocalDateTime scheduledAt) {
+        this.scheduledAt = scheduledAt;
     }
 }

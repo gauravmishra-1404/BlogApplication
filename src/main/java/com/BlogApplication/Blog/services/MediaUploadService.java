@@ -33,4 +33,16 @@ public interface MediaUploadService {
      *                     folded into the S3 key so the two can never overwrite each other
      */
     PresignedUpload presignProfileImage(String contentType, int ownerId, String kind);
+
+    /**
+     * Same mechanism as {@link #presign}, a separate method (not a branch inside it) for the same
+     * reason presignProfileImage is separate: genuinely different validation (video only, no
+     * images - a Short IS its video) and its own S3 prefix (shorts/{ownerId}/{uuid}.{ext}) so
+     * Short videos never share a permission scope with post media.
+     *
+     * @param contentType the file's MIME type - video types only, see S3MediaUploadService's own
+     *                     allowlist
+     * @param ownerId      the uploading user's id, namespaces the key
+     */
+    PresignedUpload presignShortVideo(String contentType, int ownerId);
 }
