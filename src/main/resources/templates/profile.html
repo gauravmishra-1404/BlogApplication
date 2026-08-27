@@ -141,8 +141,13 @@
             <div class="shorts-tile-grid" th:if="${!#lists.isEmpty(shorts)}">
                 <a class="shorts-tile" th:each="short : ${shorts}" th:href="@{/shorts/{id}(id=${short.id})}"
                    th:with="playbackUrl=${short.transcodedVideoUrl != null ? short.transcodedVideoUrl : short.videoUrl}">
-                    <!-- Same transcoded-with-raw-fallback preference as fragments/shortsCard.html. -->
-                    <video class="shorts-tile-video" th:src="${playbackUrl}" th:poster="${short.thumbnailUrl}" muted preload="metadata"></video>
+                    <!-- Same transcoded-with-raw-fallback preference as fragments/shortsCard.html.
+                         onloadedmetadata nudges the browser to actually decode/paint a frame from the
+                         raw video today, since thumbnailUrl stays null until the transcode pipeline
+                         (Phase 2) is deployed - without it, preload="metadata" alone can leave the
+                         tile visibly blank until someone plays it. -->
+                    <video class="shorts-tile-video" th:src="${playbackUrl}" th:poster="${short.thumbnailUrl}"
+                           muted preload="metadata" onloadedmetadata="this.currentTime=0.1"></video>
                     <!-- Same compact-count + view/views pluralization as fragments/shortsCard.html's
                          own text-only .shorts-card-views (no dedicated "eye" icon in the sprite,
                          same reasoning that file's own comment gives), batched via

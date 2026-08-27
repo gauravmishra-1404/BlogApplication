@@ -110,11 +110,19 @@
                     <!-- Not a real <a> - same "no URL of its own, opens in the compose modal instead"
                          reasoning as .draft-row above (js/draftRows.js handles both). -->
                     <div class="shorts-tile" role="button" tabindex="0" th:each="draft : ${shortDrafts}"
+                         th:with="playbackUrl=${draft.transcodedVideoUrl != null ? draft.transcodedVideoUrl : draft.videoUrl}"
                          th:attr="data-short-id=${draft.id},
                                 data-caption=${draft.caption},
                                 data-video-url=${draft.videoUrl},
                                 data-scheduled-at=${draft.scheduledAt}">
-                        <video class="shorts-tile-video" th:src="${draft.videoUrl}" muted preload="metadata"></video>
+                        <!-- Same transcoded-with-raw-fallback preference as profile.html/bookmarksPage.html's
+                             own Shorts tiles (was missing here - a real inconsistency, not intentional).
+                             th:poster alone isn't enough on its own today, since thumbnailUrl stays null
+                             until the transcode pipeline is actually deployed - onloadedmetadata nudges
+                             the browser to decode and paint an actual frame from the raw video itself in
+                             the meantime, instead of leaving the tile blank until someone plays it. -->
+                        <video class="shorts-tile-video" th:src="${playbackUrl}" th:poster="${draft.thumbnailUrl}"
+                               muted preload="metadata" onloadedmetadata="this.currentTime=0.1"></video>
                         <span class="shorts-tile-caption" th:if="${draft.caption != null and !#strings.isEmpty(draft.caption)}"
                               th:text="${draft.caption}">Caption</span>
                     </div>
