@@ -54,12 +54,13 @@ resource "aws_s3_bucket_cors_configuration" "post_media" {
   }
 }
 
-# Anyone can GET anything under posts/* or profiles/* - deliberate, see the file-level comment
-# above (post media is public by definition; same reasoning applies to avatars/covers, visible
-# on every profile/post byline regardless of who's viewing). Nothing else in the bucket is
-# covered by this statement, and PutObject is still locked down to the app's own IAM identity
-# only (aws_iam_group_policy.app_media_upload / beanstalk.tf's beanstalk_ec2_media_upload below)
-# - this policy only ever grants read.
+# Anyone can GET anything under posts/*, profiles/*, or shorts*/ - deliberate, see the file-level
+# comment above (post media is public by definition; same reasoning applies to avatars/covers,
+# and to a Short's own raw/transcoded video and thumbnail - anyone who can view a Short can
+# already see its video). Nothing else in the bucket is covered by this statement, and PutObject
+# is still locked down to specific IAM identities only (aws_iam_group_policy.app_media_upload
+# below for the app's own uploads; aws_iam_role_policy.transcode_worker_s3 in transcode.tf for the
+# Lambda's own transcoded-output/thumbnail writes) - this policy only ever grants read.
 resource "aws_s3_bucket_policy" "post_media_public_read" {
   bucket = aws_s3_bucket.post_media.id
 
@@ -73,6 +74,9 @@ resource "aws_s3_bucket_policy" "post_media_public_read" {
       Resource = [
         "${aws_s3_bucket.post_media.arn}/posts/*",
         "${aws_s3_bucket.post_media.arn}/profiles/*",
+        "${aws_s3_bucket.post_media.arn}/shorts/*",
+        "${aws_s3_bucket.post_media.arn}/shorts-transcoded/*",
+        "${aws_s3_bucket.post_media.arn}/shorts-thumbnails/*",
       ]
     }]
   })
@@ -85,8 +89,11 @@ resource "aws_s3_bucket_policy" "post_media_public_read" {
 # a second scoped policy attached to the same group rather than a whole separate IAM user/second
 # credential pair to manage for no real benefit. Presigning a PUT URL is a local signing
 # operation (no network call), but the resulting URL's authorization is based on THIS identity's
-# own permissions - it needs real s3:PutObject on posts/* (post media) and profiles/* (avatar/
-# cover images) to generate a URL that actually works when the browser uses it.
+# own permissions - it needs real s3:PutObject on posts/* (post media), profiles/* (avatar/
+# cover images), and shorts/* (MediaUploadService.presignShortVideo's own raw-upload prefix) to
+# generate a URL that actually works when the browser uses it. Not shorts-transcoded/*/
+# shorts-thumbnails/* - only the transcode-worker Lambda ever writes there (see
+# aws_iam_role_policy.transcode_worker_s3 in transcode.tf), the app itself never does.
 resource "aws_iam_group_policy" "app_media_upload" {
   name  = "${var.project}-media-upload"
   group = aws_iam_group.app_group.id
@@ -99,6 +106,7 @@ resource "aws_iam_group_policy" "app_media_upload" {
       Resource = [
         "${aws_s3_bucket.post_media.arn}/posts/*",
         "${aws_s3_bucket.post_media.arn}/profiles/*",
+        "${aws_s3_bucket.post_media.arn}/shorts/*",
       ]
     }]
   })
