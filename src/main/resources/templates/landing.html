@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+    <title>Bodh Sea — Write it long. Show it fast.</title>
+    <script src="/js/themeInit.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Karla:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/CSS/landing.css}">
+    <script src="/js/theme.js" defer></script>
+</head>
+<body>
+
+<!-- Same #theme-toggle id/markup every other page uses (js/theme.js is already generic) -
+     dark is the app-wide default (themeInit.js), light only when explicitly chosen and stored. -->
+<button type="button" id="theme-toggle" class="landing-theme-toggle" aria-label="Toggle dark mode">
+    <svg class="icon icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/>
+        <line x1="4.9" y1="4.9" x2="6.3" y2="6.3"/><line x1="17.7" y1="17.7" x2="19.1" y2="19.1"/>
+        <line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/>
+        <line x1="4.9" y1="19.1" x2="6.3" y2="17.7"/><line x1="17.7" y1="6.3" x2="19.1" y2="4.9"/>
+    </svg>
+    <svg class="icon icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>
+    </svg>
+</button>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="https://bodhsea.in/">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 2C9 6 6 8.5 6 12.5A6 6 0 0 0 18 12.5C18 8.5 15 6 12 2Z" fill="currentColor" opacity="0.9"/></svg>
+      Bodh Sea
+    </a>
+    <div class="nav-links">
+      <a href="#currents">Posts &amp; Shorts</a>
+      <a href="#features">Features</a>
+      <a href="#footer-cta">Get started</a>
+    </div>
+    <div class="nav-cta">
+      <a class="btn btn-ghost btn-sm" th:href="@{/login}">Sign in</a>
+      <a class="btn btn-solid btn-sm" th:href="@{/registerUser}">Get started</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div>
+      <p class="eyebrow">The ocean of thought</p>
+      <h1>Some thoughts run <em>deep.</em><br>Some ride the <em>current.</em></h1>
+      <p class="lede">Bodh Sea is one place for both — long-form posts for the ideas worth
+        sitting with, and Shorts for the ones worth catching mid-scroll. Write, film, follow,
+        and get found, all in the same tide.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-solid" th:href="@{/registerUser}">Start writing →</a>
+        <a class="btn btn-ghost" th:href="@{/shorts}">Watch a Short</a>
+      </div>
+      <div class="hero-proof">
+        <div><b>2</b>content types, one feed</div>
+        <div><b>3</b>notification channels</div>
+        <div><b>&lt;1s</b>from tap to autoplay</div>
+      </div>
+    </div>
+    <div class="mock-stack">
+      <div class="mock-card mock-post">
+        <div class="mrow">
+          <div class="mock-avatar"></div>
+          <div><span class="mock-name">Aanya Verma</span><br><span class="mock-time">Posted 2h ago</span></div>
+        </div>
+        <h4>What tide pools taught me about slow ideas</h4>
+        <p>Some thoughts need to sit in shallow water a while before they're ready for the open sea...</p>
+        <div class="mock-tags"><span>writing</span><span>slow-thinking</span></div>
+        <div class="mock-stats"><span>💬 24</span><span>🔖 61</span><span>↻ 9</span></div>
+      </div>
+      <div class="mock-card mock-short">
+        <div class="mock-short-progress"></div>
+        <div class="mock-short-body">
+          <p>"three ideas I abandoned and one I didn't" — @kabirwrites</p>
+          <div class="mock-short-icons"><span>♥ 812</span><span>💬 47</span><span>↗ share</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="currents">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Two currents, one sea</p>
+      <h2>Write the long way. Or the fast way.</h2>
+      <p>Posts and Shorts aren't bolted together — each has its own feed, its own rhythm, and
+        its own reason to open the app.</p>
+    </div>
+    <div class="currents">
+      <div class="current-card">
+        <span class="tag tag-post">Posts</span>
+        <h3>For ideas that need room</h3>
+        <ul>
+          <li><svg viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Rich text, tags, and up to 4 images or a video</li>
+          <li><svg viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Save a draft, or schedule it for later — real scheduling, not a reminder</li>
+          <li><svg viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Export any published post as a clean PDF</li>
+        </ul>
+      </div>
+      <div class="current-card">
+        <span class="tag tag-short">Shorts</span>
+        <h3>For the ones worth a tap</h3>
+        <ul>
+          <li><svg viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>A full-screen, swipe-through feed — one Short after the next</li>
+          <li><svg viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Tap to pause, a watch-progress bar, autoplay that respects your finger</li>
+          <li><svg viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Every Short has its own real link — share the exact one, not the whole feed</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">One social layer, underneath both</p>
+      <h2>Everything that makes it feel alive</h2>
+    </div>
+    <div class="feature-grid">
+      <div class="feature">
+        <div class="ficon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-4.35-9.5-8.5C.5 8.5 3 5 6.5 5c1.9 0 3.4 1 5.5 3 2.1-2 3.6-3 5.5-3 3.5 0 6 3.5 4 7.5C19 16.65 12 21 12 21z" stroke="white" stroke-width="1.8"/></svg></div>
+        <h4>React &amp; comment</h4>
+        <p>Threaded replies with their own reactions, on every post and every Short.</p>
+      </div>
+      <div class="feature">
+        <div class="ficon"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12v18l-6-4-6 4V3z" stroke="white" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+        <h4>Bookmark for later</h4>
+        <p>One tap saves anything — Posts and Shorts land in the same place, tabbed apart.</p>
+      </div>
+      <div class="feature">
+        <div class="ficon"><svg viewBox="0 0 24 24" fill="none"><path d="M17 2l4 4-4 4M3 12V9a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 12v3a4 4 0 0 1-4 4H3" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h4>Repost to your followers</h4>
+        <p>Send a post further into the current without losing who wrote it first.</p>
+      </div>
+      <div class="feature">
+        <div class="ficon"><svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="7" r="3.5" stroke="white" stroke-width="1.8"/><path d="M3.5 20c0-3.5 2.5-6 5.5-6s5.5 2.5 5.5 6M16 8.5c1.8.3 3.5 1.7 3.5 4" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h4>Follow &amp; be followed</h4>
+        <p>Build a feed that's actually yours — Following shows only the people you chose.</p>
+      </div>
+      <div class="feature">
+        <div class="ficon"><svg viewBox="0 0 24 24" fill="none"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="white" stroke-width="1.8" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h4>Notified your way</h4>
+        <p>In-app, email, or push — three channels, one set of preferences.</p>
+      </div>
+      <div class="feature">
+        <div class="ficon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="white" stroke-width="1.8"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h4>A profile that's actually yours</h4>
+        <p>Presets, custom colors, or your own photo — for both your avatar and your cover.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="footer-cta">
+  <div class="wrap">
+    <div class="cta-band">
+      <h2>Your thoughts deserve a tide.</h2>
+      <p>Free to join, no current required — write your first post or film your first Short
+        in the next two minutes.</p>
+      <div class="hero-ctas" style="justify-content:center">
+        <a class="btn btn-solid" th:href="@{/registerUser}">Create your account</a>
+        <a class="btn btn-ghost" th:href="@{/login}">Sign in</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="https://bodhsea.in/">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 2C9 6 6 8.5 6 12.5A6 6 0 0 0 18 12.5C18 8.5 15 6 12 2Z" fill="currentColor"/></svg>
+          Bodh Sea
+        </a>
+        <p>The ocean of thought — long-form posts and vertical Shorts, one current.</p>
+        <!-- Placeholder links (real handles not created yet) - swap these hrefs in once the
+             accounts exist, nothing else about this block needs to change. -->
+        <div class="footer-social">
+          <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.7"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor"/></svg></a>
+          <a href="#" aria-label="X (Twitter)"><svg viewBox="0 0 24 24" fill="none"><path d="M4 4l16 16M20 4L4 20" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></a>
+          <a href="#" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.3 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z" fill="currentColor"/></svg></a>
+          <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M7.5 10v6.2M7.5 7.6v.02M12 16.2v-3.6c0-1.3.9-2.3 2.2-2.3 1.3 0 2 .9 2 2.3v3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h5>Product</h5>
+        <ul>
+          <li><a href="#currents">Posts</a></li>
+          <li><a href="#currents">Shorts</a></li>
+          <li><a href="#features">Notifications</a></li>
+          <li><a href="#features">Bookmarks</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Company</h5>
+        <ul>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Blog</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Legal</h5>
+        <ul>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+          <li><a href="#">Apache 2.0 License</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Bodh Sea. All rights reserved.</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>
