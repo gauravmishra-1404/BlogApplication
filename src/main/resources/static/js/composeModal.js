@@ -631,19 +631,17 @@ document.addEventListener('DOMContentLoaded', function () {
     // ---------- short video upload ----------
     // Single-file mirror of the Post media upload above - one video, always required, its own
     // S3 prefix/presign endpoint (see MediaUploadService.presignShortVideo). No image branch at
-    // all, unlike Post's dropzone. Just a plain >1MB floor (not the tiered min/max Post media
-    // uses) - simpler, since a Short is a single required file rather than a multi-item gallery.
-    var SHORT_VIDEO_MIN_BYTES = 1024 * 1024;
+    // all, unlike Post's dropzone. Deliberately no minimum size floor - a Short can be as short/
+    // small as it genuinely is, only the 100MB ceiling is a real constraint (matches upload
+    // cost/bandwidth, not content quality). Presigning is a plain PUT (no S3-side content-length-
+    // range condition the way a presigned POST policy could set), so this max is enforced here
+    // client-side only - there's no server-side re-check today.
     var SHORT_VIDEO_MAX_BYTES = 100 * 1024 * 1024;
     var SHORT_VIDEO_ALLOWED_TYPES = { 'video/mp4': true, 'video/webm': true, 'video/quicktime': true };
 
     function addShortVideoFile(file) {
         if (!SHORT_VIDEO_ALLOWED_TYPES[file.type]) {
             showMediaError('"' + file.name + '" isn\'t a supported video format.');
-            return;
-        }
-        if (file.size < SHORT_VIDEO_MIN_BYTES) {
-            showMediaError('"' + file.name + '" is too small - videos need to be at least ' + formatBytes(SHORT_VIDEO_MIN_BYTES) + '.');
             return;
         }
         if (file.size > SHORT_VIDEO_MAX_BYTES) {
