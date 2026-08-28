@@ -2065,6 +2065,20 @@
     grid-template-areas: "sidebar center";
 }
 
+/* Shorts has nothing to search - the sidebar's search form only ever queries Posts
+   (fragments/sidebar.html's own comment), so on this page it's just dead weight, not a real
+   feature. Scoped to .no-side-rail (this page's own wrapper class) rather than touching the
+   shared sidebar fragment, so every other page keeps it untouched.
+   This also fixes a real mobile bug: at <=900px the sidebar collapses to a horizontal icon bar
+   and .sidebar-search used to drop onto its own full-width second row underneath it (its mobile
+   rule below), making the bar noticeably taller than the calc(100vh - 56px) this page's own
+   .shorts-feed/.shorts-card assume for it - the video card was overflowing past the bottom of
+   the viewport by roughly that row's height. Removing the search bar removes the second row
+   entirely, so the bar is back to the single icon-only row 56px was actually calibrated for. */
+.dashboard-shell.no-side-rail .sidebar-search {
+    display: none;
+}
+
 .shorts-center {
     /* .center's own base rule assumes the normal feed's padding/max-width - a phone-shaped,
        vertically-scrolling card wants the opposite: full height, no inner gutter of its own
