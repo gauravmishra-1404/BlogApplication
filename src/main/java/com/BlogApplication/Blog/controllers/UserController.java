@@ -8,6 +8,8 @@ import com.BlogApplication.Blog.util.CoverPresets;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -18,8 +20,16 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    // Same gap as LoginController.loginPage(), found the same way (a user manually typing the
+    // URL): an already-logged-in visitor could still land on the sign-up form. "/registerUser"
+    // has to stay permitAll in SecurityConfig for a logged-out visitor to reach it at all -
+    // permitAll just never implied redirecting an authenticated one away.
     @GetMapping("/registerUser")
-    public String registerPage(Model model){
+    public String registerPage(Model model, Authentication authentication){
+        boolean isLoggedIn = authentication != null && !(authentication instanceof AnonymousAuthenticationToken);
+        if (isLoggedIn) {
+            return "redirect:/home";
+        }
         model.addAttribute("userDto", new UserDto());
         model.addAttribute("avatarGradients", AvatarPresets.GRADIENTS);
         model.addAttribute("coverGradients", AvatarPresets.GRADIENTS);
