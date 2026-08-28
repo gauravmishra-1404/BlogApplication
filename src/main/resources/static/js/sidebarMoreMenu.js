@@ -1,6 +1,7 @@
-// Two jobs for the Shorts page's mobile top bar (fragments/sidebar.html) - only ever relevant
-// there (dashboardStyle.css keeps everything below display:none on every other page/width), so
-// this script is only included on shortsPage.html, not on every page the sidebar appears on.
+// Two jobs for every page's mobile top bar (fragments/sidebar.html) - included on every page
+// that renders the shared sidebar, so the same collapsing behavior is consistent everywhere the
+// nav squeezes down, not a Shorts-only patch. A complete no-op on desktop, where dashboardStyle.css
+// keeps .sidebar-more's own base rule at display:none and .sidebar-navlist never overflows.
 //
 // 1) Open/close the "More" overflow menu - same shape as navProfileMenu.js's own profile
 //    dropdown, a second independent instance since both exist on the page at once.
@@ -15,6 +16,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ---------- open/close ----------
     if (trigger && menu) {
+        // The dropdown's own default positioning (.nav-profile-dropdown: position:absolute;
+        // right:0, anchored to .sidebar-more's own relative box) works for the profile menu
+        // because that trigger sits at the true right edge of the bar - but "More" sits mid-bar,
+        // well short of the edge, so the same anchoring ran the panel off the LEFT side of the
+        // screen (confirmed by measuring it: left ended up negative). A single static CSS fix
+        // can't cover every page, either - Shorts' own top bar is position:fixed while every
+        // other page's collapses in-flow (position:relative, scrolls away), so a hardcoded "top"
+        // offset that happens to line up with one page's header height silently drifts wrong on
+        // any other. Computing the trigger's real on-screen position at the moment it's opened,
+        // then clamping into the viewport, is correct regardless of which layout the page uses -
+        // the trigger can only be tapped while it's actually visible, so its rect at open time is
+        // always where the menu needs to appear.
+        function position() {
+            var r = trigger.getBoundingClientRect();
+            var margin = 8;
+            menu.style.position = 'fixed';
+            var width = menu.offsetWidth || 220;
+            var left = Math.min(r.right - width, window.innerWidth - width - margin);
+            left = Math.max(left, margin);
+            menu.style.left = left + 'px';
+            menu.style.right = 'auto';
+            menu.style.top = (r.bottom + margin) + 'px';
+        }
+
         function close() {
             menu.hidden = true;
             trigger.setAttribute('aria-expanded', 'false');
@@ -23,7 +48,14 @@ document.addEventListener('DOMContentLoaded', function () {
         function toggle(e) {
             e.stopPropagation();
             var next = menu.hidden;
-            menu.hidden = !next;
+            if (next) {
+                // Unhide first - offsetWidth (used to clamp the left edge) reads as 0 on a
+                // still-hidden element, so position() needs the panel already visible to measure.
+                menu.hidden = false;
+                position();
+            } else {
+                menu.hidden = true;
+            }
             trigger.setAttribute('aria-expanded', String(next));
         }
 
@@ -37,9 +69,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ---------- adaptive overflow ----------
     // Least-essential-first: the order icons drop out of the bar and into "More" as space runs
-    // out. Home never drops (it's the way out of the immersive feed) and Shorts's own self-link
-    // is already permanently hidden here by CSS, so neither is in this list.
-    var DROP_ORDER = ['/drafts', '/bookmarks', '/following', '/follow', '/notifications'];
+    // out. Home never drops - it's the way out of the immersive feed, and the only item every
+    // page (including Shorts, which hides its own self-link entirely via CSS) always keeps.
+    // /shorts IS in this list, unlike originally - leaving it un-droppable meant it sat pinned
+    // next to Home on every OTHER page regardless of width, so once everything else had already
+    // collapsed into "More" and Home+Shorts alone still didn't fit, .sidebar-navlist's own
+    // overflow-x:auto had nothing left to hide and fell back to a visible native scrollbar - a
+    // real bug found by actually narrowing the window rather than assuming the drop list covered
+    // every icon that could ever need to move.
+    var DROP_ORDER = ['/shorts', '/drafts', '/bookmarks', '/following', '/follow', '/notifications'];
 
     function adjust() {
         if (!list || !moreWrap) return;
@@ -66,6 +104,15 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!el) continue;
             el.style.display = 'none';
             hiddenAny = true;
+            // Skip revealing the menu counterpart for whichever page you're actually ON (e.g.
+            // Shorts's own entry, on a page other than Shorts, is fine to offer - but Shorts's
+            // entry while you're already viewing Shorts, or Notifications's while already on
+            // Notifications, would just be "go to the page you're already on", which is exactly
+            // the kind of redundant-entry-in-the-menu bug already found once with Notifications
+            // duplicating between the bar and the dropdown. .active is set server-side
+            // (fragments/sidebar.html's th:classappend) regardless of whether CSS also hides the
+            // element outright (Shorts's own self-link), so this check covers both cases.
+            if (el.classList.contains('active')) continue;
             var menuItem = menu ? menu.querySelector('.nav-dd-item[href="' + href + '"]') : null;
             if (menuItem) menuItem.hidden = false;
         }
@@ -79,6 +126,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // only actually needs the final settled width.
         var resizeTimer = null;
         window.addEventListener('resize', function () {
+            // An open menu's position was computed for the old width - rather than recompute
+            // mid-resize, just close it; whichever icons now fit are a click away again.
+            if (menu && !menu.hidden) menu.hidden = true;
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(adjust, 120);
         });

@@ -420,6 +420,24 @@
     background: var(--color-surface-translucent);
 }
 
+/* On desktop this wrapper (fragments/sidebar.html) needs to disappear from layout entirely -
+   .sidebar is a tall column there and brand/nav-icons/more/avatar have always rendered as its
+   direct children, each with its own established position (brand at top, avatar pinned to the
+   bottom via .sidebar-foot's margin-top:auto). display:contents does exactly that: the wrapper
+   itself generates no box, its children become .sidebar's own flex items as if the wrapper
+   weren't there. The explicit `order` values below on each child (not on the wrapper, since it
+   has no box here to carry one) are what keep them in the correct desktop sequence despite the
+   wrapper's own DOM position - without them, the browser would fall back to DOM order, and
+   because .sidebar-search now sits AFTER this wrapper in the markup (needed for the mobile
+   behavior below), it would render after the avatar instead of near the top where it's always
+   been. At mobile width this same wrapper becomes a REAL flex box instead (see the media query) -
+   the whole reason it exists: to keep brand+icons+more+avatar on one non-wrapping line, immune to
+   the search bar's own "drop to a full-width row" behavior, which is the bug this fixes (see that
+   rule's own comment for what was going wrong before). */
+.sidebar-topline {
+    display: contents;
+}
+
 .sidebar-brand {
     display: inline-flex;
     align-items: center;
@@ -429,6 +447,7 @@
     color: var(--color-text);
     font-size: var(--text-lg);
     font-weight: 700;
+    order: 1;
 }
 
 .sidebar-brand .brand-mark {
@@ -446,6 +465,13 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     padding: 8px 10px;
+    order: 2;
+}
+
+/* No other desktop styling of its own - a plain block in .sidebar's column flow, same as before
+   this was named. The order value is what matters here (see .sidebar-topline's own comment). */
+.sidebar-navlist {
+    order: 3;
 }
 
 .sidebar-search .icon {
@@ -528,6 +554,7 @@
    trigger's own layout (avatar + name/handle inline, instead of just an avatar) is new here. */
 .sidebar-foot {
     margin-top: auto;
+    order: 5;
 }
 
 /* Hidden unconditionally by default - a real bug found by actually rendering the desktop
@@ -543,6 +570,19 @@
     display: none;
     position: relative;
     flex-shrink: 0;
+    order: 4;
+}
+
+/* Position itself (left/top, always position:fixed) is set inline by js/sidebarMoreMenu.js at
+   the moment the menu opens, computed from the trigger's real on-screen rect - the trigger sits
+   mid-bar on every page (between Home and the avatar), never at the true screen edge the base
+   .nav-profile-dropdown rule's "right:0" assumes, and a static CSS offset can't be right for both
+   Shorts' fixed top bar and every other page's in-flow one at once (see the JS comment). This
+   rule only owns sizing: a real width, plus a hard viewport-relative ceiling so it still can't
+   run off either edge even if that computation is ever a few pixels off. */
+.sidebar-more-menu {
+    width: 220px;
+    max-width: calc(100vw - 16px);
 }
 
 .sidebar-foot-trigger {
@@ -807,6 +847,50 @@
         border-right: none;
         border-bottom: 1px solid var(--color-border);
         padding: 10px 12px;
+        /* .sidebar is a grid item here (.dashboard-shell's "sidebar" area, 1fr column) as well
+           as its own wrapping flex container - without this, its automatic min-width as a grid
+           item is driven by its content's min-content size, which .sidebar-brand alone (a
+           flex-shrink:0 item, ~126px of un-shrinkable wordmark) pushes well past a real phone's
+           width. .sidebar-navlist's own min-width:0 (below) only lets THAT one child shrink; it
+           does nothing to stop .sidebar itself from being stretched wider than the viewport by
+           its content, which is what was actually happening - confirmed via a real ~240px-wide
+           render where the whole row (and the page under it) overflowed sideways by ~30px, taking
+           the pinned avatar past the right edge with it and no visible scrollbar to reveal it.
+           This is the same fix, one level up. */
+        min-width: 0;
+    }
+
+    /* The wordmark text is the one thing in the bar that isn't a nav affordance - on a real phone
+       it was costing ~126px of un-shrinkable width (confirmed by measuring it) for zero function
+       beyond what the icon mark alone already provides (the whole brand block is still a working
+       link to /home). Originally only Shorts dropped it, which is why Shorts' own bar looked
+       noticeably tighter/cleaner than every other page's at the same width - same fix, made
+       consistent everywhere the bar collapses, not a Shorts-only look. */
+    .sidebar-brand span {
+        display: none;
+    }
+
+    /* The real box .sidebar-topline becomes at mobile width (display:contents on desktop - see
+       its base rule). flex-wrap:nowrap here is the actual fix: previously brand/nav-icons/
+       more-button/avatar were direct children of .sidebar itself, which needs flex-wrap:wrap so
+       .sidebar-search can drop to its own full-width row - but wrap doesn't distinguish "the
+       search bar is allowed to wrap" from "nothing else is", so at a narrow enough width the icon
+       group started wrapping across several lines too (brand alone on one line, icons on another,
+       the More button and avatar each stranded on their own) instead of collapsing into "More" -
+       confirmed by actually rendering it narrow, not just reading the CSS. Grouping them into this
+       one nowrap flex item removes the ambiguity: this line can never itself wrap, so the only way
+       it resolves an overflow is by shrinking .sidebar-navlist (below), which is what was always
+       intended. min-width:0 for the same reason .sidebar itself needed it (see that rule's own
+       comment) - a flex child's automatic min-width otherwise comes from its content. flex:1 1 100%
+       matches .sidebar-search's own trick for forcing a full-width row of its own. */
+    .sidebar-topline {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        flex: 1 1 100%;
+        order: 1;
     }
 
     .sidebar-brand {
@@ -817,7 +901,6 @@
     }
 
     .sidebar-search {
-        order: 5;
         flex: 1 1 100%;
     }
 
@@ -825,10 +908,11 @@
        mark and avatar (sidebar-foot below) are pinned with flex-shrink:0, so they can never be
        the thing that gets squeezed out; this div is the only one allowed to actually shrink
        (min-width:0 is what lets a flex child shrink below its own content width at all - without
-       it the browser would rather wrap the whole bar to a second line than let this shrink) and
-       picks up its own horizontal scroll once it does. Real device testing found the avatar could
-       otherwise scroll out of view along with everything else, with no visual sign anything was
-       cut off - this fixes that everywhere the sidebar collapses, not just on one page. */
+       it the browser would rather wrap .sidebar-topline's own line to a second line than let this
+       shrink, the exact bug .sidebar-topline's own comment above describes) and picks up its own
+       horizontal scroll once it does. Real device testing found the avatar could otherwise scroll
+       out of view along with everything else, with no visual sign anything was cut off - this
+       fixes that everywhere the sidebar collapses, not just on one page. */
     .sidebar-navlist {
         display: flex;
         flex-wrap: nowrap;
@@ -1019,72 +1103,46 @@
     .dashboard-shell.no-side-rail {
         display: block;
     }
+    /* position/top/left/right/z-index/height/border/flex-wrap are the only things that actually
+       need to differ here - padding, gap, and every icon's own sizing intentionally match the
+       generic mobile .sidebar rule above exactly now (no per-page tightening), so the bar looks
+       and measures identically everywhere it collapses; Shorts fixing itself to the viewport
+       instead of scrolling in-flow is the one real structural difference an immersive
+       full-height video feed needs that a normal page doesn't. --sidebar-bar-h below is measured
+       from that shared spacing (10px+10px padding + the 36px avatar, the tallest item), not a
+       guess - .shorts-center/.shorts-feed's own height math reads the same variable so the two
+       can never drift apart. */
+    .dashboard-shell.no-side-rail {
+        --sidebar-bar-h: 76px;
+    }
     .dashboard-shell.no-side-rail .sidebar {
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
         z-index: 50;
-        height: 52px;
+        height: var(--sidebar-bar-h);
         flex-wrap: nowrap;
         border-bottom: 1px solid var(--color-border);
-        padding: 8px 10px;
-        gap: 4px;
-    }
-    /* The wordmark text is the one thing here that isn't a nav affordance - dropping it (icon
-       mark alone stays) buys back real width for the actual nav icons/avatar before anything
-       needs to scroll, on a genuinely narrow phone. */
-    .dashboard-shell.no-side-rail .sidebar-brand {
-        flex-shrink: 0;
-        padding: 4px;
-    }
-    .dashboard-shell.no-side-rail .sidebar-brand span {
-        display: none;
     }
     /* Shorts's own self-link is never useful here regardless of available space - always
        hidden, not part of the overflow decision below. Which of Notifications/Follow/Following/
        Bookmarks/Drafts stay directly visible vs. collapse into the "More" button is a runtime
        decision now (js/sidebarMoreMenu.js), not a fixed CSS list - only actually overflowing
        icons move into the menu, so a wide-enough phone shows everything directly and never shows
-       "More" at all. The "pinned brand+avatar, scrollable middle strip" mechanics are the generic
-       .sidebar mobile rule's job (shared by every page); this block only adds Shorts' own
-       tighter spacing. */
+       "More" at all. */
     .dashboard-shell.no-side-rail .sidebar-navitem[href="/shorts"] {
         display: none;
     }
-    .dashboard-shell.no-side-rail .sidebar-navlist {
-        gap: 2px;
-    }
-    .dashboard-shell.no-side-rail .sidebar-navitem {
-        padding: 6px;
-    }
-    /* NOT anchored off .sidebar-more's own position:relative here - unlike the profile dropdown,
-       whose trigger (.sidebar-foot) is already pinned to the bar's right edge, the More button
-       sits mid-bar (between Home and the avatar). right:0 relative to that narrow trigger just
-       aligns the menu's right edge with the BUTTON's right edge and lets it extend leftward from
-       there - a real bug found by actually rendering it: a 220px-wide menu anchored to a button
-       only ~100px from the left edge ran off the left side of the screen entirely. position:fixed
-       against the viewport itself instead - simple, predictable, independent of where the
-       trigger happens to sit. */
-    .dashboard-shell.no-side-rail .sidebar-more-menu {
-        position: fixed;
-        left: auto;
-        right: 10px;
-        top: 60px;
-        width: 220px;
-    }
-    /* Same reasoning as the old .shorts-feed/.shorts-card comment below, just against the fixed
-       bar's own real height (52px) instead of an estimate - the bar's height is no longer a
-       moving target once it's position:fixed with an explicit height, so this can be exact. */
     .dashboard-shell.no-side-rail .shorts-center {
         position: static;
-        margin-top: 52px;
-        height: calc(100vh - 52px);
+        margin-top: var(--sidebar-bar-h);
+        height: calc(100vh - var(--sidebar-bar-h));
     }
     .dashboard-shell.no-side-rail .shorts-feed,
     .dashboard-shell.no-side-rail .shorts-card,
     .dashboard-shell.no-side-rail .empty-shorts {
-        height: calc(100vh - 52px);
+        height: calc(100vh - var(--sidebar-bar-h));
     }
     .shorts-card-overlay { max-width: 100%; padding-right: 64px; }
 }
