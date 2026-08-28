@@ -965,31 +965,73 @@
         max-width: 340px;
     }
 
-    /* .no-side-rail's own desktop 2-column override needs re-collapsing here too - a bare
-       specificity win would otherwise make it beat the plain .dashboard-shell mobile rule above
-       (two classes vs. one) and keep the sidebar pinned at 236px instead of stacking full-width,
-       exactly the "confirm the mobile rule actually still wins" check this project's responsive
-       policy calls for. */
+    /* Shorts gets a genuinely FIXED top bar here instead of leaning on grid-template-areas to
+       reflow the sidebar above the feed - real-world testing found that reflow not reliably
+       taking effect (the sidebar kept rendering as its desktop left column, video cramped into
+       the leftover space, not the top-bar-then-full-video layout every other page's mobile
+       collapse produces). position:fixed removes that ambiguity entirely: the bar's placement no
+       longer depends on grid math resolving a particular way, it's just pinned to the top of the
+       viewport, period - same technique YouTube's own mobile Shorts page uses for its top bar.
+       Scoped to .no-side-rail .sidebar specifically - every other page keeps the plain in-flow
+       "reflow above the feed" collapse from the generic .sidebar rule above. */
     .dashboard-shell.no-side-rail {
-        grid-template-columns: 1fr;
-        grid-template-areas: "sidebar" "center";
+        display: block;
     }
-
-    /* The sidebar collapses to a horizontal bar above the feed here (see .sidebar's own mobile
-       rule), so the video card can no longer safely claim a flat 100vh without clipping under
-       it - calc(100vh - 56px) is a standard mobile app-bar-height estimate, a safety margin
-       rather than a precise match, so a taller real sidebar bar still doesn't cause overflow. */
-    .shorts-center {
+    .dashboard-shell.no-side-rail .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 50;
+        height: 52px;
+        flex-wrap: nowrap;
+        border-bottom: 1px solid var(--color-border);
+        padding: 8px 10px;
+        gap: 4px;
+    }
+    /* The wordmark text is the one thing here that isn't a nav affordance - dropping it (icon
+       mark alone stays) buys back real width for the actual nav icons/avatar before anything
+       needs to scroll, on a genuinely narrow phone. */
+    .dashboard-shell.no-side-rail .sidebar-brand {
+        flex-shrink: 0;
+        padding: 4px;
+    }
+    .dashboard-shell.no-side-rail .sidebar-brand span {
+        display: none;
+    }
+    /* Real device testing found the full nav-icon row plus the avatar didn't reliably fit even
+       at a genuinely narrow phone width in every environment - the avatar (last in the row)
+       would silently scroll out of view along with everything else, no visual sign anything was
+       cut off. Fix: only the middle nav-icon strip scrolls (min-width:0 is what lets a flex child
+       actually shrink below its content width instead of forcing the row wider); the brand mark
+       and the avatar are pinned outside that scroll area (flex-shrink:0) so they're always
+       visible regardless of how many nav icons need a swipe to reach. */
+    .dashboard-shell.no-side-rail .sidebar > div {
+        overflow-x: auto;
+        flex: 1 1 auto;
+        min-width: 0;
+        gap: 2px;
+    }
+    .dashboard-shell.no-side-rail .sidebar-navitem {
+        padding: 6px;
+    }
+    .dashboard-shell.no-side-rail .sidebar-foot {
+        flex-shrink: 0;
+    }
+    /* Same reasoning as the old .shorts-feed/.shorts-card comment below, just against the fixed
+       bar's own real height (52px) instead of an estimate - the bar's height is no longer a
+       moving target once it's position:fixed with an explicit height, so this can be exact. */
+    .dashboard-shell.no-side-rail .shorts-center {
         position: static;
-        height: auto;
+        margin-top: 52px;
+        height: calc(100vh - 52px);
     }
-    .shorts-feed { height: calc(100vh - 56px); }
-    .shorts-card { height: calc(100vh - 56px); }
+    .dashboard-shell.no-side-rail .shorts-feed,
+    .dashboard-shell.no-side-rail .shorts-card,
+    .dashboard-shell.no-side-rail .empty-shorts {
+        height: calc(100vh - 52px);
+    }
     .shorts-card-overlay { max-width: 100%; padding-right: 64px; }
-    /* .empty-shorts's height:100% has nothing to resolve against once .shorts-center above
-       switches to height:auto - same explicit calc as .shorts-feed/.shorts-card get here, so the
-       empty message still fills the screen instead of collapsing to its own content height. */
-    .empty-shorts { height: calc(100vh - 56px); }
 }
 
 /* ===================================================================================
