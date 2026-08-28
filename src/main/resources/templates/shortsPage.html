@@ -14,6 +14,9 @@
     <link rel="stylesheet" href="/CSS/viewPostByID.css">
     <script src="/js/theme.js" defer></script>
     <script src="/js/navProfileMenu.js" defer></script>
+    <!-- Only shown/interactive on this page's own mobile top bar (dashboardStyle.css) - see the
+         fragment's own comment for why it isn't included on every page the sidebar appears on. -->
+    <script src="/js/sidebarMoreMenu.js" defer></script>
     <script src="/js/profileLinks.js" defer></script>
     <script src="/js/reactions.js" defer></script>
     <script src="/js/bookmark.js" defer></script>
@@ -38,10 +41,20 @@
 
     <!-- ============ CENTER: the immersive feed ============ -->
     <main class="center shorts-center">
+        <!-- A genuinely empty feed (page 0, nothing published yet) previously just rendered as
+             the bare ambient background with zero explanation - looked identical to a broken
+             page rather than "there's nothing here yet", unlike every other list page in this
+             app (Drafts/Bookmarks/Following/Notifications all have their own empty state). -->
+        <div class="empty-shorts" th:if="${#lists.isEmpty(shorts) and currentPage == 0}">
+            <svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>
+            <h3>No Shorts yet</h3>
+            <p>Be the first to film one - it'll show up here for everyone.</p>
+        </div>
+
         <!-- Scroll-snap container, native browser-driven vertical paging - no gesture library
              needed. One shorts-card fills the viewport height at a time (see .shorts-feed's own
              CSS), matching the full-immersive-swipe-feed decision confirmed for this feature. -->
-        <div class="shorts-feed" id="shortsFeed"
+        <div class="shorts-feed" id="shortsFeed" th:unless="${#lists.isEmpty(shorts) and currentPage == 0}"
              th:data-next-page="${currentPage + 1}">
             <div th:replace="~{fragments/shortsCards :: shortsCards}"></div>
         </div>

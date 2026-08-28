@@ -10,10 +10,113 @@
      (post-listing) specific model attributes - null-safe on any page that doesn't set them
      (search still works, it just always searches posts regardless of which page it's shown on). -->
 <aside th:fragment="sidebar(activeItem)" class="sidebar">
-    <a th:href="@{/home}" class="sidebar-brand">
-        <svg class="brand-mark" aria-hidden="true"><use href="#i-brand"/></svg>
-        <span>Bodh Sea</span>
-    </a>
+    <!-- Brand/nav-icons/more/avatar are grouped in this wrapper so they can be forced onto ONE
+         non-wrapping line at mobile width, independent of the search bar dropping to its own row
+         below - see .sidebar-topline in dashboardStyle.css for why plain flex-wrap:wrap on
+         .sidebar itself let the icons/avatar/more button wrap across several lines instead of the
+         intended single bar with overflow collapsing into "More" (a real bug: at a narrow enough
+         width the search bar wrapping via order+flex-basis:100% was fine, but nothing stopped the
+         *icon group* from independently wrapping too, since they were separate siblings in the
+         same wrapping flex context). display:contents on desktop (dashboardStyle.css) makes this
+         wrapper invisible to layout there - explicit `order` values on each child (also in
+         dashboardStyle.css) preserve the exact existing desktop visual sequence regardless of
+         which physical DOM position each ends up in. -->
+    <div class="sidebar-topline">
+        <!-- aria-label here, not just the visible <span> - the wordmark text is display:none at
+             mobile width (dashboardStyle.css) to buy back room for the actual nav icons, and the
+             icon itself is aria-hidden, so without this a screen reader would announce this link
+             with no name at all once the text disappears. The label stays authoritative regardless
+             of which state the visible text is in. -->
+        <a th:href="@{/home}" class="sidebar-brand" aria-label="Bodh Sea home">
+            <svg class="brand-mark" aria-hidden="true"><use href="#i-brand"/></svg>
+            <span aria-hidden="true">Bodh Sea</span>
+        </a>
+
+        <!-- Named rather than a bare "the nav-items div" - dashboardStyle.css used to target this
+             via the fragile ".sidebar > div" (any direct-child div), which silently also matched
+             the .sidebar-more div below (also a direct child at the time), overriding its own
+             display:none via a specificity fluke (a real bug found by actually rendering the
+             page). A real class removes the ambiguity instead of relying on nothing else ever
+             being a plain div child again. -->
+        <div class="sidebar-navlist">
+            <div class="sidebar-group-label">Library</div>
+            <a th:href="@{/home}" class="sidebar-navitem" th:classappend="${activeItem == 'home'} ? ' active' : ''">
+                <svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span>For you</span></a>
+            <a th:href="@{/notifications}" class="sidebar-navitem" th:classappend="${activeItem == 'notifications'} ? ' active' : ''">
+                <svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg><span>Notifications</span>
+                <span class="notif-badge" id="sidebarNotifBadge" th:if="${unreadNotificationCount != null and unreadNotificationCount > 0}" th:text="${unreadNotificationCount}">3</span></a>
+            <a th:href="@{/follow}" class="sidebar-navitem" th:classappend="${activeItem == 'follow'} ? ' active' : ''">
+                <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span>Follow</span></a>
+            <a th:href="@{/following}" class="sidebar-navitem" th:classappend="${activeItem == 'following'} ? ' active' : ''">
+                <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span>Following</span></a>
+            <a th:href="@{/bookmarks}" class="sidebar-navitem" th:classappend="${activeItem == 'bookmarks'} ? ' active' : ''">
+                <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><span>Bookmarks</span></a>
+            <a th:href="@{/drafts}" class="sidebar-navitem" th:classappend="${activeItem == 'drafts'} ? ' active' : ''">
+                <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg><span>Drafts</span></a>
+            <a th:href="@{/shorts}" class="sidebar-navitem" th:classappend="${activeItem == 'shorts'} ? ' active' : ''">
+                <svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Shorts</span></a>
+        </div>
+
+        <!-- "More" overflow menu - invisible everywhere by default (sidebar-more.css rule below),
+             only actually shown once js/sidebarMoreMenu.js finds icons that don't fit the current
+             bar width. Same trigger/panel/toggle shape as the profile dropdown below
+             (js/sidebarMoreMenu.js mirrors navProfileMenu.js's own open/close pattern), just a
+             second, independent instance - not reusing its ids, so both can exist on the page
+             without colliding. -->
+        <div class="sidebar-more">
+            <button type="button" class="sidebar-navitem sidebar-more-btn" id="sidebarMoreBtn" aria-haspopup="true" aria-expanded="false" aria-label="More">
+                <svg class="icon" aria-hidden="true"><use href="#i-dots"/></svg>
+            </button>
+            <div class="nav-profile-dropdown sidebar-dropdown sidebar-more-menu" id="sidebarMoreMenu" hidden>
+                <div class="nav-dd-items">
+                    <a th:href="@{/notifications}" class="nav-dd-item">
+                        <svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg>Notifications
+                        <span class="notif-badge" th:if="${unreadNotificationCount != null and unreadNotificationCount > 0}" th:text="${unreadNotificationCount}">3</span></a>
+                    <a th:href="@{/follow}" class="nav-dd-item">
+                        <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg>Follow</a>
+                    <a th:href="@{/following}" class="nav-dd-item">
+                        <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg>Following</a>
+                    <a th:href="@{/bookmarks}" class="nav-dd-item">
+                        <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg>Bookmarks</a>
+                    <a th:href="@{/drafts}" class="nav-dd-item">
+                        <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>Drafts</a>
+                    <a th:href="@{/shorts}" class="nav-dd-item">
+                        <svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>Shorts</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile dropdown - identical trigger/panel/ids to the old shared header (see
+             fragments/nav.html), just relocated into the sidebar footer. navProfileMenu.js and
+             common.css's .nav-profile* rules are id/class-based, not header-specific, so the
+             exact same markup works unchanged here. -->
+        <div class="nav-profile sidebar-foot" sec:authorize="isAuthenticated()" th:if="${currentUser != null}">
+            <button type="button" class="nav-avatar-trigger sidebar-foot-trigger" id="navAvatarTrigger" aria-haspopup="true" aria-expanded="false" aria-label="Profile menu">
+                <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(currentUser)}">
+                    <div th:replace="~{fragments/avatarContent :: content(${currentUser}, ${currentUser.name})}"></div>
+                </span>
+                <span class="who"><b th:text="${currentUser.name}">Name</b><span th:text="'@' + ${currentUser.username}">@handle</span></span>
+            </button>
+            <div class="nav-profile-dropdown sidebar-dropdown" id="navProfileDropdown" hidden>
+                <div class="nav-dd-items">
+                    <a th:if="${currentUser.username != null}" th:href="@{/profile/{u}(u=${currentUser.username})}" class="nav-dd-item">
+                        <svg class="icon" aria-hidden="true"><use href="#i-user"/></svg>View profile</a>
+                    <button type="button" class="nav-dd-item" id="theme-toggle">
+                        <svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg>
+                        <span class="nav-dd-grow">Dark mode</span>
+                        <span class="nav-dd-switch"></span>
+                    </button>
+                </div>
+                <div class="nav-dd-divider"></div>
+                <div class="nav-dd-items">
+                    <form th:action="@{/logout}" th:method="post">
+                        <button type="submit" class="nav-dd-item nav-dd-danger">
+                            <svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg>Log out</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <form th:action="@{/home/search}" th:method="get" class="sidebar-search">
         <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
@@ -22,56 +125,6 @@
         <input type="hidden" th:each="t : ${activeTags ?: {}}" name="tag" th:value="${t}"/>
         <input type="hidden" name="order" th:value="${activeOrder}"/>
     </form>
-
-    <div>
-        <div class="sidebar-group-label">Library</div>
-        <a th:href="@{/home}" class="sidebar-navitem" th:classappend="${activeItem == 'home'} ? ' active' : ''">
-            <svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span>For you</span></a>
-        <a th:href="@{/notifications}" class="sidebar-navitem" th:classappend="${activeItem == 'notifications'} ? ' active' : ''">
-            <svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg><span>Notifications</span>
-            <span class="notif-badge" id="sidebarNotifBadge" th:if="${unreadNotificationCount != null and unreadNotificationCount > 0}" th:text="${unreadNotificationCount}">3</span></a>
-        <a th:href="@{/follow}" class="sidebar-navitem" th:classappend="${activeItem == 'follow'} ? ' active' : ''">
-            <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span>Follow</span></a>
-        <a th:href="@{/following}" class="sidebar-navitem" th:classappend="${activeItem == 'following'} ? ' active' : ''">
-            <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span>Following</span></a>
-        <a th:href="@{/bookmarks}" class="sidebar-navitem" th:classappend="${activeItem == 'bookmarks'} ? ' active' : ''">
-            <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><span>Bookmarks</span></a>
-        <a th:href="@{/drafts}" class="sidebar-navitem" th:classappend="${activeItem == 'drafts'} ? ' active' : ''">
-            <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg><span>Drafts</span></a>
-        <a th:href="@{/shorts}" class="sidebar-navitem" th:classappend="${activeItem == 'shorts'} ? ' active' : ''">
-            <svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Shorts</span></a>
-    </div>
-
-    <!-- Profile dropdown - identical trigger/panel/ids to the old shared header (see
-         fragments/nav.html), just relocated into the sidebar footer. navProfileMenu.js and
-         common.css's .nav-profile* rules are id/class-based, not header-specific, so the
-         exact same markup works unchanged here. -->
-    <div class="nav-profile sidebar-foot" sec:authorize="isAuthenticated()" th:if="${currentUser != null}">
-        <button type="button" class="nav-avatar-trigger sidebar-foot-trigger" id="navAvatarTrigger" aria-haspopup="true" aria-expanded="false" aria-label="Profile menu">
-            <span class="avatar" th:style="${T(com.BlogApplication.Blog.util.AvatarPresets).gradientStyle(currentUser)}">
-                <div th:replace="~{fragments/avatarContent :: content(${currentUser}, ${currentUser.name})}"></div>
-            </span>
-            <span class="who"><b th:text="${currentUser.name}">Name</b><span th:text="'@' + ${currentUser.username}">@handle</span></span>
-        </button>
-        <div class="nav-profile-dropdown sidebar-dropdown" id="navProfileDropdown" hidden>
-            <div class="nav-dd-items">
-                <a th:if="${currentUser.username != null}" th:href="@{/profile/{u}(u=${currentUser.username})}" class="nav-dd-item">
-                    <svg class="icon" aria-hidden="true"><use href="#i-user"/></svg>View profile</a>
-                <button type="button" class="nav-dd-item" id="theme-toggle">
-                    <svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg>
-                    <span class="nav-dd-grow">Dark mode</span>
-                    <span class="nav-dd-switch"></span>
-                </button>
-            </div>
-            <div class="nav-dd-divider"></div>
-            <div class="nav-dd-items">
-                <form th:action="@{/logout}" th:method="post">
-                    <button type="submit" class="nav-dd-item nav-dd-danger">
-                        <svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg>Log out</button>
-                </form>
-            </div>
-        </div>
-    </div>
 </aside>
 </body>
 </html>

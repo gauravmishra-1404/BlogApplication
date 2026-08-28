@@ -407,6 +407,19 @@ svg.avatar-icon {
     box-sizing: border-box;
 }
 
+/* An author stylesheet's own "display" declaration always wins over the UA stylesheet's
+   [hidden] { display: none }, regardless of specificity - normal author rules beat normal
+   user-agent rules unconditionally in the cascade. Every .nav-dd-item up to now was always
+   shown/hidden as a whole dropdown, never toggled individually, so this never mattered until
+   js/sidebarMoreMenu.js started setting .hidden on individual items to keep the Shorts "More"
+   menu from listing something already visible in the bar - without this override, that JS was
+   silently a no-op and the item stayed visible regardless, which is what actually produced the
+   "Notifications in both places" bug (confirmed by rendering it, not just reading the DOM: the
+   hidden property really was true, the element just never stopped painting). */
+.nav-dd-item[hidden] {
+    display: none;
+}
+
 .nav-dd-item:hover {
     background: var(--color-surface-tint);
 }
