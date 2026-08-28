@@ -518,6 +518,21 @@
     margin-top: auto;
 }
 
+/* Hidden unconditionally by default - a real bug found by actually rendering the desktop
+   sidebar too, not just the mobile one this was built for: the only display:none for this used
+   to live inside the @media(max-width:900px) block, which simply doesn't apply at desktop widths
+   at all, so with no base rule the browser's own default (a plain div is display:block) took
+   over and showed it in the middle of the full sidebar. The @media block's own "display: flex"
+   override (Shorts' mobile bar only) still applies on top of this at that width, unchanged.
+   position:relative gives its dropdown (reuses .nav-profile-dropdown's own anchoring) something
+   to anchor against, same as .nav-profile does for the profile one - unconditional too, same
+   reasoning as .nav-profile's own always-on position:relative above. */
+.sidebar-more {
+    display: none;
+    position: relative;
+    flex-shrink: 0;
+}
+
 .sidebar-foot-trigger {
     width: 100%;
     display: flex;
@@ -784,6 +799,9 @@
 
     .sidebar-brand {
         padding: 4px 6px;
+        /* Never lets the brand mark itself be the thing that gets squeezed/wrapped away - see
+           the nav-items div's own comment below for the other half of this. */
+        flex-shrink: 0;
     }
 
     .sidebar-search {
@@ -791,9 +809,20 @@
         flex: 1 1 100%;
     }
 
-    .sidebar > div {
+    /* The one shared mechanism every page's mobile nav now uses, not a Shorts-only patch: brand
+       mark and avatar (sidebar-foot below) are pinned with flex-shrink:0, so they can never be
+       the thing that gets squeezed out; this div is the only one allowed to actually shrink
+       (min-width:0 is what lets a flex child shrink below its own content width at all - without
+       it the browser would rather wrap the whole bar to a second line than let this shrink) and
+       picks up its own horizontal scroll once it does. Real device testing found the avatar could
+       otherwise scroll out of view along with everything else, with no visual sign anything was
+       cut off - this fixes that everywhere the sidebar collapses, not just on one page. */
+    .sidebar-navlist {
         display: flex;
+        flex-wrap: nowrap;
         gap: 4px;
+        min-width: 0;
+        overflow-x: auto;
     }
 
     .sidebar-group-label {
@@ -830,6 +859,7 @@
     .sidebar-foot {
         margin-top: 0;
         margin-left: auto;
+        flex-shrink: 0;
     }
 
     .sidebar-foot-trigger {
@@ -999,24 +1029,44 @@
     .dashboard-shell.no-side-rail .sidebar-brand span {
         display: none;
     }
-    /* Real device testing found the full nav-icon row plus the avatar didn't reliably fit even
-       at a genuinely narrow phone width in every environment - the avatar (last in the row)
-       would silently scroll out of view along with everything else, no visual sign anything was
-       cut off. Fix: only the middle nav-icon strip scrolls (min-width:0 is what lets a flex child
-       actually shrink below its content width instead of forcing the row wider); the brand mark
-       and the avatar are pinned outside that scroll area (flex-shrink:0) so they're always
-       visible regardless of how many nav icons need a swipe to reach. */
-    .dashboard-shell.no-side-rail .sidebar > div {
-        overflow-x: auto;
-        flex: 1 1 auto;
-        min-width: 0;
+    /* Keep Home (the way out of the immersive feed) directly visible; Notifications/Follow/
+       Following/Bookmarks/Drafts/Shorts's own redundant self-link collapse into the "More"
+       button instead (fragments/sidebar.html's own .sidebar-more) - everything still one tap
+       away, just behind a menu instead of squeezed into (or scrolled out of) the bar itself. The
+       "pinned brand+avatar, scrollable middle strip" mechanics are the generic .sidebar mobile
+       rule's job now (shared by every page) - this block only adds Shorts' own tighter spacing
+       and which icons this particular bar shows. */
+    .dashboard-shell.no-side-rail .sidebar-navitem[href="/notifications"],
+    .dashboard-shell.no-side-rail .sidebar-navitem[href="/follow"],
+    .dashboard-shell.no-side-rail .sidebar-navitem[href="/following"],
+    .dashboard-shell.no-side-rail .sidebar-navitem[href="/bookmarks"],
+    .dashboard-shell.no-side-rail .sidebar-navitem[href="/drafts"],
+    .dashboard-shell.no-side-rail .sidebar-navitem[href="/shorts"] {
+        display: none;
+    }
+    .dashboard-shell.no-side-rail .sidebar-navlist {
         gap: 2px;
     }
     .dashboard-shell.no-side-rail .sidebar-navitem {
         padding: 6px;
     }
-    .dashboard-shell.no-side-rail .sidebar-foot {
-        flex-shrink: 0;
+    .dashboard-shell.no-side-rail .sidebar-more {
+        display: flex;
+    }
+    /* NOT anchored off .sidebar-more's own position:relative here - unlike the profile dropdown,
+       whose trigger (.sidebar-foot) is already pinned to the bar's right edge, the More button
+       sits mid-bar (between Home and the avatar). right:0 relative to that narrow trigger just
+       aligns the menu's right edge with the BUTTON's right edge and lets it extend leftward from
+       there - a real bug found by actually rendering it: a 220px-wide menu anchored to a button
+       only ~100px from the left edge ran off the left side of the screen entirely. position:fixed
+       against the viewport itself instead - simple, predictable, independent of where the
+       trigger happens to sit. */
+    .dashboard-shell.no-side-rail .sidebar-more-menu {
+        position: fixed;
+        left: auto;
+        right: 10px;
+        top: 60px;
+        width: 220px;
     }
     /* Same reasoning as the old .shorts-feed/.shorts-card comment below, just against the fixed
        bar's own real height (52px) instead of an estimate - the bar's height is no longer a

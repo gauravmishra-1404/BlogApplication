@@ -23,7 +23,13 @@
         <input type="hidden" name="order" th:value="${activeOrder}"/>
     </form>
 
-    <div>
+    <!-- Named rather than a bare "the nav-items div" - dashboardStyle.css used to target this via
+         the fragile ".sidebar > div" (any direct-child div), which silently also matched the
+         .sidebar-more div added below (also a direct child of .sidebar), overriding its own
+         display:none via a specificity fluke (a real bug found by actually rendering the page).
+         A real class removes the ambiguity instead of relying on nothing else ever being a plain
+         div child of .sidebar again. -->
+    <div class="sidebar-navlist">
         <div class="sidebar-group-label">Library</div>
         <a th:href="@{/home}" class="sidebar-navitem" th:classappend="${activeItem == 'home'} ? ' active' : ''">
             <svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span>For you</span></a>
@@ -40,6 +46,34 @@
             <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg><span>Drafts</span></a>
         <a th:href="@{/shorts}" class="sidebar-navitem" th:classappend="${activeItem == 'shorts'} ? ' active' : ''">
             <svg class="icon" aria-hidden="true"><use href="#i-play"/></svg><span>Shorts</span></a>
+    </div>
+
+    <!-- "More" overflow menu - invisible everywhere by default (sidebar-more.css rule below),
+         only shown on the Shorts page's own mobile top bar, where Notifications/Follow/Following/
+         Bookmarks/Drafts collapse into this one button instead of squeezing into (or scrolling
+         out of) the compact bar itself. Same trigger/panel/toggle shape as the profile dropdown
+         above (js/sidebarMoreMenu.js mirrors navProfileMenu.js's own open/close pattern), just a
+         second, independent instance - not reusing its ids, so both can exist on the page without
+         colliding. -->
+    <div class="sidebar-more">
+        <button type="button" class="sidebar-navitem sidebar-more-btn" id="sidebarMoreBtn" aria-haspopup="true" aria-expanded="false" aria-label="More">
+            <svg class="icon" aria-hidden="true"><use href="#i-dots"/></svg>
+        </button>
+        <div class="nav-profile-dropdown sidebar-dropdown sidebar-more-menu" id="sidebarMoreMenu" hidden>
+            <div class="nav-dd-items">
+                <a th:href="@{/notifications}" class="nav-dd-item">
+                    <svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg>Notifications
+                    <span class="notif-badge" th:if="${unreadNotificationCount != null and unreadNotificationCount > 0}" th:text="${unreadNotificationCount}">3</span></a>
+                <a th:href="@{/follow}" class="nav-dd-item">
+                    <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg>Follow</a>
+                <a th:href="@{/following}" class="nav-dd-item">
+                    <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg>Following</a>
+                <a th:href="@{/bookmarks}" class="nav-dd-item">
+                    <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg>Bookmarks</a>
+                <a th:href="@{/drafts}" class="nav-dd-item">
+                    <svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>Drafts</a>
+            </div>
+        </div>
     </div>
 
     <!-- Profile dropdown - identical trigger/panel/ids to the old shared header (see
