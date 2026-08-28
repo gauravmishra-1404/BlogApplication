@@ -986,6 +986,10 @@
     .shorts-feed { height: calc(100vh - 56px); }
     .shorts-card { height: calc(100vh - 56px); }
     .shorts-card-overlay { max-width: 100%; padding-right: 64px; }
+    /* .empty-shorts's height:100% has nothing to resolve against once .shorts-center above
+       switches to height:auto - same explicit calc as .shorts-feed/.shorts-card get here, so the
+       empty message still fills the screen instead of collapsing to its own content height. */
+    .empty-shorts { height: calc(100vh - 56px); }
 }
 
 /* ===================================================================================
@@ -2089,6 +2093,41 @@
     position: sticky;
     top: 0;
     overflow: hidden;
+}
+
+/* Same shared shape .empty-drafts/.empty-following/etc. already use (icon, heading, one line of
+   copy), just centered in .shorts-center's own full-height column instead of a normal page's
+   flow, and on a translucent card - .shorts-center has no opaque background of its own, so this
+   message would otherwise sit directly on the body's ambient ocean/leaves gradient with nothing
+   grounding it. */
+.empty-shorts {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px;
+}
+
+.empty-shorts .icon {
+    width: 40px;
+    height: 40px;
+    color: var(--color-text-muted);
+    opacity: 0.5;
+    margin-bottom: 14px;
+}
+
+.empty-shorts h3 {
+    margin: 0 0 6px;
+    font-size: var(--text-lg);
+    color: #fff;
+}
+
+.empty-shorts p {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: rgba(255, 255, 255, 0.72);
 }
 
 .shorts-feed {
