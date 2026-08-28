@@ -482,6 +482,18 @@
     font-weight: 600;
     text-decoration: none;
     cursor: pointer;
+    /* Every real nav item here is an <a> (no UA background/border to begin with), but the
+       "More" trigger (fragments/sidebar.html) is a real <button> - without an explicit reset a
+       browser's own default button chrome (background, border, font) shows through, looking
+       inconsistent with every icon next to it. Harmless no-op on the <a> items. */
+    background: none;
+    border: none;
+    font-family: inherit;
+}
+
+.sidebar-navitem:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
 }
 
 .sidebar-navitem:hover,
@@ -1029,18 +1041,14 @@
     .dashboard-shell.no-side-rail .sidebar-brand span {
         display: none;
     }
-    /* Keep Home (the way out of the immersive feed) directly visible; Notifications/Follow/
-       Following/Bookmarks/Drafts/Shorts's own redundant self-link collapse into the "More"
-       button instead (fragments/sidebar.html's own .sidebar-more) - everything still one tap
-       away, just behind a menu instead of squeezed into (or scrolled out of) the bar itself. The
-       "pinned brand+avatar, scrollable middle strip" mechanics are the generic .sidebar mobile
-       rule's job now (shared by every page) - this block only adds Shorts' own tighter spacing
-       and which icons this particular bar shows. */
-    .dashboard-shell.no-side-rail .sidebar-navitem[href="/notifications"],
-    .dashboard-shell.no-side-rail .sidebar-navitem[href="/follow"],
-    .dashboard-shell.no-side-rail .sidebar-navitem[href="/following"],
-    .dashboard-shell.no-side-rail .sidebar-navitem[href="/bookmarks"],
-    .dashboard-shell.no-side-rail .sidebar-navitem[href="/drafts"],
+    /* Shorts's own self-link is never useful here regardless of available space - always
+       hidden, not part of the overflow decision below. Which of Notifications/Follow/Following/
+       Bookmarks/Drafts stay directly visible vs. collapse into the "More" button is a runtime
+       decision now (js/sidebarMoreMenu.js), not a fixed CSS list - only actually overflowing
+       icons move into the menu, so a wide-enough phone shows everything directly and never shows
+       "More" at all. The "pinned brand+avatar, scrollable middle strip" mechanics are the generic
+       .sidebar mobile rule's job (shared by every page); this block only adds Shorts' own
+       tighter spacing. */
     .dashboard-shell.no-side-rail .sidebar-navitem[href="/shorts"] {
         display: none;
     }
@@ -1049,9 +1057,6 @@
     }
     .dashboard-shell.no-side-rail .sidebar-navitem {
         padding: 6px;
-    }
-    .dashboard-shell.no-side-rail .sidebar-more {
-        display: flex;
     }
     /* NOT anchored off .sidebar-more's own position:relative here - unlike the profile dropdown,
        whose trigger (.sidebar-foot) is already pinned to the bar's right edge, the More button
