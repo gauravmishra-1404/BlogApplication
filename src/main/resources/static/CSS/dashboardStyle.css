@@ -2215,6 +2215,38 @@
     border-radius: 999px;
 }
 
+/* Delete button - quiet by default (no visible background, muted icon) so it doesn't compete
+   with the row's own click-to-edit affordance; only turns danger-red on hover/focus, same
+   "reveal on interaction" relationship .bookmark-toggle already has to its own :hover state.
+   js/draftRows.js stops this click from also bubbling up to the row's own open-for-edit
+   listener - a real bug the design was checked against before building it. */
+.draft-delete-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    background: none;
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.draft-delete-btn .icon {
+    width: 16px;
+    height: 16px;
+}
+
+.draft-delete-btn:hover,
+.draft-delete-btn:focus-visible {
+    background: var(--color-danger-bg);
+    color: var(--color-danger);
+}
+
 /* ===================================================================================
    Shorts - the full immersive vertical-swipe feed (templates/shortsPage.html). No right rail
    (see .no-side-rail below), native browser scroll-snap paging - no gesture library needed.

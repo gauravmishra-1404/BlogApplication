@@ -957,6 +957,46 @@
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
+/* Corner badge - a small circular action button overlaid on the tile's own video thumbnail,
+   opposite .shorts-tile-views. Shared geometry only (position/size/dark backing so it stays
+   readable over any frame) - the descendant-combinator form (.shorts-tile .shorts-tile-badge,
+   specificity 0,2,0) is what lets this win over .bookmark-toggle's own base rule (common.css,
+   0,1,0) regardless of stylesheet load order, rather than depending on which file happens to
+   load last. Two current users: draftsPage.html's delete button (.tile-delete below) and
+   bookmarksPage.html's remove-bookmark toggle (reuses .bookmark-toggle/.saved as-is for its
+   own icon color, this rule only repositions it). */
+.shorts-tile .shorts-tile-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(11, 16, 27, 0.55);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.shorts-tile .shorts-tile-badge .icon {
+    width: 14px;
+    height: 14px;
+}
+
+.shorts-tile .shorts-tile-badge.tile-delete {
+    color: #fff;
+}
+
+.shorts-tile .shorts-tile-badge.tile-delete:hover,
+.shorts-tile .shorts-tile-badge.tile-delete:focus-visible {
+    background: var(--color-danger);
+}
+
 .profile-wrap .post-excerpt {
     font-size: var(--text-sm);
     color: var(--color-text-muted);

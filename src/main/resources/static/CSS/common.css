@@ -53,6 +53,11 @@
        (.share-option-danger:hover's rgba(220, 38, 38, 0.1), for example). */
     --color-draft-bg: rgba(217, 119, 6, 0.12);
 
+    /* Same "semantic color + tint" pattern, for the delete affordances on Draft rows/tiles
+       (draftsPage.html) - a quiet danger-tinted hover instead of a solid fill, same relationship
+       .draft-badge already has to --color-warning. */
+    --color-danger-bg: rgba(220, 38, 38, 0.1);
+
     /* Bookmark accent - deliberately its own hue (violet), distinct from primary/danger/warning/
        success, so a saved post reads as its own kind of state rather than borrowing a color
        that already means something else (Like's blue, a warning's amber). */
@@ -113,6 +118,8 @@
     --shadow-sm: 0 4px 10px rgba(0, 0, 0, 0.35);
 
     --color-draft-bg: rgba(251, 191, 36, 0.14);
+
+    --color-danger-bg: rgba(248, 113, 113, 0.14);
 
     --color-bookmark: #a78bfa;
     --color-bookmark-hover: #c4b5fd;

@@ -64,4 +64,52 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     });
+
+    // ---------- delete (Post draft rows + Short draft tiles) ----------
+    // Both forms POST to the same already-ownership-checked endpoints a published Post/Short's
+    // own Delete button already uses (PostController.deletePost / ShortsController.deleteShort -
+    // PostAuthorization.isOwnerOrAdmin) - no new backend authorization to get right, just a new
+    // way to reach the same checked action. fragments/confirmDialog.html + js/confirmDialog.js
+    // already own the "are you sure?" step generically; this only owns what happens once the
+    // user actually confirms - submitting via fetch (so the row disappears in place, no full
+    // page reload) instead of confirmDialog.js's own default real form.submit().
+    var deleteForms = document.querySelectorAll('.draft-delete-form, .shorts-tile-delete-form');
+
+    deleteForms.forEach(function (form) {
+        // Stops the click from also bubbling up to the row's/tile's own listener above (which
+        // would otherwise open the compose modal at the same time the delete confirms) - a real
+        // interaction bug checked for while building this, not a hypothetical one.
+        form.addEventListener('click', function (event) { event.stopPropagation(); });
+
+        form.addEventListener('confirmed-submit', function (event) {
+            event.preventDefault();
+            var container = form.closest('.draft-row, .shorts-tile');
+            var button = form.querySelector('button');
+            if (button) button.disabled = true;
+
+            fetch(form.action, { method: 'POST', body: new FormData(form) })
+                .then(function (response) {
+                    if (!response.ok) throw new Error('delete failed with status ' + response.status);
+                    if (container) {
+                        // Fade out in place rather than yank it away instantly - matches the
+                        // same "let the user see what just happened" reasoning .bookmark-toggle's
+                        // own pulse animation already uses elsewhere.
+                        container.style.transition = 'opacity 0.2s ease';
+                        container.style.opacity = '0';
+                        setTimeout(function () { container.remove(); }, 200);
+                    }
+                    // The tab's own count badge was rendered from the page-load count - without
+                    // this it would keep showing one more than the list actually holds now.
+                    var tabName = form.classList.contains('shorts-tile-delete-form') ? 'shorts' : 'posts';
+                    var countEl = document.querySelector('.tab-item[data-tab="' + tabName + '"] .tab-count');
+                    if (countEl) countEl.textContent = Math.max(0, (parseInt(countEl.textContent, 10) || 0) - 1);
+                    if (window.showToast) window.showToast('Draft deleted');
+                })
+                .catch(function (error) {
+                    console.error('Draft delete failed:', error);
+                    if (window.showToast) window.showToast('Could not delete draft - try again.', true);
+                    if (button) button.disabled = false;
+                });
+        });
+    });
 });

@@ -94,6 +94,21 @@
                                 <span class="draft-tag" th:each="tag : ${draft.tagList}" th:text="${#strings.toLowerCase(tag.name)}">tag</span>
                             </div>
                         </div>
+                        <!-- Ownership already enforced server-side (PostController.deletePost ->
+                             PostAuthorization.isOwnerOrAdmin) regardless of this button ever
+                             rendering - this is only reachable for the drafts *this* user's own
+                             query (DraftController) already returned, but the endpoint itself
+                             doesn't trust that either. js/draftRows.js intercepts the confirmed
+                             submit to delete via fetch (no full page reload) and stops this
+                             click from also opening the edit modal. -->
+                        <form class="draft-delete-form" th:action="@{/posts/delete(id=${draft.id})}" th:method="post"
+                              data-confirm-title="Delete this draft?"
+                              data-confirm-message="This can't be undone. It was never published, so nothing else changes - the draft is just gone."
+                              data-confirm-label="Delete">
+                            <button type="submit" class="draft-delete-btn" aria-label="Delete draft" title="Delete draft">
+                                <svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>
+                            </button>
+                        </form>
                     </div>
                 </div>
                 <div class="empty-hint" th:if="${#lists.isEmpty(drafts)}">
@@ -126,6 +141,21 @@
                              the meantime, instead of leaving the tile blank until someone plays it. -->
                         <video class="shorts-tile-video" th:src="${playbackUrl}" th:poster="${draft.thumbnailUrl}"
                                muted preload="metadata" onloadedmetadata="this.currentTime=0.1"></video>
+                        <!-- Same ownership guarantee as the Post draft row's own delete form above
+                             (ShortsController.deleteShort -> PostAuthorization.isOwnerOrAdmin) -
+                             a real <form> nested inside this role="button" tile, same accepted
+                             pattern common.css's own .bookmark-toggle-inside-.post-row already
+                             uses. js/draftRows.js stops this click from also opening the edit
+                             modal (the tile's own click listener), same handling as the Post
+                             row's delete form above. -->
+                        <form class="shorts-tile-delete-form" th:action="@{/shorts/delete(id=${draft.id})}" th:method="post"
+                              data-confirm-title="Delete this draft?"
+                              data-confirm-message="This can't be undone. It was never published, so nothing else changes - the draft is just gone."
+                              data-confirm-label="Delete">
+                            <button type="submit" class="shorts-tile-badge tile-delete" aria-label="Delete draft" title="Delete draft">
+                                <svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>
+                            </button>
+                        </form>
                         <span class="shorts-tile-caption" th:if="${draft.caption != null and !#strings.isEmpty(draft.caption)}"
                               th:text="${draft.caption}">Caption</span>
                     </div>
