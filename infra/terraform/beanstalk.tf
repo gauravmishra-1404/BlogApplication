@@ -184,6 +184,14 @@ resource "aws_iam_role_policy_attachment" "beanstalk_ec2_ssm" {
 # user's long-lived AWS_ACCESS_KEY_ID/SECRET as plain Beanstalk env vars, the way Render had to,
 # since Render isn't AWS and has no instance-role equivalent) - no long-lived key sitting in env
 # vars at all, nothing to rotate, nothing to leak.
+#
+# IMPORTANT: because this is a real, separate copy of the same policy rather than one shared
+# resource, it does NOT update itself when media.tf's app_media_upload does - confirmed live: when
+# shorts/* was added there for Phase 2, this one was missed, so the actual running app (which is
+# THIS role's credentials on Beanstalk, not the IAM user - that user's own policy is effectively
+# unused in production now) kept getting a real 403 on every Short upload even after the user's
+# policy was fixed and reapplied. Keep both in sync by hand until/unless they're consolidated into
+# one shared policy document referenced from both places.
 resource "aws_iam_role_policy" "beanstalk_ec2_sns_publish" {
   name = "${var.project}-beanstalk-sns-publish"
   role = aws_iam_role.beanstalk_ec2.id
@@ -210,6 +218,7 @@ resource "aws_iam_role_policy" "beanstalk_ec2_media_upload" {
       Resource = [
         "${aws_s3_bucket.post_media.arn}/posts/*",
         "${aws_s3_bucket.post_media.arn}/profiles/*", # avatar/cover uploads - see media.tf
+        "${aws_s3_bucket.post_media.arn}/shorts/*",   # Short video raw uploads - see media.tf
       ]
     }]
   })
