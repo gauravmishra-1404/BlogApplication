@@ -94,7 +94,7 @@
                  showed up here). Real <a> tiles, not role="button" - a bookmarked Short is published
                  and has a real /shorts/{id} URL, same markup as profile.html's own Shorts tab. -->
             <div class="tab-panel" data-panel="shorts" th:hidden="${!defaultShorts}">
-                <div class="shorts-tile-grid" th:unless="${#lists.isEmpty(shorts)}">
+                <div class="shorts-tile-grid" id="bookmarksShortsGrid" th:unless="${#lists.isEmpty(shorts)}">
                     <a class="shorts-tile" th:each="short : ${shorts}" th:href="@{/shorts/{id}(id=${short.id})}"
                        th:with="playbackUrl=${short.transcodedVideoUrl != null ? short.transcodedVideoUrl : short.videoUrl}">
                         <!-- onloadedmetadata nudges the browser to actually decode/paint a frame from the
@@ -103,6 +103,19 @@
                              tile visibly blank until someone plays it. -->
                         <video class="shorts-tile-video" th:src="${playbackUrl}" th:poster="${short.thumbnailUrl}"
                                muted preload="metadata" onloadedmetadata="this.currentTime=0.1"></video>
+                        <!-- Reuses js/bookmark.js's existing generic .bookmark-toggle handling as-is
+                             (already handles a nested button inside an <a> correctly - see
+                             postRows.html's own identical comment) - "saved" unconditionally, since
+                             every Short reaching this page is already bookmarked by definition.
+                             js/bookmark.js additionally removes this tile from the grid on
+                             un-bookmark, scoped to #bookmarksShortsGrid specifically so the exact
+                             same button elsewhere (the Short's own page) never does that. -->
+                        <button type="button" class="shorts-tile-badge bookmark-toggle saved"
+                                th:attr="data-target-type=short, data-target-id=${short.id}, data-logged-in=${currentUser != null}"
+                                aria-label="Remove bookmark">
+                            <span class="pop"></span>
+                            <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg>
+                        </button>
                         <span class="shorts-tile-views"
                               th:with="viewCount=${shortViewCounts.get(short.id) != null ? shortViewCounts.get(short.id) : 0}"
                               th:text="${T(com.BlogApplication.Blog.util.NumberFormatter).compact(viewCount)} + (${viewCount == 1} ? ' view' : ' views')">0 views</span>

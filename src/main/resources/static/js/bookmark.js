@@ -49,6 +49,26 @@ document.addEventListener('click', function (event) {
                     label.textContent = summary.bookmarked ? 'Saved' : 'Save';
                 }
             });
+
+            // bookmarksPage.html specifically (not the Home/Following feed, nor a post's own
+            // page, where the same toggle correctly just flips state in place): un-bookmarking
+            // here means the item no longer belongs on a page whose entire point is "things I
+            // bookmarked" - it should leave the list, not just show as unsaved. Scoped to these
+            // two containers' ids (both only ever rendered on this one page) rather than every
+            // .bookmark-toggle everywhere, so nothing else changes behavior.
+            if (!summary.bookmarked) {
+                var scoped = button.closest('#bookmarksFeedList, #bookmarksShortsGrid');
+                var item = scoped ? button.closest('.post-row, .shorts-tile') : null;
+                if (item) {
+                    item.style.transition = 'opacity 0.2s ease';
+                    item.style.opacity = '0';
+                    setTimeout(function () { item.remove(); }, 200);
+                    if (window.showToast) window.showToast('Removed from bookmarks');
+                    var tabName = targetType === 'short' ? 'shorts' : 'posts';
+                    var countEl = document.querySelector('.tab-item[data-tab="' + tabName + '"] .tab-count');
+                    if (countEl) countEl.textContent = Math.max(0, (parseInt(countEl.textContent, 10) || 0) - 1);
+                }
+            }
         })
         .catch(function (error) {
             // Best-effort UI enhancement - a network hiccup shouldn't break the page, the
