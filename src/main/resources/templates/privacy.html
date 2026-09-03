@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/publicPage :: head('Privacy Policy', 'What Bodh Sea collects, why it collects it, where it is stored, and how to get it deleted.')}"></head>
+<body>
+<div class="page">
+    <nav th:replace="~{fragments/publicPage :: nav}"></nav>
+
+    <main class="doc">
+        <a class="back" th:href="@{/}">← Back to home</a>
+        <h1>Privacy Policy</h1>
+        <p class="updated">Last updated August 2026</p>
+
+        <div class="callout">
+            <p><strong>The short version.</strong> Bodh Sea stores the account details you give us and the
+            content you create. We don't sell your data, we don't run advertising trackers, and we don't
+            share your information with third parties except the handful of infrastructure providers listed
+            below that are needed to actually run the service. Your drafts are private until you publish them.</p>
+        </div>
+
+        <h2>What we collect</h2>
+        <dl>
+            <dt>Account details</dt>
+            <dd>Your name, email address, and a password — which is stored only as a one-way hash, never as
+                the password itself. Optionally an avatar and cover image if you upload them.</dd>
+
+            <dt>Content you create</dt>
+            <dd>Posts, Shorts, comments, replies, tags, and any images or video you attach. Drafts and
+                scheduled items are included here — they're stored the same way, they're just not visible
+                to anyone else until published.</dd>
+
+            <dt>Activity within the service</dt>
+            <dd>Reactions, bookmarks, reposts, follows, and view counts on posts and Shorts. These exist to
+                make the product work (a bookmark list needs to know what you bookmarked) and to show
+                authors how their work is doing.</dd>
+
+            <dt>Technical data</dt>
+            <dd>A session cookie so you stay logged in between pages, and standard server logs. We do not
+                use third-party analytics or advertising cookies.</dd>
+        </dl>
+
+        <h2>Why we collect it</h2>
+        <ul>
+            <li><strong>To run your account</strong> — authenticating you, keeping you logged in, and
+                verifying your email address so accounts can't be created in your name.</li>
+            <li><strong>To provide the service</strong> — storing and displaying what you publish, and
+                delivering it to people who follow you.</li>
+            <li><strong>To notify you</strong> — telling you when someone follows, comments on, or reacts to
+                your work, through whichever channels you've enabled.</li>
+            <li><strong>To keep it working and safe</strong> — diagnosing errors and investigating abuse.</li>
+        </ul>
+
+        <h2>Where it's stored</h2>
+        <p>Bodh Sea runs on Amazon Web Services in the <strong>Asia Pacific (Mumbai)</strong> region.
+        Specifically:</p>
+        <ul>
+            <li>Account and content records are stored in a managed PostgreSQL database (Amazon RDS), which
+                is not publicly reachable from the internet.</li>
+            <li>Images and video you upload are stored in Amazon S3. Media attached to <em>published</em>
+                content is served publicly — anyone with the URL can view it, which is what makes it
+                displayable in a feed.</li>
+            <li>Login sessions are held in Amazon ElastiCache (Redis).</li>
+            <li>All traffic to the site is encrypted in transit over HTTPS.</li>
+        </ul>
+
+        <h2>Third parties we share data with</h2>
+        <p>Only where it's required to deliver a feature you've used:</p>
+        <ul>
+            <li><strong>Amazon Web Services</strong> — hosting, storage, and database infrastructure.</li>
+            <li><strong>SendGrid (Twilio)</strong> — sending transactional email such as verification links,
+                password resets, and notification emails. They receive your email address and the message
+                content.</li>
+            <li><strong>Firebase Cloud Messaging (Google)</strong> — delivering push notifications, if you
+                enable them.</li>
+        </ul>
+        <p>We do not sell personal data, and we don't share it with advertisers or data brokers.</p>
+
+        <h2>Your choices</h2>
+        <ul>
+            <li><strong>Notifications</strong> — choose which channels (in-app, email, push) you want, from
+                your account settings.</li>
+            <li><strong>Your content</strong> — edit or delete any post, Short, comment, draft, or bookmark
+                at any time. Deleting content removes it from the service.</li>
+            <li><strong>Export</strong> — download any published post as a PDF, at any time, without asking us.</li>
+            <li><strong>Deletion</strong> — to delete your account and associated data, contact us at the
+                address on the <a th:href="@{/contact}">contact page</a>.</li>
+        </ul>
+
+        <h2>Retention</h2>
+        <p>We keep your account data for as long as your account exists. Content you delete is removed from
+        the service. Server logs and backups are retained for a limited period for operational and recovery
+        purposes and then age out.</p>
+
+        <h2>Children</h2>
+        <p>Bodh Sea isn't intended for children under 13, and we don't knowingly collect information from
+        them. If you believe a child has created an account, please contact us and we'll remove it.</p>
+
+        <h2>Changes to this policy</h2>
+        <p>If this policy changes materially, we'll update the date at the top of this page and, where the
+        change affects how your data is used, notify you in the app.</p>
+
+        <h2>Contact</h2>
+        <p>Questions about this policy, or want your data deleted? See the
+        <a th:href="@{/contact}">contact page</a>.</p>
+    </main>
+
+    <footer th:replace="~{fragments/publicPage :: footer}"></footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/publicPage :: head('Terms of Service', 'The rules for using Bodh Sea — what you can post, what stays yours, and what we can do about accounts that break the rules.')}"></head>
+<body>
+<div class="page">
+    <nav th:replace="~{fragments/publicPage :: nav}"></nav>
+
+    <main class="doc">
+        <a class="back" th:href="@{/}">← Back to home</a>
+        <h1>Terms of Service</h1>
+        <p class="updated">Last updated August 2026</p>
+
+        <div class="callout">
+            <p><strong>The short version.</strong> Your writing and video stay yours. Don't post illegal
+            content, don't harass people, and don't abuse the service. We can remove content or suspend
+            accounts that break these rules. The service is provided as-is.</p>
+        </div>
+
+        <h2>1. Your account</h2>
+        <p>You need an account to publish. You're responsible for keeping your password secure and for
+        activity that happens under your account. Give us an email address you actually control — we use it
+        to verify the account and to help you recover it.</p>
+        <p>You must be at least 13 years old to use Bodh Sea.</p>
+
+        <h2>2. Your content stays yours</h2>
+        <p>You keep ownership of everything you write, film, and upload. Nothing here transfers copyright
+        to us.</p>
+        <p>By publishing content on Bodh Sea, you grant us a limited licence to store, reproduce, and
+        display it <em>for the purpose of operating the service</em> — showing your post in a feed, serving
+        your video, generating a PDF export. That licence exists only so the product can function, and it
+        ends when you delete the content.</p>
+
+        <h2>3. What you may not post</h2>
+        <ul>
+            <li>Content that is illegal, or that infringes someone else's copyright or trademark.</li>
+            <li>Harassment, threats, hate speech, or content that targets a person or group for abuse.</li>
+            <li>Sexual content involving minors, or any content that sexualises children — this results in
+                immediate removal and a permanent ban.</li>
+            <li>Malware, phishing, or attempts to compromise the service or other users' accounts.</li>
+            <li>Spam, bulk automated posting, or attempts to manipulate feeds and engagement.</li>
+            <li>Impersonating another person or organisation in a way likely to mislead.</li>
+        </ul>
+
+        <h2>4. Moderation</h2>
+        <p>We may remove content or suspend accounts that break these terms. Where it's practical and
+        appropriate, we'll tell you why. Serious violations — particularly those in the third bullet
+        above — may be actioned immediately and without notice.</p>
+
+        <h2>5. Availability</h2>
+        <p>We aim to keep Bodh Sea running, but we don't promise uninterrupted availability. Features may
+        change, and we may need to take the service down for maintenance. We recommend keeping your own
+        copies of anything important — the PDF export exists partly for this reason.</p>
+
+        <h2>6. Ending your use</h2>
+        <p>You can stop using Bodh Sea at any time and request deletion of your account via the
+        <a th:href="@{/contact}">contact page</a>. We may terminate accounts that materially breach these
+        terms.</p>
+
+        <h2>7. Disclaimer and liability</h2>
+        <p>Bodh Sea is provided "as is", without warranties of any kind. To the fullest extent permitted by
+        applicable law, we are not liable for indirect or consequential losses arising from your use of the
+        service, including loss of content or data.</p>
+
+        <h2>8. Changes</h2>
+        <p>We may update these terms. If a change is material, we'll update the date above and let you know
+        in the app. Continuing to use Bodh Sea after a change means you accept the updated terms.</p>
+
+        <h2>9. Contact</h2>
+        <p>Questions about these terms? See the <a th:href="@{/contact}">contact page</a>.</p>
+    </main>
+
+    <footer th:replace="~{fragments/publicPage :: footer}"></footer>
+</div>
+</body>
+</html>

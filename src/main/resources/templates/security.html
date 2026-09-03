@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/publicPage :: head('Security', 'How Bodh Sea protects accounts and data, and how to report a vulnerability.')}"></head>
+<body>
+<div class="page">
+    <nav th:replace="~{fragments/publicPage :: nav}"></nav>
+
+    <main class="doc">
+        <a class="back" th:href="@{/}">← Back to home</a>
+        <h1>Security</h1>
+        <p class="updated">Last updated August 2026</p>
+
+        <div class="callout">
+            <p><strong>Found a vulnerability?</strong> Please report it privately rather than posting it
+            publicly, and give us a reasonable window to fix it before disclosing. Details in
+            <a href="#reporting">Reporting a vulnerability</a> below.</p>
+        </div>
+
+        <h2>How accounts are protected</h2>
+        <ul>
+            <li><strong>Passwords are never stored.</strong> We store a one-way hash, so even with database
+                access your password cannot be read back.</li>
+            <li><strong>Email verification.</strong> New accounts must confirm their email address before
+                they become active, so an account can't be created and used in your name.</li>
+            <li><strong>Encrypted in transit.</strong> The whole site is served over HTTPS with a
+                certificate issued by Amazon Certificate Manager, with HSTS enabled.</li>
+            <li><strong>Session handling.</strong> Sessions are held server-side in Redis, not in the
+                cookie itself, and the session cookie is HttpOnly so page scripts can't read it.</li>
+            <li><strong>CSRF protection.</strong> State-changing form submissions carry a per-session
+                anti-forgery token.</li>
+        </ul>
+
+        <h2>How your content is protected</h2>
+        <ul>
+            <li><strong>Ownership is enforced on the server.</strong> Editing or deleting a post, Short, or
+                comment is checked against the logged-in user on every request — not just hidden in the
+                interface. A request sent directly to the endpoint by someone else is rejected.</li>
+            <li><strong>Drafts are private.</strong> An unpublished post or Short is never returned in any
+                feed, profile, or search result belonging to another user.</li>
+            <li><strong>Database isolation.</strong> The database is not publicly reachable; it accepts
+                connections only from inside the application's own private network.</li>
+            <li><strong>Scoped upload permissions.</strong> The application can write uploads only to the
+                specific storage prefixes it needs, and nothing else.</li>
+        </ul>
+
+        <h2>What we don't do yet</h2>
+        <p>Being straight about the gaps is more useful than a list that implies more than is true:</p>
+        <ul>
+            <li>There is no two-factor authentication yet.</li>
+            <li>There is no formal bug-bounty programme — reports are handled directly, and gratefully.</li>
+            <li>Media attached to published content is served from public URLs. Anyone with the link can
+                view it, so treat anything you publish as public.</li>
+        </ul>
+
+        <h2 id="reporting">Reporting a vulnerability</h2>
+        <p>If you believe you've found a security issue, please email
+        <a href="mailto:bodhsea@gmail.com">bodhsea@gmail.com</a> (subject line starting "Security") with:</p>
+        <ul>
+            <li>What the issue is and roughly how severe you think it is</li>
+            <li>Steps to reproduce it, ideally with a specific request or URL</li>
+            <li>Whether you've disclosed it anywhere else</li>
+        </ul>
+        <p>Please don't run automated scanners against the live service, access or modify other people's
+        accounts or data, or degrade the service for other users while testing. We'll acknowledge your
+        report, keep you updated while we work on it, and credit you if you'd like.</p>
+
+        <h2>Something else wrong?</h2>
+        <p>For abuse reports, account issues, or anything that isn't a security vulnerability, use the
+        <a th:href="@{/contact}">contact page</a> instead.</p>
+    </main>
+
+    <footer th:replace="~{fragments/publicPage :: footer}"></footer>
+</div>
+</body>
+</html>

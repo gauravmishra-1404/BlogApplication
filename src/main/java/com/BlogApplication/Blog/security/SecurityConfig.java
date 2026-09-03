@@ -82,6 +82,10 @@ public class SecurityConfig {
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/login", "/api/login", "/h2-console/**").permitAll()
+                        // Public information pages (PublicPagesController) - linked from the
+                        // landing page's own footer, so they have to render for a logged-out
+                        // visitor; a privacy policy behind a login wall is not a privacy policy.
+                        .requestMatchers("/privacy", "/terms", "/security", "/contact").permitAll()
                         // Restrictive rules MUST come before the broader permitAll patterns below —
                         // authorizeHttpRequests matches in declaration order and stops at the first hit,
                         // so a broad "/posts/**" listed earlier would silently shadow these.

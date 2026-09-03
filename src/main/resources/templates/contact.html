@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/publicPage :: head('Contact', 'How to reach Bodh Sea — support, privacy requests, security reports and account deletion.')}"></head>
+<body>
+<div class="page">
+    <nav th:replace="~{fragments/publicPage :: nav}"></nav>
+
+    <main class="doc">
+        <a class="back" th:href="@{/}">← Back to home</a>
+        <h1>Contact</h1>
+        <p class="updated">We read everything that comes in</p>
+
+        <p>Bodh Sea is a small project, so there's no ticket queue and no phone tree — email reaches a
+        person directly, and we'll get back to you.</p>
+
+        <h2>Where to write</h2>
+        <p class="doc-email"><a href="mailto:bodhsea@gmail.com">bodhsea@gmail.com</a></p>
+        <p>One inbox for everything — support, privacy requests, security reports and abuse. To help it get
+        handled faster, start your subject line with the kind of message it is:</p>
+
+        <dl>
+            <dt>Support</dt>
+            <dd>Something broken, something confusing, or an idea for what should exist next.</dd>
+
+            <dt>Privacy</dt>
+            <dd>To request a copy of your data, or to have your account and its content deleted. Please
+                write from the email address on the account so we can confirm it's you.</dd>
+
+            <dt>Security</dt>
+            <dd>Vulnerability reports — see the <a th:href="@{/security}">security page</a> for what to
+                include and what we ask of you while testing.</dd>
+
+            <dt>Abuse</dt>
+            <dd>Content that breaks the <a th:href="@{/terms}">terms of service</a>. Include a link to the
+                post or Short so we can find it quickly.</dd>
+        </dl>
+
+        <h2>Before you write</h2>
+        <ul>
+            <li><strong>Forgotten password?</strong> Use the reset link on the
+                <a th:href="@{/login}">login page</a> — it's faster than emailing us.</li>
+            <li><strong>Didn't get your verification email?</strong> Check spam first, then request a new
+                link from the login page.</li>
+            <li><strong>Want your writing out?</strong> You don't need us — any published post exports as a
+                PDF from the post itself.</li>
+        </ul>
+
+        <h2>Response times</h2>
+        <p>This is a small operation, not a 24/7 support desk. We aim to reply within a few days, and
+        faster for security reports and account-access problems.</p>
+    </main>
+
+    <footer th:replace="~{fragments/publicPage :: footer}"></footer>
+</div>
+</body>
+</html>
